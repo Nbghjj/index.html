@@ -1,58 +1,290 @@
-<!doctype html><html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AYAT BINGO</title>
-<style>
-*{box-sizing:border-box}body{margin:0;background:linear-gradient(#160021,#08000f);color:#fff;font-family:Arial,sans-serif}
-.app{max-width:520px;margin:auto;padding:12px 14px 90px}.header{text-align:center;padding:12px 8px 16px;border-bottom:1px solid #402454}
-.logo{font-size:27px;font-weight:900;letter-spacing:2px;color:#f0c94b}.sub{color:#d5bddf;margin-top:7px}
-.card{background:linear-gradient(#24103b,#170923);border:1px solid #563a68;border-radius:22px;padding:16px;margin:14px 0}
-.top{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:14px 0}.stat{background:#190a2b;border:1px solid #4c2b62;border-radius:10px;padding:9px 3px;text-align:center}.stat small{display:block;color:#a99ab6;font-size:10px;font-weight:700}.stat b{display:block;margin-top:5px}.gold{color:#f0c94b}
-.banner{border:1px solid #9b7722;background:#2b1940;border-radius:20px;padding:16px;text-align:center}.banner h2{margin:0;color:#f0c94b}.banner p,.notice{color:#c9bacf}
-input{width:100%;padding:14px;border-radius:11px;border:1px solid #634c78;background:#120b22;color:#fff;margin:6px 0;font-size:16px}
-button{border:0;border-radius:12px;padding:13px 16px;font-weight:800;font-size:15px}.goldbtn{background:linear-gradient(#f5d45c,#d5a928);color:#241300}.darkbtn{background:#1d0d31;border:1px solid #624777;color:#fff}.redbtn{background:#4b1022;color:#ffd9df}.full{width:100%;margin-top:8px}.hidden{display:none!important}
-.title{text-align:center;color:#f0c94b;font-weight:900;letter-spacing:1px;margin:22px 0 10px}.room{border:1px solid #775c2d;border-radius:25px;padding:16px;background:#1d0d31}.roomrow{display:flex;align-items:center;gap:12px}.coin{width:62px;height:62px;border-radius:18px;background:#704713;display:grid;place-items:center;font-weight:900;border:2px solid #9a6b24}.room h2{margin:0;font-size:19px}.playing{color:#f0c94b;font-size:12px;margin-top:5px}
-.board{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-top:12px}.num{aspect-ratio:1;display:grid;place-items:center;border-radius:12px;background:#211038;border:1px solid #382052;font-size:17px;font-weight:800}.called{background:#4d1025!important;border-color:#9c243a!important;color:#ffcbd3}
-.mycard{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:10px}.mycell{aspect-ratio:1;display:grid;place-items:center;background:#211038;border:1px solid #49305d;border-radius:9px;font-weight:800}.mycell.mark{background:#8a641b;border-color:#e6bd3e}.mycell.free{background:#563a68;color:#f0c94b;font-size:10px}
-.result{text-align:center;color:#f0c94b;font-size:20px;font-weight:900;margin:12px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.notice{font-size:13px;line-height:1.5}.badge{display:inline-block;padding:5px 9px;border-radius:99px;background:#30184b;color:#f0c94b;font-size:11px}
-.statline{display:flex;justify-content:space-between;color:#c9bacf;font-size:13px;margin:8px 0}hr{border:0;border-top:1px solid #49305d}
-.nav{position:fixed;bottom:0;left:0;right:0;background:#1b0b2e;border-top:1px solid #49305d}.navin{max-width:520px;margin:auto;display:grid;grid-template-columns:repeat(4,1fr)}.nav button{background:none;color:#a99ab6;border-radius:0;padding:10px 4px;font-size:12px}.nav button.active{color:#f0c94b}
-</style></head><body><div class="app">
-<header class="header"><div class="logo">🎯 AYAT BINGO</div><div class="sub">አያት ቢንጎ • Telegram Mini App</div></header>
-<section id="register" class="card"><div class="banner"><h2>🎯 Welcome to Ayat Bingo</h2><p>Create your demo player profile to enter the game.</p></div>
-<input id="name" placeholder="Enter your name" maxlength="30"><button class="goldbtn full" onclick="register()">✅ REGISTER</button>
-<p class="notice">Demo mode: no real-money deposit, withdrawal, or payout is enabled.</p></section>
-<main id="home" class="hidden">
-<div class="top"><div class="stat"><small>BALANCE</small><b id="balance">0</b></div><div class="stat"><small>STAKE</small><b>10</b></div><div class="stat"><small>POT</small><b class="gold" id="pot">0</b></div><div class="stat"><small>PLAYERS</small><b id="players">0</b></div></div>
-<section class="card"><div class="banner"><h2>🎁 AYAT BINGO</h2><p>Complete simulated Bingo round.</p><span class="badge">DEMO • 300 CARD CAPACITY</span></div></section>
-<div class="title">SELECT ROOM</div><div class="room"><div class="roomrow"><div class="coin">10<br>BIRR</div><div><h2>Ayat Bingo Room</h2><div class="playing">● LIVE DEMO</div></div></div>
-<div class="statline"><span>Players</span><b id="roomPlayers">0 / 300</b></div><button class="goldbtn full" onclick="joinRoom()">JOIN ROOM →</button></div>
-<section id="game" class="hidden card"><div class="title">🎲 BINGO ROOM</div>
-<div class="top"><div class="stat"><small>BALANCE</small><b id="gbalance">0</b></div><div class="stat"><small>STAKE</small><b>10</b></div><div class="stat"><small>POT</small><b class="gold" id="gpot">0</b></div><div class="stat"><small>CALLED</small><b id="calledCount">0</b></div></div>
-<div class="banner"><b id="result">Waiting for draw…</b><div class="notice">Local demo draw only.</div></div>
-<div class="title">YOUR BINGO CARD</div><div id="mycard" class="mycard"></div>
-<button class="darkbtn full" onclick="checkBingo()">🏆 CHECK BINGO</button>
-<div class="title">CALLED NUMBERS</div><div id="board" class="board"></div>
-<div class="actions" style="margin-top:12px"><button class="goldbtn" onclick="draw()">🎲 DRAW</button><button class="darkbtn" onclick="newRound()">↻ NEW ROUND</button></div>
-<button class="redbtn full" onclick="leaveRoom()">← LEAVE ROOM</button></section>
-<section id="ranks" class="card hidden"><div class="title">🏆 RANKS</div><p>🥇 1. Ayat Player — 120 points</p><p>🥈 2. Bingo Star — 95 points</p><p>🥉 3. Lucky Card — 80 points</p><p>⭐ <b id="rankUser"></b> — 0 points</p></section>
-<section id="wallet" class="card hidden"><div class="title">▣ WALLET</div><div class="statline"><span>Demo balance</span><b id="walletBalance">0</b></div><hr><p class="notice">Simulation only. Real-money payment/payout is not connected.</p><button class="darkbtn full" onclick="alert('Demo only')">＋ DEMO DEPOSIT</button><button class="darkbtn full" onclick="alert('Demo only')">WITHDRAW</button></section>
-<section id="profile" class="card hidden"><div class="title">♙ PROFILE</div><p>Player: <b id="profileName"></b></p><p>Card capacity: <b>300</b></p><p>Mode: <span class="badge">DEMO</span></p><button class="darkbtn full" onclick="logout()">Logout</button></section>
-</main></div>
-<nav class="nav"><div class="navin"><button class="active" onclick="tab('home',this)">🎮<br>Play</button><button onclick="tab('ranks',this)">🏆<br>Ranks</button><button onclick="tab('wallet',this)">▣<br>Wallet</button><button onclick="tab('profile',this)">♙<br>Profile</button></div></nav>
-<script>
-let state=JSON.parse(localStorage.getItem("ayatBingo")||"null"),called=[],card=[],marked=new Set();
-const $=id=>document.getElementById(id);
-function save(){localStorage.setItem("ayatBingo",JSON.stringify(state))}
-function register(){let n=$("name").value.trim();if(!n)return alert("Enter your name");state={name:n,balance:0,points:0};save();show()}
-function show(){if(!state)return;$("register").classList.add("hidden");$("home").classList.remove("hidden");$("balance").textContent=state.balance;$("gbalance").textContent=state.balance;$("walletBalance").textContent=state.balance;$("profileName").textContent=state.name;$("rankUser").textContent=state.name;updatePot()}
-function updatePot(){let p=Math.min(300,Math.max(1,Math.floor(Math.random()*44)+20));$("players").textContent=p;$("roomPlayers").textContent=p+" / 300";$("pot").textContent=p*10;$("gpot").textContent=p*10}
-function tab(id,btn){["game","ranks","wallet","profile"].forEach(x=>$(x).classList.add("hidden"));if(id!="home")$(id).classList.remove("hidden");document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));btn.classList.add("active")}
-function joinRoom(){$("game").classList.remove("hidden");makeBoard();makeCard();$("game").scrollIntoView({behavior:"smooth"})}
-function makeBoard(){called=[];$("calledCount").textContent=0;$("result").textContent="Waiting for draw…";$("board").innerHTML=Array.from({length:90},(_,i)=>`<div id="n${i+1}" class="num">${i+1}</div>`).join("")}
-function makeCard(){let a=[];while(a.length<24){let n=Math.floor(Math.random()*90)+1;if(!a.includes(n))a.push(n)}card=a;marked=new Set();$("mycard").innerHTML=card.map((n,i)=>`<div class="mycell ${i==12?"free":""}" id="c${i}" onclick="markCard(${i})">${i==12?"FREE":n}</div>`).join("")}
-function markCard(i){if(i==12||called.includes(card[i])){marked.add(i);$("c"+i).classList.add("mark")}}
-function draw(){if(called.length>=90)return;let n;do n=Math.floor(Math.random()*90)+1;while(called.includes(n));called.push(n);$("n"+n).classList.add("called");$("calledCount").textContent=called.length;$("result").textContent="🎲 "+n;card.forEach((v,i)=>{if(v===n)markCard(i)})}
-function checkBingo(){let m=new Set(marked);m.add(12);let lines=[[0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],[0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],[0,6,12,18,24],[4,8,12,16,20]];let win=lines.some(l=>l.every(i=>m.has(i)));if(win){$("result").textContent="🏆 BINGO! Demo win!";state.points+=10;save()}else $("result").textContent="Not Bingo yet"}
-function newRound(){makeBoard();makeCard()}function leaveRoom(){$("game").classList.add("hidden")}function logout(){localStorage.removeItem("ayatBingo");location.reload()}if(state)show();
-</script></body></html>
-be
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ሐራር Bingo - Mini App</title>
+    <style>
+        /* --- CSS STYLES --- */
+        body {
+            background-color: #120c24;
+            color: #fff;
+            font-family: sans-serif;
+            margin: 0;
+            padding: 10px;
+        }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        /* Home Screen Styles */
+        .card-banner {
+            background: linear-gradient(135deg, #2c1b4d, #1f143a);
+            padding: 20px;
+            border-radius: 14px;
+            text-align: center;
+            border: 1px solid #3c2a6d;
+            margin-bottom: 15px;
+        }
+
+        .card-banner h3 {
+            color: #f39c12;
+            margin: 0 0 5px 0;
+            font-size: 22px;
+        }
+
+        .card-banner p {
+            color: #a08cc4;
+            font-size: 13px;
+            margin: 0 0 10px 0;
+        }
+
+        .card-banner span {
+            background: #3c2a6d;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            color: #f1c40f;
+        }
+
+        .room-box {
+            background: #1f143a;
+            padding: 15px;
+            border-radius: 14px;
+            border: 1px solid #3c2a6d;
+        }
+
+        .room-info h4 {
+            margin: 5px 0;
+            font-size: 16px;
+        }
+
+        .stake-badge {
+            background: #f39c12;
+            color: #000;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .join-btn {
+            background: linear-gradient(135deg, #f39c12, #f1c40f);
+            border: none;
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            font-size: 15px;
+        }
+
+        /* Game Screen Styles */
+        .game-top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #1f143a;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #3c2a6d;
+        }
+
+        .leave-btn {
+            background: #7928ca;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .stats-box {
+            display: flex;
+            gap: 4px;
+        }
+
+        .stats-box span {
+            background: #2c1b4d;
+            padding: 4px 6px;
+            border-radius: 6px;
+            font-size: 11px;
+        }
+
+        .selection-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #a08cc4;
+            margin-bottom: 8px;
+            padding: 0 5px;
+        }
+
+        .cards-grid-container {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 5px;
+            max-height: 260px;
+            overflow-y: auto;
+            background: #1f143a;
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid #3c2a6d;
+        }
+
+        .card-box {
+            background: #3c2a6d;
+            color: #fff;
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            border: none;
+            transition: 0.1s;
+        }
+
+        .card-box:hover {
+            background: #5d3fd3;
+        }
+
+        .card-box.selected {
+            background: #f39c12;
+            color: #000;
+        }
+
+        .bottom-msg {
+            text-align: center;
+            margin-top: 25px;
+            color: #8c7aa9;
+            font-size: 13px;
+            background: #1f143a;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #3c2a6d;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. HOME SCREEN -->
+    <div id="home-screen" class="container">
+        <div class="card-banner">
+            <h3>AYAT BINGO</h3>
+            <p>Complete simulated Bingo round.</p>
+            <span>DEMO • 300 CARD CAPACITY</span>
+        </div>
+        
+        <div class="room-box">
+            <div class="room-info">
+                <span class="stake-badge">20 BIRR</span>
+                <h4>ሐራር Bingo Room</h4>
+                <p style="color: #a08cc4; font-size: 12px; margin: 2px 0;">• LIVE DEMO</p>
+            </div>
+            <p style="font-size: 13px; color: #a08cc4;">Players: <span id="player-count">59</span> / 300</p>
+            <button id="joinRoomBtn" class="join-btn">JOIN ROOM →</button>
+        </div>
+    </div>
+
+    <!-- 2. GAME SCREEN (ካርዶቹ የሚመረጡበት) -->
+    <div id="game-screen" class="container" style="display: none;">
+        <div class="game-top-bar">
+            <button id="leaveBtn" class="leave-btn">← Leave</button>
+            <h3 style="margin: 0; font-size: 15px; color: #f39c12;">ሐራር Bingo</h3>
+            <div class="stats-box">
+                <span>W: <b id="wallet-val">0</b></span>
+                <span>S: <b id="stake-val">20</b></span>
+                <span>WIN: <b id="win-val">0</b></span>
+            </div>
+        </div>
+
+        <div class="selection-info">
+            <span id="boards-count">Boards: 0/2</span>
+            <span class="hint-text" style="color: #f1c40f;">Tap a card to join</span>
+        </div>
+
+        <!-- ከ 1 እስከ 300 ያሉት ካርዶች ግሪድ -->
+        <div class="cards-grid-container" id="cardsGrid">
+            <!-- በ JavaScript ይሞላል -->
+        </div>
+
+        <div class="bottom-msg">
+            <p id="selected-cards-msg" style="margin: 0;">Your cards will show here</p>
+        </div>
+    </div>
+
+    <script>
+        // --- JAVASCRIPT LOGIC ---
+        const totalBoards = 300;
+        const maxSelection = 2; // ከፍተኛው የሚመረጡ ካርዶች ብዛት
+        let selectedCards = [];
+
+        const homeScreen = document.getElementById('home-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const joinRoomBtn = document.getElementById('joinRoomBtn');
+        const leaveBtn = document.getElementById('leaveBtn');
+        const gridContainer = document.getElementById('cardsGrid');
+        const boardsCountText = document.getElementById('boards-count');
+        const msgText = document.getElementById('selected-cards-msg');
+
+        // JOIN ROOM ሲጫን ወደ ጨዋታ ገጽ መሸጋገር
+        joinRoomBtn.addEventListener('click', function() {
+            homeScreen.style.display = 'none';
+            gameScreen.style.display = 'block';
+        });
+
+        // LEAVE ሲጫን ወደ መጀመሪያው ገጽ መመለስ
+        leaveBtn.addEventListener('click', function() {
+            gameScreen.style.display = 'none';
+            homeScreen.style.display = 'block';
+        });
+
+        // ከ 1 እስከ 300 ያሉትን ካርዶች በግሪዱ ውስጥ መፍጠር
+        for (let i = 1; i <= totalBoards; i++) {
+            const cardBtn = document.createElement('button');
+            cardBtn.className = 'card-box';
+            cardBtn.textContent = i;
+            cardBtn.dataset.id = i;
+
+            // ካርዱ ሲነካ (Tap) የሚሰራ ሎጂክ
+            cardBtn.addEventListener('click', function() {
+                const cardId = parseInt(this.dataset.id);
+
+                if (selectedCards.includes(cardId)) {
+                    // ከተመረጠ ማጥፋት (Deselect)
+                    selectedCards = selectedCards.filter(id => id !== cardId);
+                    this.classList.remove('selected');
+                } else {
+                    // ገና ካልተመረጠ እና ገደቡ ካላለፈ መምረጥ
+                    if (selectedCards.length < maxSelection) {
+                        selectedCards.push(cardId);
+                        this.classList.add('selected');
+                    } else {
+                        alert(`እባክዎ ከ ${maxSelection} በላይ ካርዶች መምረጥ አይችሉም!`);
+                    }
+                }
+
+                // ዩአዩን (UI) ማዘመን
+                boardsCountText.textContent = `Boards: ${selectedCards.length}/${maxSelection}`;
+                if (selectedCards.length > 0) {
+                    msgText.textContent = `Selected Cards: ${selectedCards.join(', ')}`;
+                } else {
+                    msgText.textContent = `Your cards will show here`;
+                }
+            });
+
+            gridContainer.appendChild(cardBtn);
+        }
+    </script>
+</body>
+  </html>
+  

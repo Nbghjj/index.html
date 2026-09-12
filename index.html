@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TEWEDAJ BINGO</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(#160021,#0d0018);color:#fff;font-family:Arial,sans-serif}
+.app{max-width:520px;margin:auto;padding:14px 14px 90px}.header{text-align:center;padding:10px;border-bottom:1px solid #402454}
+.logo{font-size:25px;font-weight:900;letter-spacing:2px;color:#f0c94b}.sub{color:#d5bddf;margin-top:8px}
+.card{background:linear-gradient(#24103b,#1a0a2d);border:1px solid #563a68;border-radius:22px;padding:16px;margin:14px 0}
+.top{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:14px 0}.stat{background:#190a2b;border:1px solid #4c2b62;border-radius:10px;padding:9px 3px;text-align:center}.stat small{display:block;color:#a99ab6;font-size:11px;font-weight:700}.stat b{display:block;margin-top:5px}.gold{color:#f0c94b}
+.banner{border:1px solid #9b7722;background:#2b1940;border-radius:20px;padding:16px;text-align:center}.banner h2{margin:0;color:#f0c94b}.banner p{color:#ddd}
+input{width:100%;padding:14px;border-radius:11px;border:1px solid #634c78;background:#120b22;color:#fff;margin:6px 0;font-size:16px}
+button{border:0;border-radius:12px;padding:13px 16px;font-weight:800;font-size:15px}.goldbtn{background:linear-gradient(#f5d45c,#d5a928);color:#241300}.darkbtn{background:#1d0d31;border:1px solid #624777;color:#fff}.redbtn{background:#4b1022;color:#ffd9df}.full{width:100%;margin-top:8px}.hidden{display:none}
+.title{text-align:center;color:#f0c94b;font-weight:900;letter-spacing:1px;margin:22px 0 10px}.room{border:1px solid #775c2d;border-radius:25px;padding:16px;background:#1d0d31}.roomrow{display:flex;align-items:center;gap:12px}.coin{width:62px;height:62px;border-radius:18px;background:#704713;display:grid;place-items:center;font-weight:900;border:2px solid #9a6b24}.room h2{margin:0;font-size:20px}.playing{color:#f0c94b;font-size:12px;margin-top:5px}
+.board{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-top:12px}.num{aspect-ratio:1;display:grid;place-items:center;border-radius:12px;background:#211038;border:1px solid #382052;font-size:18px;font-weight:800}.called{background:#4d1025!important;border-color:#9c243a!important;color:#ffcbd3}
+.result{text-align:center;color:#f0c94b;font-size:18px;font-weight:900;margin:12px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.notice{color:#bdaec9;font-size:13px;line-height:1.5}
+.nav{position:fixed;bottom:0;left:0;right:0;background:#1b0b2e;border-top:1px solid #49305d}.navin{max-width:520px;margin:auto;display:grid;grid-template-columns:repeat(4,1fr)}.nav button{background:none;color:#a99ab6;border-radius:0;padding:11px 4px;font-size:12px}
+</style></head>
+<body><div class="app">
+<header class="header"><div class="logo">🎯 TEWEDAJ BINGO</div><div class="sub">ተወዳጅ ቢንጎ</div></header>
+
+<section id="register" class="card"><div class="banner"><h2>🎯 Welcome to Tewedaj Bingo</h2><p>Register to enter the demo game.</p></div>
+<input id="name" placeholder="Enter your name"><button class="goldbtn full" onclick="register()">✅ REGISTER</button>
+<p class="notice">Demo version only. Real-money deposit, withdrawal and payout are not enabled.</p></section>
+
+<main id="home" class="hidden">
+<div class="top"><div class="stat"><small>BALANCE</small><b id="balance">0</b></div><div class="stat"><small>COST</small><b>0</b></div><div class="stat"><small>POT</small><b class="gold">344</b></div><div class="stat"><small>STARTS IN</small><b id="timer">10s</b></div></div>
+<div class="banner"><div>🎁 <b>+5 BIRR</b></div><p>Join our channel</p><div class="actions"><button class="goldbtn" onclick="alert('Demo: add your Telegram channel link here.')">📢 Join Channel</button><button class="darkbtn" onclick="alert('Demo verification')">I've Joined</button></div></div>
+<div class="title">SELECT ROOM</div><div class="room"><div class="roomrow"><div class="coin">10<br>BIRR</div><div><h2>Stake 10 BIRR</h2><div class="playing">● PLAYING</div></div></div><button class="goldbtn full" onclick="joinRoom()">JOIN →</button></div>
+<div class="actions" style="margin-top:14px"><button class="goldbtn" onclick="demoDeposit()">＋ Deposit</button><button class="darkbtn" onclick="demoWithdraw()">Withdraw →</button></div>
+
+<div id="game" class="hidden card"><div class="title">BINGO ROOM</div><div class="top"><div class="stat"><small>BALANCE</small><b id="gbalance">0</b></div><div class="stat"><small>COST</small><b>0</b></div><div class="stat"><small>POT</small><b class="gold">344</b></div><div class="stat"><small>PLAYERS</small><b>43</b></div></div>
+<button class="goldbtn full" onclick="draw()">🎲 DRAW NUMBER</button><div id="result" class="result">Waiting for draw…</div><div id="board" class="board"></div><button class="redbtn full" onclick="leaveRoom()">← LEAVE ROOM</button></div>
+<div class="card">👤 <b id="user"></b><button class="darkbtn full" onclick="logout()">Logout</button></div>
+</main></div>
+<nav class="nav"><div class="navin"><button onclick="scrollTo(0,0)">🎮<br>Play</button><button onclick="alert('Demo ranks')">🏆<br>Ranks</button><button onclick="alert('Demo wallet')">▣<br>Wallet</button><button onclick="alert('Demo profile')">♙<br>Profile</button></div></nav>
+
+<script>
+let state=JSON.parse(localStorage.getItem("tewedajBingo")||"null"),called=[],timerId;
+function save(){localStorage.setItem("tewedajBingo",JSON.stringify(state))}
+function register(){let n=document.getElementById("name").value.trim();if(!n)return alert("Enter your name");state={name:n,balance:0};save();show()}
+function show(){if(!state)return;registerEl().classList.add("hidden");home.classList.remove("hidden");user.textContent=state.name;balance.textContent=state.balance;gbalance.textContent=state.balance;startTimer()}
+function registerEl(){return document.getElementById("register")}
+function startTimer(){let t=10;timer.textContent=t+"s";clearInterval(timerId);timerId=setInterval(()=>{timer.textContent=(--t)+"s";if(t<=0){clearInterval(timerId);timer.textContent="LIVE"}},1000)}
+function joinRoom(){game.classList.remove("hidden");makeBoard();game.scrollIntoView({behavior:"smooth"})}
+function makeBoard(){called=[];board.innerHTML=Array.from({length:90},(_,i)=>`<div id="n${i+1}" class="num">${i+1}</div>`).join("")}
+function draw(){if(called.length>=90)return;let n;do n=Math.floor(Math.random()*90)+1;while(called.includes(n));called.push(n);document.getElementById("n"+n).classList.add("called");result.textContent="🎲 "+n}
+function demoDeposit(){alert("Demo only: payment/backend is not connected.")}
+function demoWithdraw(){alert("Demo only: withdrawals are disabled.")}
+function leaveRoom(){game.classList.add("hidden")}function logout(){localStorage.removeItem("tewedajBingo");location.reload()}
+if(state)show();
+</script></body></html>

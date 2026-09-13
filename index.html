@@ -296,7 +296,7 @@
 
         <div class="selection-info">
             <span id="boards-count">Boards: 0/1</span>
-            <span id="timer-display" style="color: #f1c40f; font-weight: bold;">ካርድ ይምረጡ...</span>
+            <span id="timer-display" style="color: #e74c3c; font-weight: bold;">ጨዋታው ሊጀምር: 35ሰ</span>
         </div>
 
         <div class="cards-grid-container" id="cardsGrid"></div>
@@ -342,12 +342,11 @@
         let selectedCards = [];
         let takenCards = new Set();
         let gameInterval = null;
-        let countdownInterval = null;
+        let globalSyncInterval = null;
         let currentCardData = null;
         let calledNumbersSet = new Set();
         let walletBalance = 500;
         const stakeAmount = 20;
-        let timerStarted = false;
 
         const homeScreen = document.getElementById('home-screen');
         const selectionScreen = document.getElementById('selection-screen');
@@ -408,12 +407,6 @@
                     if (selectedCards.length < maxSelection) {
                         selectedCards.push(cardId);
                         this.classList.add('selected');
-
-                        // ተጫዋቹ ካርድ ሲመርጥ ብቻ የ 35 ሰከንድ ቆጣሪውን ማስጀመር
-                        if (!timerStarted) {
-                            timerStarted = true;
-                            startCardCountdown();
-                        }
                     } else {
                         alert(`እባክዎ ከ ${maxSelection} በላይ ካርድ መምረጥ አይችሉም!`);
                     }
@@ -423,9 +416,51 @@
             gridContainer.appendChild(cardBtn);
         }
 
-        function resetSelectionScreen() {
+        // የዓለም አቀፍ ሰዓት ማመሳሰሪያ (Global Timestamp Sync Loop) - ሁልጊዜ ለሁሉም ተጫዋቾች ሰዓቱ ፍጹም እኩል እንዲሆን ያደርጋል
+        function startGlobalSyncTimer() {
+            clearInterval(globalSyncInterval);
+
+            function checkSyncTime() {
+                let nowSeconds = Math.floor(Date.now() / 1000);
+                let timeLeft = 35 - (nowSeconds % 35); // ከ 35 ሰከንድ ጀምሮ ወደ ታች ይቆጥራል
+
+                timerDisplay.textContent = `ጨዋታው ሊጀምር: ${timeLeft}ሰ`;
+
+                // ሰዓቱ ወደ 0 ሲደርስ ሁሉም ተጫዋቾች በአንድ ጊዜ ወደ ላይቭ ጨዋታ ይገባሉ
+                if (timeLeft <= 1) {
+                    clearInterval(globalSyncInterval);
+                    
+                    if (selectionScreen.style.display === 'block') {
+                        if (selectedCards.length > 0) {
+                            if (walletBalance >= stakeAmount) {
+                                walletBalance -= stakeAmount;
+                                walletVal.textContent = walletBalance;
+                                
+                                selectedCards.forEach(id => takenCards.add(id));
+                                launchLiveGame();
+                            } else {
+                                alert("ሂሳብዎ በቂ አይደለም!");
+                                selectionScreen.style.display = 'none';
+                                homeScreen.style.display = 'block';
+                            }
+                        } else {
+                            alert("ጊዜው አልቋል! ካርድ አልመረጡም ወደ መነሻ ይመለሳሉ።");
+                            selectionScreen.style.display = 'none';
+                            homeScreen.style.display = 'block';
+                        }
+                    }
+                }
+            }
+
+            checkSyncTime();
+            globalSyncInterval = setInterval(checkSyncTime, 1000);
+        }
+
+        joinRoomBtn.addEventListener('click', () => {
+            homeScreen.style.display = 'none';
+            selectionScreen.style.display = 'block';
+            
             selectedCards = [];
-            timerStarted = false;
             document.querySelectorAll('.card-box').forEach(btn => {
                 let id = parseInt(btn.dataset.id);
                 btn.classList.remove('selected');
@@ -436,58 +471,21 @@
                 }
             });
             boardsCountText.textContent = `Boards: 0/1`;
-            timerDisplay.textContent = `ካርድ ይምረጡ...`;
-            timerDisplay.style.color = '#f1c40f';
             walletVal.textContent = walletBalance;
             winVal.textContent = totalBoards * stakeAmount;
-            clearInterval(countdownInterval);
-        }
 
-        // ተጫዋቹ ካርድ ከመረጠ በኋላ የሚጀምር የ 35 ሰከንድ ቆጣሪ
-        function startCardCountdown() {
-            let timeLeft = 35;
-            timerDisplay.textContent = `ጨዋታው ሊጀምር: ${timeLeft}ሰ`;
-            timerDisplay.style.color = '#e74c3c';
-
-            clearInterval(countdownInterval);
-            countdownInterval = setInterval(() => {
-                timeLeft--;
-                if (timeLeft > 0) {
-                    timerDisplay.textContent = `ጨዋታው ሊጀምር: ${timeLeft}ሰ`;
-                } else {
-                    clearInterval(countdownInterval);
-                    
-                    if (selectedCards.length > 0) {
-                        if (walletBalance >= stakeAmount) {
-                            walletBalance -= stakeAmount;
-                            walletVal.textContent = walletBalance;
-                            
-                            selectedCards.forEach(id => takenCards.add(id));
-                            launchLiveGame();
-                        } else {
-                            alert("ሂሳብዎ በቂ አይደለም!");
-                            resetSelectionScreen();
-                        }
-                    } else {
-                        resetSelectionScreen();
-                    }
-                }
-            }, 1000);
-        }
-
-        joinRoomBtn.addEventListener('click', () => {
-            homeScreen.style.display = 'none';
-            selectionScreen.style.display = 'block';
-            resetSelectionScreen();
+            // ሩም ውስጥ ሲገባ የጋራ ሰዓት ቆጣሪውን ይጀምራል
+            startGlobalSyncTimer();
         });
 
         leaveBtn.addEventListener('click', () => {
-            clearInterval(countdownInterval);
+            clearInterval(globalSyncInterval);
             selectionScreen.style.display = 'none';
             homeScreen.style.display = 'block';
         });
 
         function launchLiveGame() {
+            clearInterval(globalSyncInterval);
             selectionScreen.style.display = 'none';
             liveGameScreen.style.display = 'block';
             

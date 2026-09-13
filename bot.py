@@ -15,8 +15,8 @@ from telegram.ext import (
 TOKEN = os.getenv("BOT_TOKEN", "8909328591:AAEay418mvQF9dRBqjtSKgPDM_T-WpWWJ84")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "6496982318"))
 
-# 🔗 የ Web App URL
-WEB_APP_URL = os.getenv("WEB_APP_URL", "https://nbghjj.github.io/index.html")
+# 🔗 የ Web App URL (ትክክለኛው የ GitHub Pages ሊንክ)
+WEB_APP_URL = os.getenv("WEB_APP_URL", "https://nbghjj.github.io/")
 
 # =========================
 # IN-MEMORY DATA STORE

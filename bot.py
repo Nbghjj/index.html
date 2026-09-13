@@ -1,5 +1,6 @@
 import os
 import random
+import re
 from telegram import (
     Update, ReplyKeyboardMarkup, KeyboardButton, 
     InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
@@ -24,7 +25,8 @@ WEB_APP_URL = os.getenv("WEB_APP_URL", "https://nbghjj.github.io/")
 users = {}
 pending_withdrawals = {}
 pending_deposits = {}
-user_states = {}  # ተጠቃሚው አሁን የትኛውን ሂደት ላይ እንዳለ ለመያዝ (deposit/withdraw)
+user_states = {}  
+used_transactions = set()  # 🔒 የተጠቀሙባቸውን የትራንዛክሽን 🆔ዎች በመያዝ ድጋሚ እንዳይገቡ ለመከላከል
 
 # =========================
 # KEYBOARDS
@@ -151,7 +153,7 @@ async def deposit(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         "💵 *DEPOSIT - የክፍያ አማራጭ ይምረጡ*\n\n"
-        "ገንዘብ ማስገባት የሚፈልጉበትን ባንክ/የክፍያ መንገድ ከታች ይምረጡ፦",
+        "ገንዘብ ያስገቡበትን ባንክ/የክፍያ መንገድ ከታች ይምረጡ፦",
         parse_mode="Markdown",
         reply_markup=keyboard,
     )
@@ -178,10 +180,9 @@ async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 # =========================
-# CALLBACK & TEXT HANDLERS (STEPS)
+# CALLBACK & TEXT HANDLERS (STEPS & VERIFICATION)
 # =========================
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Check if it's menu text first
     text = update.message.text
     uid = update.effective_user.id
 
@@ -194,30 +195,64 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text == "❓ Help":
         await help_command(update, context)
     elif uid in user_states:
-        # User is typing the amount and account details after selecting a bank
         state_info = user_states[uid]
-        action = state_info["action"] # 'deposit' or 'withdraw'
+        action = state_info["action"] 
         bank = state_info["bank"]
 
-        parts = text.split(" ", 1)
-        try:
-            amount = float(parts[0])
-            account_info = parts[1] if len(parts) > 1 else "Not Provided"
-        except ValueError:
-            await update.message.reply_text("❌ ትክክለኛ ቅርጸት አልተጠቀሙም።\nእባክዎ እንደዚህ ይጻፉ፦ `100 0911223344`", parse_mode="Markdown")
-            return
-
-        if amount <= 0:
-            await update.message.reply_text("❌ መጠን ከ0 በላይ መሆን አለበት።")
-            return
-
         if action == "deposit":
-            req_id = f"d_{uid}_{random.randint(1000, 9999)}"
-            pending_deposits[req_id] = {"user_id": uid, "amount": amount, "bank": bank, "account": account_info}
+            # 1. የብር መጠን መፈለግ
+            amount_match = re.search(r'(\d+[\d,]*\.?\d*)\s*(ETB|Birr|ብር|Br)?', text, re.IGNORECASE)
+            
+            # 2. የትራንዛክሽን ቁጥር (Transaction ID / Ref / FT numbers) በራስ ሰር መፈለግ
+            # ለምሳሌ የቴሌብር FT ኮዶች ወይም የባንክ ሪፈረንስ ቁጥሮች (በአብዛኛው ከ 6 እስከ 15 ቁጥር/ፊደል ያላቸው)
+            trx_match = re.search(r'(TRX|TXN|ID|Ref|Reference|No|FT)[\s:]*([A-Za-z0-9]{6,15})', text, re.IGNORECASE)
+            
+            amount = 0.0
+            if amount_match:
+                try:
+                    amount_str = amount_match.group(1).replace(',', '')
+                    amount = float(amount_str)
+                except ValueError:
+                    pass
+
+            if amount <= 0:
+                await update.message.reply_text(
+                    "❌ ከላኩት ጽሑፍ ውስጥ የብር መጠኑን ማግኘት አልቻልንም።\n"
+                    "እባክዎ ትክክለኛውን የባንክ ዴፖዚት ፖስታ (SMS/Receipt) ሙሉውን ኮፒ አድርገው ይለጥፉ።",
+                    parse_mode="Markdown"
+                )
+                return
+
+            # 3. Transaction ID መኖሩን እና ቀድሞ ጥቅም ላይ ያልዋለ መሆኑን ማረጋገጥ (Anti-Fraud)
+            if not trx_match:
+                await update.message.reply_text(
+                    "❌ *ትክክለኛ የትራንዛክሽን መለያ (Transaction ID/Ref) አልተገኘም!ه‌*\n\n"
+                    "እባክዎ የተሟላ የባንክ ዴፖዚት ኤስኤምኤስ (እንደ FT ቁጥር ወይም ሪፈረንስ ያለውን) የያዘ መልእክት ላኩ።",
+                    parse_mode="Markdown"
+                )
+                return
+
+            trx_id = trx_match.group(2).upper()
+
+            if trx_id in used_transactions:
+                await update.message.reply_text(
+                    f"⚠️ *ማስጠንቀቂያ!*\nይህ የትራንዛክሽን ቁጥር (`{trx_id}`) ከዚህ በፊት ጥቅም ላይ ውሏል! ድጋሚ መጠቀም አይቻልም።",
+                    parse_mode="Markdown"
+                )
+                return
+
+            # ቁጥሩ ትክክል ከሆነ ወደ used_transactions እንጨምረዋለን
+            used_transactions.add(trx_id)
             user_states.pop(uid, None)
 
+            req_id = f"d_{uid}_{random.randint(1000, 9999)}"
+            pending_deposits[req_id] = {"user_id": uid, "amount": amount, "bank": bank, "trx_id": trx_id, "transaction": text}
+
             await update.message.reply_text(
-                f"✅ የ {amount:.2f} Birr ዴፖዚት ጥያቄዎ ({bank} - {account_info}) ተልኳል!\n⏳ አድሚን እስኪያረጋግጥ ይጠብቁ።",
+                f"✅ የ {amount:.2f} Birr ዴፖዚት ጥያቄዎ ({bank}) በትክክል ተቀባይነት አግኝቷል!\n"
+                f"🔑 Transaction ID: `{trx_id}`\n"
+                "⏳ አድሚን አረጋግጦ እስኪያስተካክለው በጥበቃ ላይ ይገኛል።",
+                parse_mode="Markdown",
                 reply_markup=main_keyboard()
             )
 
@@ -229,29 +264,42 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(
                 chat_id=ADMIN_ID,
                 text=(
-                    "💵 *NEW DEPOSIT REQUEST*\n\n"
+                    "💵 *VERIFIED DEPOSIT REQUEST*\n\n"
                     f"👤 Name: {update.effective_user.full_name}\n"
                     f"🆔 User ID: `{uid}`\n"
                     f"🏦 Bank: *{bank}*\n"
                     f"💵 Amount: *{amount:.2f} Birr*\n"
-                    f"💳 Account/Phone: `{account_info}`"
+                    f"🔑 Transaction ID: `{trx_id}`\n\n"
+                    f"📄 *Receipt Text:*\n`{text}`"
                 ),
                 parse_mode="Markdown",
                 reply_markup=admin_kb
             )
 
         elif action == "withdraw":
+            parts = text.split(" ", 1)
+            try:
+                amount = float(parts[0].replace(',', ''))
+                account_info = parts[1] if len(parts) > 1 else "Not Provided"
+            except ValueError:
+                await update.message.reply_text("❌ ትክክለኛ ቅርጸት አልተጠቀሙም።\nእባክዎ እንደዚህ ይጻፉ፦ `50 1000123456789`", parse_mode="Markdown")
+                return
+
+            if amount <= 0:
+                await update.message.reply_text("❌ መጠን ከ0 በላይ መሆን አለበት።")
+                return
+
             balance_now = users[uid]["balance"]
             if amount > balance_now:
                 await update.message.reply_text(f"❌ በቂ Balance የለዎትም።\nአሁን ያለዎት: {balance_now:.2f} Birr")
                 return
 
+            user_states.pop(uid, None)
             req_id = f"w_{uid}_{random.randint(1000, 9999)}"
             pending_withdrawals[req_id] = {"user_id": uid, "amount": amount, "bank": bank, "account": account_info}
-            user_states.pop(uid, None)
 
             await update.message.reply_text(
-                f"✅ የ {amount:.2f} Birr withdrawal ጥያቄዎ ({bank} - {account_info}) ተልኳል!\n⏳ አድሚን እስኪያረጋግጥ ይጠብቁ።",
+                f"✅ የ {amount:.2f} Birr withdrawal ጥያቄዎ ወደ {bank} ({account_info}) ተልኳል!\n⏳ አድሚን እስኪያረጋግጥ ይጠብቁ።",
                 reply_markup=main_keyboard()
             )
 
@@ -282,7 +330,7 @@ async def bank_selection_callback(update: Update, context: ContextTypes.DEFAULT_
     uid = update.effective_user.id
 
     if data.startswith("bank_"):
-        parts = data.split("_") # ['bank', 'deposit'/'withdraw', 'Telebirr'/'CBE'/...]
+        parts = data.split("_")
         action = parts[1]
         bank = parts[2]
 
@@ -291,13 +339,13 @@ async def bank_selection_callback(update: Update, context: ContextTypes.DEFAULT_
         if action == "deposit":
             instructions = (
                 f"📱 *Selected Bank: {bank}*\n\n"
-                "እባክዎ ገንዘብ ያስገቡበትን **መጠን** እና **የከፈሉበትን ቁጥር/አካውንት** በአንድ ላይ ይጻፉ።\n\n"
-                "📌 *ምሳሌ፦* `100 0911223344`"
+                "እባክዎ ገንዘብ ከላኩ በኋላ ከባንኩ/ከቴሌብር የደረሰዎትን **የክፍያ ኤስኤምኤስ (Transaction SMS / Receipt with ID)** ሙሉውን ኮፒ አድርገው በዚህ ቻት ላይ ይለጥፉ (Paste)።\n\n"
+                "🔒 ቦቱ የትራንዛክሽን ቁጥሩ ትክክለኛ መሆኑን እና ድጋሚ ጥቅም ላይ ያልዋለ መሆኑን በራሱ ያረጋግጣል!"
             )
         else:
             instructions = (
                 f"🏦 *Selected Bank: {bank}*\n\n"
-                "እባክዎ ማውጣት የሚፈልጉትን **የብር መጠን** እና **ገንዘቡ የሚላክበትን የባንክ/አካውንት ቁጥር** በአንድ ላይ ይጻፉ።\n\n"
+                "እባክዎ ማውጣት የሚፈልጉትን **የብር መጠን** እና **የባንክ/አካውንት ቁጥርዎን** በአንድ ላይ ይጻፉ።\n\n"
                 "📌 *ምሳሌ፦* `50 1000123456789`"
             )
 
@@ -318,15 +366,16 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             uid = req_info["user_id"]
             amount = req_info["amount"]
             bank = req_info["bank"]
-            account = req_info["account"]
+            trx_id = req_info.get("trx_id", "N/A")
             if data.startswith("app"):
                 if uid in users:
                     users[uid]["balance"] += amount
-                    await query.edit_message_text(f"✅ Deposit of {amount:.2f} Birr ({bank}) APPROVED.\n💰 New Balance: {users[uid]['balance']:.2f}")
+                    await query.edit_message_text(f"✅ Deposit of {amount:.2f} Birr ({bank}) [ID: {trx_id}] APPROVED.\n💰 New Balance: {users[uid]['balance']:.2f}")
                     await context.bot.send_message(chat_id=uid, text=f"🎉 የ <b>{amount:.2f} Birr</b> ዴፖዚት ጥያቄዎ ({bank}) ጸድቋል!\n💰 አዲሱ Balance: <b>{users[uid]['balance']:.2f} Birr</b>", parse_mode="HTML")
                 else:
                     await query.edit_message_text("❌ User not found.")
             else:
+                # ውድቅ ከተደረገ (Reject) ከተጠቃሚዎች የተያዘውን used_transactions መልቀቅ ይቻላል ወይም እንደ አማራጭ መተው
                 await query.edit_message_text(f"❌ Deposit REJECTED.")
                 await context.bot.send_message(chat_id=uid, text=f"❌ የ {amount:.2f} Birr ዴፖዚት ጥያቄዎ ውድቅ ተደርጓል።")
             return
@@ -346,10 +395,10 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await context.bot.send_message(chat_id=uid, text=f"🎉 የ {amount:.2f} Birr withdrawal ጥያቄዎ ወደ {bank} ({account}) ተፈጽሟል!\n💰 አዲሱ Balance: {users[uid]['balance']:.2f} Birr")
                 else:
                     await query.edit_message_text(f"❌ User has insufficient balance or not found.")
-                    await context.bot.send_message(chat_id=uid, text=f"❌ የ {amount:.2f} Birr withdrawal ጥያቄዎ አልተሳካም (Balance በቂ አይደለም)።")
+                    await context.bot.send_message(chat_id=uid, text=f"❌ የ {amount:.2f} withdrawal ጥያቄዎ አልተሳካም (Balance በቂ አይደለም)።")
             else:
                 await query.edit_message_text(f"❌ Withdraw REJECTED.")
-                await context.bot.send_message(chat_id=uid, text=f"❌ የ {amount:.2f} Birr withdrawal ጥያቄዎ ውድቅ ተደርጓል።")
+                await context.bot.send_message(chat_id=uid, text=f"❌ የ {amount:.2f} withdrawal ጥያቄዎ ውድቅ ተደርጓል።")
             return
 
     await query.edit_message_text("⚠️ Request not found or already processed.")
@@ -383,8 +432,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/register - Register with contact\n"
         "/play - Play Bingo WebApp\n"
         "/balance - Check balance\n"
-        "💵 Deposit - Select bank and deposit\n"
-        "💸 Withdraw - Select bank and withdraw",
+        "💵 Deposit - Select bank & send verified SMS\n"
+        "💸 Withdraw - Select bank & withdraw money",
         parse_mode="Markdown",
         reply_markup=main_keyboard(),
     )
@@ -410,7 +459,7 @@ def main():
     app.add_handler(MessageHandler(filters.CONTACT, contact_received))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, button_handler))
 
-    print("🤖 Bingo Bot is running...")
+    print("🤖 Bingo Bot is running with Auto-Verification...")
     app.run_polling()
 
 if __name__ == "__main__":

@@ -20,6 +20,15 @@
         .container {
             max-width: 480px;
             margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Screen Control Classes */
+        .screen {
+            display: none;
+        }
+        .screen.active {
+            display: block;
         }
 
         /* Home Screen Styles */
@@ -80,14 +89,15 @@
             background: linear-gradient(135deg, #f39c12, #f1c40f);
             border: none;
             width: 100%;
-            padding: 12px;
+            padding: 14px;
             border-radius: 8px;
             color: #000;
             font-weight: bold;
             cursor: pointer;
             margin-top: 15px;
-            font-size: 15px;
-            transition: 0.2s;
+            font-size: 16px;
+            position: relative;
+            z-index: 10;
         }
 
         .join-btn:active, .start-game-btn:active, .bingo-claim-btn:active {
@@ -116,7 +126,7 @@
             background: #7928ca;
             color: white;
             border: none;
-            padding: 6px 12px;
+            padding: 8px 14px;
             border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
@@ -195,12 +205,6 @@
             font-weight: bold;
             color: #f39c12;
             margin: 2px 0;
-            animation: pulseBall 0.5s ease-in-out;
-        }
-
-        @keyframes pulseBall {
-            0% { transform: scale(0.8); opacity: 0.5; }
-            100% { transform: scale(1); opacity: 1; }
         }
 
         /* Rendered Card Design */
@@ -245,7 +249,6 @@
             font-weight: bold;
             border-radius: 4px;
             cursor: pointer;
-            transition: background 0.2s;
         }
 
         .bingo-cell.free-cell {
@@ -270,7 +273,6 @@
             font-weight: bold;
         }
 
-        /* Extra Control Settings Panel */
         .settings-row {
             display: flex;
             justify-content: space-between;
@@ -289,11 +291,7 @@
             height: 20px;
         }
 
-        .switch input { 
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
+        .switch input { opacity: 0; width: 0; height: 0; }
 
         .slider {
             position: absolute;
@@ -316,100 +314,98 @@
             border-radius: 50%;
         }
 
-        input:checked + .slider {
-            background-color: #f39c12;
-        }
-
-        input:checked + .slider:before {
-            transform: translateX(14px);
-        }
+        input:checked + .slider { background-color: #f39c12; }
+        input:checked + .slider:before { transform: translateX(14px); }
     </style>
 </head>
 <body>
 
-    <!-- 1. HOME SCREEN -->
-    <div id="home-screen" class="container">
-        <div class="card-banner">
-            <h3>AYAT BINGO</h3>
-            <p>Telegram Mini App Live Game.</p>
-            <span>DEMO • 300 CARD CAPACITY</span>
-        </div>
-        
-        <div class="room-box">
-            <div class="room-info">
-                <span class="stake-badge">20 BIRR</span>
-                <h4>Ayat Bingo Room</h4>
-                <p style="color: #a08cc4; font-size: 12px; margin: 2px 0;">• LIVE ROOM</p>
+    <div class="container">
+        <!-- 1. HOME SCREEN -->
+        <div id="home-screen" class="screen active">
+            <div class="card-banner">
+                <h3>AYAT BINGO</h3>
+                <p>Telegram Mini App Live Game.</p>
+                <span>DEMO • 300 CARD CAPACITY</span>
             </div>
-            <p style="font-size: 13px; color: #a08cc4;">Players: <span id="player-count">64</span> / 300</p>
-            <button id="joinRoomBtn" class="join-btn">JOIN ROOM →</button>
-        </div>
-    </div>
-
-    <!-- 2. SELECTION SCREEN -->
-    <div id="selection-screen" class="container" style="display: none;">
-        <div class="game-top-bar">
-            <button id="leaveBtn" class="leave-btn">← Leave</button>
-            <h3 style="margin: 0; font-size: 15px; color: #f39c12;">Ayat Bingo</h3>
-            <div class="stats-box">
-                <span>W: <b id="wallet-val">500</b></span>
-                <span>S: <b id="stake-val">20</b></span>
-            </div>
-        </div>
-
-        <div class="selection-info">
-            <span id="boards-count">Boards: 0/1</span>
-            <span class="hint-text" style="color: #f1c40f;">ካርድ ይምረጡ (Tap a card)</span>
-        </div>
-
-        <div class="cards-grid-container" id="cardsGrid"></div>
-
-        <button id="startGameBtn" class="start-game-btn" style="display: none;">START GAME</button>
-    </div>
-
-    <!-- 3. LIVE GAME SCREEN -->
-    <div id="live-game-screen" class="container" style="display: none;">
-        <div class="game-top-bar">
-            <h3 style="margin: 0; font-size: 14px; color: #f39c12;">Ayat Bingo - Live</h3>
-            <button id="exitGameBtn" class="leave-btn">Exit</button>
-        </div>
-
-        <div class="live-game-layout">
-            <div class="called-number-display">
-                <p style="margin: 0; color: #a08cc4; font-size: 12px;">የተጠራው ቁጥር (Current Ball)</p>
-                <div id="currentBall" class="current-ball">--</div>
-                <p id="callStatus" style="margin: 0; font-size: 11px; color: #f1c40f;">ጨዋታው ተጀምሯል...</p>
-            </div>
-
-            <!-- New Setting: Auto Dauber (Auto-mark numbers) -->
-            <div class="settings-row">
-                <span>አውቶማቲክ ማርክ (Auto-Dauber)</span>
-                <label class="switch">
-                    <input type="checkbox" id="autoDauberToggle">
-                    <span class="slider"></span>
-                </label>
-            </div>
-
-            <div class="rendered-bingo-card">
-                <div class="bingo-header-row">
-                    <span>B</span><span>I</span><span>N</span><span>G</span><span>O</span>
+            
+            <div class="room-box">
+                <div class="room-info">
+                    <span class="stake-badge">20 BIRR</span>
+                    <h4>Ayat Bingo Room</h4>
+                    <p style="color: #a08cc4; font-size: 12px; margin: 2px 0;">• LIVE ROOM</p>
                 </div>
-                <div id="bingoMatrixGrid" class="bingo-grid-matrix"></div>
-                <div class="card-footer-banner">
-                    <span style="color: #e74c3c;">AYAT BINGO</span>
-                    <span id="cardNumLabel">የካርቴል ቁጥር --</span>
+                <p style="font-size: 13px; color: #a08cc4;">Players: <span id="player-count">64</span> / 300</p>
+                <button id="joinRoomBtn" class="join-btn">JOIN ROOM →</button>
+            </div>
+        </div>
+
+        <!-- 2. SELECTION SCREEN -->
+        <div id="selection-screen" class="screen">
+            <div class="game-top-bar">
+                <button id="leaveBtn" class="leave-btn">← Leave</button>
+                <h3 style="margin: 0; font-size: 15px; color: #f39c12;">Ayat Bingo</h3>
+                <div class="stats-box">
+                    <span>W: <b id="wallet-val">500</b></span>
+                    <span>S: <b id="stake-val">20</b></span>
                 </div>
             </div>
 
-            <button id="bingoClaimBtn" class="bingo-claim-btn">BINGO! (አሸነፍኩ)</button>
+            <div class="selection-info">
+                <span id="boards-count">Boards: 0/1</span>
+                <span class="hint-text" style="color: #f1c40f;">ካርድ ይምረጡ (Tap a card)</span>
+            </div>
+
+            <div class="cards-grid-container" id="cardsGrid"></div>
+
+            <button id="startGameBtn" class="start-game-btn" style="display: none;">START GAME</button>
+        </div>
+
+        <!-- 3. LIVE GAME SCREEN -->
+        <div id="live-game-screen" class="screen">
+            <div class="game-top-bar">
+                <h3 style="margin: 0; font-size: 14px; color: #f39c12;">Ayat Bingo - Live</h3>
+                <button id="exitGameBtn" class="leave-btn">Exit</button>
+            </div>
+
+            <div class="live-game-layout">
+                <div class="called-number-display">
+                    <p style="margin: 0; color: #a08cc4; font-size: 12px;">የተጠራው ቁጥር (Current Ball)</p>
+                    <div id="currentBall" class="current-ball">--</div>
+                    <p id="callStatus" style="margin: 0; font-size: 11px; color: #f1c40f;">ጨዋታው ተጀምሯል...</p>
+                </div>
+
+                <div class="settings-row">
+                    <span>አውቶማቲክ ማርክ (Auto-Dauber)</span>
+                    <label class="switch">
+                        <input type="checkbox" id="autoDauberToggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="rendered-bingo-card">
+                    <div class="bingo-header-row">
+                        <span>B</span><span>I</span><span>N</span><span>G</span><span>O</span>
+                    </div>
+                    <div id="bingoMatrixGrid" class="bingo-grid-matrix"></div>
+                    <div class="card-footer-banner">
+                        <span style="color: #e74c3c;">AYAT BINGO</span>
+                        <span id="cardNumLabel">የካርቴል ቁጥር --</span>
+                    </div>
+                </div>
+
+                <button id="bingoClaimBtn" class="bingo-claim-btn">BINGO! (አሸነፍኩ)</button>
+            </div>
         </div>
     </div>
 
     <script>
-        // Telegram WebApp Integration
         let tg = window.Telegram.WebApp;
         if (tg) {
-            tg.expand();
+            try {
+                tg.expand();
+                tg.ready();
+            } catch(e) {}
         }
 
         const totalBoards = 300;
@@ -438,6 +434,15 @@
         const bingoMatrixGrid = document.getElementById('bingoMatrixGrid');
         const cardNumLabel = document.getElementById('cardNumLabel');
 
+        // Helper function to switch screens cleanly
+        function showScreen(screenElement) {
+            homeScreen.classList.remove('active');
+            selectionScreen.classList.remove('active');
+            liveGameScreen.classList.remove('active');
+            
+            screenElement.classList.add('active');
+        }
+
         function generateCardData(cardId) {
             return {
                 id: cardId,
@@ -465,7 +470,8 @@
             cardBtn.textContent = i;
             cardBtn.dataset.id = i;
 
-            cardBtn.addEventListener('click', function() {
+            cardBtn.addEventListener('click', function(e) {
+                e.preventDefault();
                 const cardId = parseInt(this.dataset.id);
                 if (selectedCards.includes(cardId)) {
                     selectedCards = selectedCards.filter(id => id !== cardId);
@@ -484,20 +490,20 @@
             gridContainer.appendChild(cardBtn);
         }
 
-        // JOIN ROOM CLICK EVENT (Fixed & Verified)
-        joinRoomBtn.addEventListener('click', () => {
-            homeScreen.style.display = 'none';
-            selectionScreen.style.display = 'block';
+        // Screen Switch Event Listeners (Using clean class switching)
+        joinRoomBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showScreen(selectionScreen);
         });
 
-        leaveBtn.addEventListener('click', () => {
-            selectionScreen.style.display = 'none';
-            homeScreen.style.display = 'block';
+        leaveBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showScreen(homeScreen);
         });
 
-        startGameBtn.addEventListener('click', () => {
-            selectionScreen.style.display = 'none';
-            liveGameScreen.style.display = 'block';
+        startGameBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showScreen(liveGameScreen);
             
             const chosenId = selectedCards[0];
             currentCardData = generateCardData(chosenId);
@@ -537,7 +543,8 @@
                         cell.classList.add('free-cell', 'marked');
                     } else {
                         cell.textContent = val;
-                        cell.addEventListener('click', function() {
+                        cell.addEventListener('click', function(e) {
+                            e.preventDefault();
                             if (calledNumbersSet.has(val)) {
                                 this.classList.toggle('marked');
                                 if (tg && tg.HapticFeedback) {
@@ -566,9 +573,6 @@
                     let letter = getLetterForNumber(num);
                     
                     currentBall.textContent = `${letter}-${num}`;
-                    currentBall.style.animation = 'none';
-                    currentBall.offsetHeight; 
-                    currentBall.style.animation = 'pulseBall 0.5s ease-in-out';
 
                     if (tg && tg.HapticFeedback) {
                         tg.HapticFeedback.notificationOccurred('success');
@@ -588,7 +592,6 @@
 
         function autoMarkNumber(num) {
             const cells = bingoMatrixGrid.querySelectorAll('.bingo-cell');
-            cells.scale = [];
             cells.forEach(cell => {
                 if (cell.textContent == num) {
                     cell.classList.add('marked');
@@ -603,9 +606,4 @@
                 grid.push(cells.slice(i * 5, (i + 1) * 5));
             }
 
-            for (let r = 0; r < 5; r++) {
-                if (grid[r].every(c => c.classList.contains('marked'))) return true;
-            }
-
-            for (let c = 0; c < 5; c++) {
-                le
+                    

@@ -166,6 +166,15 @@
             border-color: #fff;
         }
 
+        /* በሌላ ሰው የተያዘ ካርድ */
+        .card-box.taken {
+            background: #444;
+            color: #777;
+            cursor: not-allowed;
+            border-color: #333;
+            text-decoration: line-through;
+        }
+
         /* Live Game Styles */
         .live-game-layout {
             display: flex;
@@ -332,12 +341,14 @@
         const totalBoards = 300;
         const maxSelection = 1;
         let selectedCards = [];
+        let takenCards = new Set(); // በሌሎች ተጫዋቾች የተያዙ ካርዶች
         let gameInterval = null;
         let countdownInterval = null;
         let currentCardData = null;
         let calledNumbersSet = new Set();
         let walletBalance = 500;
         const stakeAmount = 20;
+        let timerStarted = false; // ቆጣሪው መጀመሩን ለመቆጣጠር
 
         const homeScreen = document.getElementById('home-screen');
         const selectionScreen = document.getElementById('selection-screen');
@@ -387,16 +398,25 @@
 
             cardBtn.addEventListener('click', function() {
                 const cardId = parseInt(this.dataset.id);
+                if (takenCards.has(cardId)) {
+                    alert("ይህ ካርድ በሌላ ተጫዋች ተይዟል!");
+                    return;
+                }
+
                 if (selectedCards.includes(cardId)) {
                     selectedCards = selectedCards.filter(id => id !== cardId);
                     this.classList.remove('selected');
+                    // ካርዱን ካነሳው እና ገና ቆጣሪው ካልተጠናቀቀ ቆጣሪውን ማቆም ይቻላል (አማራጭ)
                 } else {
                     if (selectedCards.length < maxSelection) {
                         selectedCards.push(cardId);
                         this.classList.add('selected');
 
-                        // ካርዱን እንደመረጠ ወዲያውኑ የ 35 ሰከንድ ቆጣሪ መጀመር
-                        startPostSelectionTimer();
+                        // ተጫዋቹ የመጀመሪያውን ካርድ ሲመርጥ ብቻ የ 35 ሰከንድ ቆጣሪውን ለሁሉም መጀመር
+                        if (!timerStarted) {
+                            timerStarted = true;
+                            startSharedCountdown();
+                        }
                     } else {
                         alert(`እባክዎ ከ ${maxSelection} በላይ ካርድ መምረጥ አይችሉም!`);
                     }
@@ -408,16 +428,26 @@
 
         function resetSelectionScreen() {
             selectedCards = [];
-            document.querySelectorAll('.card-box').forEach(btn => btn.classList.remove('selected'));
+            timerStarted = false;
+            document.querySelectorAll('.card-box').forEach(btn => {
+                let id = parseInt(btn.dataset.id);
+                btn.classList.remove('selected');
+                if (takenCards.has(id)) {
+                    btn.classList.add('taken');
+                } else {
+                    btn.classList.remove('taken');
+                }
+            });
             boardsCountText.textContent = `Boards: 0/1`;
             timerDisplay.textContent = `ካርድ ይምረጡ...`;
+            timerDisplay.style.color = '#f1c40f';
             walletVal.textContent = walletBalance;
             winVal.textContent = totalBoards * stakeAmount;
             clearInterval(countdownInterval);
         }
 
-        // ካርዱ ከተያዘ በኋላ የሚቆጥረው 35 ሰከንድ ሎጂክ እና ወደ ጨዋታው ማሸጋገር
-        function startPostSelectionTimer() {
+        // ካርድ ሲመረጥ የሚጀምረው የ 35 ሰከንድ የጋራ ቆጣሪ
+        function startSharedCountdown() {
             let timeLeft = 35;
             timerDisplay.textContent = `ጨዋታው ሊጀምር: ${timeLeft}ሰ`;
             timerDisplay.style.color = '#e74c3c';
@@ -430,13 +460,19 @@
                 } else {
                     clearInterval(countdownInterval);
                     
-                    // ሒሳብ መቀነስ እና ወደ live game መግባት
-                    if (walletBalance >= stakeAmount) {
-                        walletBalance -= stakeAmount;
-                        walletVal.textContent = walletBalance;
-                        launchLiveGame();
+                    if (selectedCards.length > 0) {
+                        if (walletBalance >= stakeAmount) {
+                            walletBalance -= stakeAmount;
+                            walletVal.textContent = walletBalance;
+                            
+                            // የተመረጠውን ካርድ እንደተያዘ (taken) ምልክት ማድረግ
+                            selectedCards.forEach(id => takenCards.add(id));
+                            launchLiveGame();
+                        } else {
+                            alert("ሂሳብዎ በቂ አይደለም!");
+                            resetSelectionScreen();
+                        }
                     } else {
-                        alert("ሂሳብዎ በቂ አይደለም!");
                         resetSelectionScreen();
                     }
                 }
@@ -556,4 +592,5 @@
         });
     </script>
 </body>
-</html>
+    </html>
+    

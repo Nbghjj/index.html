@@ -208,79 +208,109 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # ----------------- DEPOSIT PROCESSING -----------------
         if action == "deposit":
-            # 1. የብር መጠንን ከባንክ SMS ውስጥ መፈለግ
-            amount_match = re.search(r'(\d+[\d,]*\.?\d*)\s*(ETB|Birr|ብር|Br)?', text, re.IGNORECASE)
-            
-            # 2. የቴሌብር እና ሲቢኢ ትራንዛክሽን መለያዎችን (Transaction ID / FT / Ref) መለየት
-            trx_match = re.search(r'(FT[A-Za-z0-9]{8,12}|TRX[A-Za-z0-9]{6,12}|TXN[A-Za-z0-9]{6,12}|Ref[:\s]*([A-Za-z0-9]{8,15}))', text, re.IGNORECASE)
-            
-            amount = 0.0
-            if amount_match:
+            if step == "waiting_amount":
+                # ደረጃ 1፡ ተጠቃሚው የብር መጠኑን ሲጽፍ
                 try:
-                    amount_str = amount_match.group(1).replace(',', '')
-                    amount = float(amount_str)
+                    entered_amount = float(text.replace(',', '').strip())
                 except ValueError:
-                    pass
+                    await update.message.reply_text("❌ እባክዎ ትክክለኛ የብር መጠን ብቻ ይጻፉ (ምሳሌ፦ `100`)።", parse_mode="Markdown")
+                    return
 
-            if amount <= 0:
+                if entered_amount <= 0:
+                    await update.message.reply_text("❌ የብር መጠኑ ከ 0 በላይ መሆን አለበት።")
+                    return
+
+                # መጠኑን በመያዝ ወደ ቀጣዩ ደረጃ (የኤስኤምኤስ ፖስታ መቀበያ) እናሸጋገራለን
+                user_states[uid] = {"action": "deposit", "bank": bank, "step": "waiting_receipt", "amount": entered_amount}
+                admin_acc = ADMIN_ACCOUNTS.get(bank, "0940483108 (kirubel melkamu)")
+
                 await update.message.reply_text(
-                    "❌ ከላኩት ጽሑፍ ውስጥ የብር መጠኑን ማግኘት አልቻልንም።\n"
-                    "እባክዎ ትክክለኛውን የባንክ ዴፖዚት ፖስታ (SMS/Receipt) ሙሉውን ኮፒ አድርገው ይለጥፉ።",
+                    f"✅ የብር መጠኑ (*{entered_amount:.2f} Birr*) ተመዝግቧል።\n\n"
+                    f"📌 **ገንዘብ የሚልኩበት አካውንት ({bank})፦**\n"
+                    f"`{admin_acc}`\n"
+                    f"Deposit Name: kirubel melkamu\n\n"
+                    f"እባክዎ ከላይ ባለው አካውንት ላይ ገንዘቡን ከላኩ በኋላ የደረሰዎትን **የክፍያ ኤስኤምኤስ (SMS) ወይም ፖስታ** ሙሉውን ኮፒ አድርገው በዚህ ቻት ላይ ይለጥፉ (Paste)።",
                     parse_mode="Markdown"
                 )
-                return
 
-            if not trx_match:
+            elif step == "waiting_receipt":
+                # ደረጃ 2፡ ተጠቃሚው የባንክ ኤስኤምኤሱን (SMS) ሲልክ
+                expected_amount = state_info["amount"]
+
+                # የብር መጠንን ከባንክ SMS ውስጥ መፈለግ
+                amount_match = re.search(r'(\d+[\d,]*\.?\d*)\s*(ETB|Birr|ብር|Br)?', text, re.IGNORECASE)
+                # የቴሌብር እና ሲቢኢ ትራንዛክሽን መለያዎችን መለየት
+                trx_match = re.search(r'(FT[A-Za-z0-9]{8,12}|TRX[A-Za-z0-9]{6,12}|TXN[A-Za-z0-9]{6,12}|Ref[:\s]*([A-Za-z0-9]{8,15}))', text, re.IGNORECASE)
+
+                sms_amount = 0.0
+                if amount_match:
+                    try:
+                        amount_str = amount_match.group(1).replace(',', '')
+                        sms_amount = float(amount_str)
+                    except ValueError:
+                        pass
+
+                if sms_amount <= 0 or not trx_match:
+                    await update.message.reply_text(
+                        "❌ ከላኩት ጽሑፍ ውስጥ ትክክለኛ የብር መጠን ወይም የትራንዛክሽን ኮድ (FT...) ማግኘት አልቻልንም።\n"
+                        "እባክዎ ትክክለኛውን የባንክ ዴፖዚት ፖስታ ሙሉውን ኮፒ አድርገው እንደገና ይላኩ።",
+                        parse_mode="Markdown"
+                    )
+                    return
+
+                # ተጠቃሚው ያስገባው መጠን እና በባንክ ኤስኤምኤሱ ላይ ያለው መጠን መመሳሰሉን ማረጋገጥ
+                if sms_amount != expected_amount:
+                    await update.message.reply_text(
+                        f"❌ *የመጠን አለመመሳሰል (Mismatch Error)!*\n\n"
+                        f"እርስዎ ያስገቡት መጠን: *{expected_amount:.2f} Birr*\n"
+                        f"ከባንክ ኤስኤምኤሱ የተነበበው መጠን: *{sms_amount:.2f} Birr*\n\n"
+                        "እባክዎ ትክክለኛውን የክፍያ ፖስታ ይላኩ ወይም ሂደቱን እንደገና ይጀምሩ (/deposit)።",
+                        parse_mode="Markdown"
+                    )
+                    return
+
+                trx_id = trx_match.group(1).upper()
+
+                if trx_id in used_transactions:
+                    await update.message.reply_text(
+                        f"⚠️ *ማስጠንቀቂያ!*\nይህ የትራንዛክሽን ቁጥር (`{trx_id}`) ከዚህ በፊት ጥቅም ላይ ውሏል! ድጋሚ መጠቀም አይቻልም።",
+                        parse_mode="Markdown"
+                    )
+                    return
+
+                used_transactions.add(trx_id)
+                user_states.pop(uid, None)
+
+                req_id = f"d_{uid}_{random.randint(1000, 9999)}"
+                pending_deposits[req_id] = {"user_id": uid, "amount": expected_amount, "bank": bank, "trx_id": trx_id, "transaction": text}
+
                 await update.message.reply_text(
-                    "❌ *ትክክለኛ የትራንዛክሽን መለያ (Transaction ID / FT...) አልተገኘም!ه‌*\n\n"
-                    "እባክዎ የተሟላ የባንክ ዴፖዚት ኤስኤምኤስ (እንደ ቴሌብር FT ኮድ ወይም የሲቢኢ ሪፈረንስ ቁጥር ያለውን) የያዘ መልእክት ላኩ።",
-                    parse_mode="Markdown"
+                    f"✅ የ {expected_amount:.2f} Birr ዴፖዚት ጥያቄዎ ({bank}) በትክክል ተቀባይነት አግኝቷል!\n"
+                    f"🔑 Transaction ID: `{trx_id}`\n"
+                    "⏳ አድሚን አረጋግጦ እስኪያስተካክለው በጥበቃ ላይ ይገኛል።",
+                    parse_mode="Markdown",
+                    reply_markup=main_keyboard()
                 )
-                return
 
-            # ትክክለኛውን የትራንዛክሽን ኮድ ማውጣት
-            trx_id = trx_match.group(1).upper()
+                admin_kb = InlineKeyboardMarkup([[
+                    InlineKeyboardButton("✅ Approve", callback_data=f"app_{req_id}"),
+                    InlineKeyboardButton("❌ Reject", callback_data=f"rej_{req_id}")
+                ]])
 
-            if trx_id in used_transactions:
-                await update.message.reply_text(
-                    f"⚠️ *ማስጠንቀቂያ!*\nይህ የትራንዛክሽን ቁጥር (`{trx_id}`) ከዚህ በፊት ጥቅም ላይ ውሏል! ድጋሚ መጠቀም አይቻልም።",
-                    parse_mode="Markdown"
+                await context.bot.send_message(
+                    chat_id=ADMIN_ID,
+                    text=(
+                        "💵 *VERIFIED DEPOSIT REQUEST*\n\n"
+                        f"👤 Name: {update.effective_user.full_name}\n"
+                        f"🆔 User ID: `{uid}`\n"
+                        f"🏦 Bank: *{bank}*\n"
+                        f"💵 Amount: *{expected_amount:.2f} Birr*\n"
+                        f"🔑 Transaction ID: `{trx_id}`\n\n"
+                        f"📄 *Receipt Text:*\n`{text}`"
+                    ),
+                    parse_mode="Markdown",
+                    reply_markup=admin_kb
                 )
-                return
-
-            used_transactions.add(trx_id)
-            user_states.pop(uid, None)
-
-            req_id = f"d_{uid}_{random.randint(1000, 9999)}"
-            pending_deposits[req_id] = {"user_id": uid, "amount": amount, "bank": bank, "trx_id": trx_id, "transaction": text}
-
-            await update.message.reply_text(
-                f"✅ የ {amount:.2f} Birr ዴፖዚት ጥያቄዎ ({bank}) በትክክል ተቀባይነት አግኝቷል!\n"
-                f"🔑 Transaction ID: `{trx_id}`\n"
-                "⏳ አድሚን አረጋግጦ እስኪያስተካክለው በጥበቃ ላይ ይገኛል።",
-                parse_mode="Markdown",
-                reply_markup=main_keyboard()
-            )
-
-            admin_kb = InlineKeyboardMarkup([[
-                InlineKeyboardButton("✅ Approve", callback_data=f"app_{req_id}"),
-                InlineKeyboardButton("❌ Reject", callback_data=f"rej_{req_id}")
-            ]])
-
-            await context.bot.send_message(
-                chat_id=ADMIN_ID,
-                text=(
-                    "💵 *VERIFIED DEPOSIT REQUEST*\n\n"
-                    f"👤 Name: {update.effective_user.full_name}\n"
-                    f"🆔 User ID: `{uid}`\n"
-                    f"🏦 Bank: *{bank}*\n"
-                    f"💵 Amount: *{amount:.2f} Birr*\n"
-                    f"🔑 Transaction ID: `{trx_id}`\n\n"
-                    f"📄 *Receipt Text:*\n`{text}`"
-                ),
-                parse_mode="Markdown",
-                reply_markup=admin_kb
-            )
 
         # ----------------- WITHDRAW PROCESSING -----------------
         elif action == "withdraw":
@@ -364,15 +394,11 @@ async def bank_selection_callback(update: Update, context: ContextTypes.DEFAULT_
         bank = parts[2]   # Telebirr ወይም CBE
 
         if action == "deposit":
-            user_states[uid] = {"action": action, "bank": bank}
-            admin_acc = ADMIN_ACCOUNTS.get(bank, "0940483108 (kirubel melkamu)")
+            # 💵 ዴፖዚት ሲመረጥ በመጀመሪያ የብር መጠኑን እንዲጽፍ እንጠይቃለን (waiting_amount)
+            user_states[uid] = {"action": action, "bank": bank, "step": "waiting_amount"}
             instructions = (
                 f"📱 *Selected Bank: {bank}*\n\n"
-                f"Deposit Name: kirubel melkamu\n\n"
-                f"📌 **ገንዘብ የሚልኩበት አካውንት፦**\n"
-                f"`{admin_acc}`\n\n"
-                f"እባክዎ ከላይ ባለው አካውንት ላይ ገንዘብ ከላኩ በኋላ ከባንኩ/ከቴሌብር የደረሰዎትን **የክፍያ ኤስኤምኤስ (Transaction SMS / Receipt with ID)** ሙሉውን ኮፒ አድርገው በዚህ ቻት ላይ ይለጥፉ (Paste)።\n\n"
-                "🔒 ቦቱ የትራንዛክሽን ቁጥሩ ትክክለኛ መሆኑን እና ድጋሚ ጥቅም ላይ ያልዋለ መሆኑን በራሱ ያረጋግጣል!"
+                "💸 እባክዎ መጀመሪያ አካውንታችን ላይ ማስገባት (Deposit ማድረግ) የሚፈልጉትን **የብር መጠን** ብቻ ይጻፉ (ምሳሌ፦ `100` ወይም `500`)፦"
             )
         else:
             user_states[uid] = {"action": action, "bank": bank, "step": "waiting_amount"}
@@ -381,7 +407,7 @@ async def bank_selection_callback(update: Update, context: ContextTypes.DEFAULT_
                 "💸 እባክዎ ማውጣት የሚፈልጉትን **የብር መጠን** ብቻ ይጻፉ (ምሳሌ፦ `50`)፦"
             )
 
-        await query.edit_message_text(text=instructions, parse_mode="Markdown")
+        await query.edit_message_text(text=instructions, parse_Mode="Markdown")
 
 # =========================
 # ADMIN CALLBACK HANDLER
@@ -463,7 +489,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/register - Contact registration\n"
         "/play - Play Bingo WebApp\n"
         "/balance - Check balance\n"
-        "💵 Deposit - Select payment method, view account, send SMS\n"
+        "💵 Deposit - Select method, enter amount, send SMS receipt\n"
         "💸 Withdraw - Select method, enter amount, then account",
         parse_mode="Markdown",
         reply_markup=main_keyboard(),
@@ -490,7 +516,7 @@ def main():
     app.add_handler(MessageHandler(filters.CONTACT, contact_received))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, button_handler))
 
-    print("🤖 Bingo Bot is running with Telebirr & CBE only (Secure Transaction parsing)...")
+    print("🤖 Bingo Bot is running with 2-step Deposit verification...")
     app.run_polling()
 
 if __name__ == "__main__":

@@ -13,6 +13,8 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
             padding: 10px;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         .container {
@@ -28,12 +30,14 @@
             text-align: center;
             border: 1px solid #3c2a6d;
             margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
 
         .card-banner h3 {
             color: #f39c12;
             margin: 0 0 5px 0;
             font-size: 22px;
+            letter-spacing: 1px;
         }
 
         .card-banner p {
@@ -55,6 +59,7 @@
             padding: 15px;
             border-radius: 14px;
             border: 1px solid #3c2a6d;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
 
         .room-info h4 {
@@ -82,11 +87,17 @@
             cursor: pointer;
             margin-top: 15px;
             font-size: 15px;
+            transition: 0.2s;
+        }
+
+        .join-btn:active, .start-game-btn:active, .bingo-claim-btn:active {
+            transform: scale(0.98);
         }
 
         .bingo-claim-btn {
             background: linear-gradient(135deg, #2ecc71, #27ae60);
             color: white;
+            box-shadow: 0 4px 12px rgba(46, 204, 113, 0.4);
         }
 
         /* Selection Screen Styles */
@@ -113,12 +124,12 @@
 
         .stats-box {
             display: flex;
-            gap: 4px;
+            gap: 6px;
         }
 
         .stats-box span {
             background: #2c1b4d;
-            padding: 4px 6px;
+            padding: 4px 8px;
             border-radius: 6px;
             font-size: 11px;
         }
@@ -136,7 +147,7 @@
             display: grid;
             grid-template-columns: repeat(10, 1fr);
             gap: 5px;
-            max-height: 200px;
+            max-height: 220px;
             overflow-y: auto;
             background: #1f143a;
             padding: 10px;
@@ -167,7 +178,7 @@
         .live-game-layout {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 12px;
         }
 
         .called-number-display {
@@ -175,14 +186,21 @@
             border: 2px solid #f39c12;
             border-radius: 14px;
             text-align: center;
-            padding: 12px;
+            padding: 10px;
+            box-shadow: 0 0 15px rgba(243, 156, 18, 0.2);
         }
 
         .current-ball {
-            font-size: 32px;
+            font-size: 34px;
             font-weight: bold;
             color: #f39c12;
-            margin: 4px 0;
+            margin: 2px 0;
+            animation: pulseBall 0.5s ease-in-out;
+        }
+
+        @keyframes pulseBall {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
         }
 
         /* Rendered Card Design */
@@ -194,6 +212,7 @@
             border: 3px solid #ff69b4;
             max-width: 340px;
             margin: 0 auto;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
         }
 
         .bingo-header-row {
@@ -226,6 +245,7 @@
             font-weight: bold;
             border-radius: 4px;
             cursor: pointer;
+            transition: background 0.2s;
         }
 
         .bingo-cell.free-cell {
@@ -237,6 +257,7 @@
             background: #f39c12 !important;
             color: #000;
             text-decoration: line-through;
+            border-color: #d35400;
         }
 
         .card-footer-banner {
@@ -247,6 +268,60 @@
             justify-content: space-between;
             font-size: 12px;
             font-weight: bold;
+        }
+
+        /* Extra Control Settings Panel */
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #1f143a;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            border: 1px solid #3c2a6d;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 34px;
+            height: 20px;
+        }
+
+        .switch input { 
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #3c2a6d;
+            transition: .3s;
+            border-radius: 20px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #f39c12;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(14px);
         }
     </style>
 </head>
@@ -303,7 +378,16 @@
             <div class="called-number-display">
                 <p style="margin: 0; color: #a08cc4; font-size: 12px;">የተጠራው ቁጥር (Current Ball)</p>
                 <div id="currentBall" class="current-ball">--</div>
-                <p id="callStatus" style="margin: 0; font-size: 11px; color: #f1c40f;"> ጨዋታው ተጀምሯል...</p>
+                <p id="callStatus" style="margin: 0; font-size: 11px; color: #f1c40f;">ጨዋታው ተጀምሯል...</p>
+            </div>
+
+            <!-- New Setting: Auto Dauber (Auto-mark numbers) -->
+            <div class="settings-row">
+                <span>አውቶማቲክ ማርክ (Auto-Dauber)</span>
+                <label class="switch">
+                    <input type="checkbox" id="autoDauberToggle">
+                    <span class="slider"></span>
+                </label>
             </div>
 
             <div class="rendered-bingo-card">
@@ -334,6 +418,7 @@
         let gameInterval = null;
         let currentCardData = null;
         let calledNumbersSet = new Set();
+        let currentMatrixValues = [];
 
         const homeScreen = document.getElementById('home-screen');
         const selectionScreen = document.getElementById('selection-screen');
@@ -344,6 +429,7 @@
         const startGameBtn = document.getElementById('startGameBtn');
         const exitGameBtn = document.getElementById('exitGameBtn');
         const bingoClaimBtn = document.getElementById('bingoClaimBtn');
+        const autoDauberToggle = document.getElementById('autoDauberToggle');
         
         const gridContainer = document.getElementById('cardsGrid');
         const boardsCountText = document.getElementById('boards-count');
@@ -430,7 +516,7 @@
 
         function renderRenderedCard(cardObj) {
             bingoMatrixGrid.innerHTML = '';
-            let matrixValues = [
+            currentMatrixValues = [
                 [cardObj.B[0], cardObj.I[0], cardObj.N[0], cardObj.G[0], cardObj.O[0]],
                 [cardObj.B[1], cardObj.I[1], cardObj.N[1], cardObj.G[1], cardObj.O[1]],
                 [cardObj.B[2], cardObj.I[2], 'F',          cardObj.G[2], cardObj.O[2]],
@@ -438,10 +524,13 @@
                 [cardObj.B[4], cardObj.I[4], cardObj.N[3], cardObj.G[4], cardObj.O[4]]
             ];
 
-            matrixValues.forEach((row) => {
-                row.forEach((val) => {
+            currentMatrixValues.forEach((row, rIdx) => {
+                row.forEach((val, cIdx) => {
                     const cell = document.createElement('div');
                     cell.className = 'bingo-cell';
+                    cell.dataset.row = rIdx;
+                    cell.dataset.col = cIdx;
+                    
                     if (val === 'F') {
                         cell.textContent = '★';
                         cell.classList.add('free-cell', 'marked');
@@ -450,6 +539,9 @@
                         cell.addEventListener('click', function() {
                             if (calledNumbersSet.has(val)) {
                                 this.classList.toggle('marked');
+                                if (tg && tg.HapticFeedback) {
+                                    tg.HapticFeedback.impactOccurred('light');
+                                }
                             } else {
                                 alert("ይህ ቁጥር ገና አልተጠራም!");
                             }
@@ -471,7 +563,22 @@
                     let num = pool[idx];
                     calledNumbersSet.add(num);
                     let letter = getLetterForNumber(num);
+                    
                     currentBall.textContent = `${letter}-${num}`;
+                    // Trigger animation restart
+                    currentBall.style.animation = 'none';
+                    currentBall.offsetHeight; // trigger reflow
+                    currentBall.style.animation = 'pulseBall 0.5s ease-in-out';
+
+                    if (tg && tg.HapticFeedback) {
+                        tg.HapticFeedback.notificationOccurred('success');
+                    }
+
+                    // Check Auto-Dauber
+                    if (autoDauberToggle.checked) {
+                        autoMarkNumber(num);
+                    }
+
                     idx++;
                 } else {
                     clearInterval(gameInterval);
@@ -480,34 +587,23 @@
             }, 2500);
         }
 
-        bingoClaimBtn.addEventListener('click', () => {
+        function autoMarkNumber(num) {
             const cells = bingoMatrixGrid.querySelectorAll('.bingo-cell');
-            let markedCount = 0;
-            cells.forEach(c => {
-                if (c.classList.contains('marked')) {
-                    markedCount++;
+            cells.forEach(cell => {
+                if (cell.textContent == num) {
+                    cell.classList.add('marked');
                 }
             });
+        }
 
-            // ለፈተና እንዲመች 5 ወይም ከዚያ በላይ ማርክ ሲደረግ አሸነፈ ይበል (በኋላ ሙሉ መስመር እንዲሆን መቀየር ይቻላል)
-            if (markedCount >= 5) {
-                alert("🎉 እንኳን ደስ አለዎት! BINGO አሸንፈዋል!");
-                if (tg && tg.close) {
-                    tg.close();
-                }
-            } else {
-                alert("⚠️ ገና አልተሞላም! ተጨማሪ ቁጥሮች ይጠብቁ።");
+        // Check traditional 5-in-a-row (Horizontal, Vertical, Diagonal)
+        function checkBingoWin() {
+            const cells = Array.from(bingoMatrixGrid.querySelectorAll('.bingo-cell'));
+            let grid = [];
+            for (let i = 0; i < 5; i++) {
+                grid.push(cells.slice(i * 5, (i + 1) * 5));
             }
-        });
 
-        exitGameBtn.addEventListener('click', () => {
-            clearInterval(gameInterval);
-            liveGameScreen.style.display = 'none';
-            homeScreen.style.display = 'block';
-            selectedCards = [];
-            startGameBtn.style.display = 'none';
-            currentBall.textContent = '--';
-        });
-    </script>
-</body>
-</html>
+            // Check Rows
+            for (let r = 0; r < 5; r++) {
+                if (grid[r].every(c 

@@ -16,27 +16,23 @@ from telegram.ext import (
 TOKEN = os.getenv("BOT_TOKEN", "8909328591:AAEay418mvQF9dRBqjtSKgPDM_T-WpWWJ84")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "6496982318"))
 
-# 🔗 የ Web App URL
 WEB_APP_URL = os.getenv("WEB_APP_URL", "https://nbghjj.github.io/")
 
-# 🏦 የእርስዎ (የአድሚን) መቀበያ አካውንቶች (ለቴሌብር እና ሲቢኢ ብቻ)
+# ⚙️ የገንዘብ ገደቦች (Limits)
+MIN_DEPOSIT = 50.0   # ዝቅተኛው ዴፖዚት 
+MIN_WITHDRAW = 100.0 # ዝቅተኛው ዊዝድሮ
+
 ADMIN_ACCOUNTS = {
     "Telebirr": "0940483108 (kirubel melkamu)",
     "CBE": "0940483108 (kirubel melkamu)"
 }
 
-# =========================
-# IN-MEMORY DATA STORE
-# =========================
 users = {}
 pending_withdrawals = {}
 pending_deposits = {}
 user_states = {}  
-used_transactions = set()  # 🔒 የተጠቀሙባቸውን የትራንዛክሽን 🆔ዎች ለመያዝ (Double spending መከላከያ)
+used_transactions = set()
 
-# =========================
-# KEYBOARDS
-# =========================
 def register_keyboard():
     return ReplyKeyboardMarkup(
         [[KeyboardButton("📱 Share Contact", request_contact=True)]],
@@ -57,9 +53,6 @@ def main_keyboard():
 def registered(user_id):
     return user_id in users and bool(users[user_id].get("phone"))
 
-# =========================
-# USER COMMAND HANDLERS
-# =========================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not registered(update.effective_user.id):
         await update.message.reply_text(
@@ -143,7 +136,6 @@ async def play_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=inline_keyboard,
     )
 
-# --- DEPOSIT MENU (Telebirr & CBE only) ---
 async def deposit(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     if not registered(uid):
@@ -157,14 +149,12 @@ async def deposit(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         "💳 *Choose payment method for Deposit:*\n"
-        "• 📱 Telebirr - Mobile money\n"
-        "• 💳 CBE Birr - Mobile wallet\n\n"
+        f"📌 (ዝቅተኛው የዲፖዚት መጠን: *{MIN_DEPOSIT:.2f} Birr*)\n\n"
         "ገንዘብ ማስገባት የሚፈልጉበትን የክፍያ መንገድ ከታች ይምረጡ፦",
         parse_mode="Markdown",
         reply_markup=keyboard,
     )
 
-# --- WITHDRAW MENU (Telebirr & CBE only) ---
 async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     if not registered(uid):
@@ -178,16 +168,12 @@ async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         "💸 *Choose payout method for Withdrawal:*\n"
-        "• 📱 Telebirr - Mobile money\n"
-        "• 💳 CBE Birr - Mobile wallet\n\n"
+        f"📌 (ዝቅተኛው የዊዝድሮ መጠን: *{MIN_WITHDRAW:.2f} Birr*)\n\n"
         "ገንዘብ መቀበል (ማውጣት) የሚፈልጉበትን መንገድ ከታች ይምረጡ፦",
         parse_mode="Markdown",
         reply_markup=keyboard,
     )
 
-# =========================
-# CALLBACK & TEXT HANDLERS
-# =========================
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     uid = update.effective_user.id
@@ -206,7 +192,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         bank = state_info["bank"]
         step = state_info.get("step", "default")
 
-        # ----------------- DEPOSIT PROCESSING -----------------
         if action == "deposit":
             if step == "waiting_amount":
                 try:
@@ -215,8 +200,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await update.message.reply_text("❌ እባክዎ ትክክለኛ የብር መጠን ብቻ ይጻፉ (ምሳሌ፦ `100`)።", parse_mode="Markdown")
                     return
 
-                if entered_amount <= 0:
-                    await update.message.reply_text("❌ የብር መጠኑ ከ 0 በላይ መሆን አለበት።")
+                if entered_amount < MIN_DEPOSIT:
+                    await update.message.reply_text(f"❌ ይቅርታ፣ ዝቅተኛው የዲፖዚት መጠን *{MIN_DEPOSIT:.2f} Birr* መሆን አለበት።", parse_mode="Markdown")
                     return
 
                 user_states[uid] = {"action": "deposit", "bank": bank, "step": "waiting_receipt", "amount": entered_amount}
@@ -306,17 +291,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     reply_markup=admin_kb
                 )
 
-        # ----------------- WITHDRAW PROCESSING -----------------
         elif action == "withdraw":
             if step == "waiting_amount":
                 try:
                     amount = float(text.replace(',', ''))
                 except ValueError:
-                    await update.message.reply_text("❌ እባክዎ ትክክለኛ የብር መጠን ብቻ ይጻፉ (ለምሳሌ፦ `50`)።", parse_mode="Markdown")
+                    await update.message.reply_text("❌ እባክዎ ትክክለኛ የብር መጠን ብቻ ይጻፉ (ለምሳሌ፦ `100`)።", parse_mode="Markdown")
                     return
 
-                if amount <= 0:
-                    await update.message.reply_text("❌ መጠን ከ0 በላይ መሆን አለበት።")
+                if amount < MIN_WITHDRAW:
+                    await update.message.reply_text(f"❌ ይቅርታ፣ ዝቅተኛው የማውጫ (Withdraw) መጠን *{MIN_WITHDRAW:.2f} Birr* መሆን አለበት።", parse_mode="Markdown")
                     return
 
                 balance_now = users[uid]["balance"]
@@ -391,20 +375,17 @@ async def bank_selection_callback(update: Update, context: ContextTypes.DEFAULT_
             user_states[uid] = {"action": action, "bank": bank, "step": "waiting_amount"}
             instructions = (
                 f"📱 *Selected Bank: {bank}*\n\n"
-                "💸 እባክዎ መጀመሪያ አካውንታችን ላይ ማስገባት (Deposit ማድረግ) የሚፈልጉትን **የብር መጠን** ብቻ ይጻፉ (ምሳሌ፦ `100` ወይም `500`)፦"
+                f"💸 እባክዎ ማስገባት የሚፈልጉትን **የብር መጠን** ይጻፉ (ዝቅተኛው: *{MIN_DEPOSIT:.2f} Birr*)፦"
             )
         else:
             user_states[uid] = {"action": action, "bank": bank, "step": "waiting_amount"}
             instructions = (
                 f"🏦 *Selected Payout Bank: {bank}*\n\n"
-                "💸 እባክዎ ማውጣት የሚፈልጉትን **የብር መጠን** ብቻ ይጻፉ (ምሳሌ፦ `50`)፦"
+                f"💸 እባክዎ ማውጣት የሚፈልጉትን **የብር መጠን** ይጻፉ (ዝቅተኛው: *{MIN_WITHDRAW:.2f} Birr*)፦"
             )
 
         await query.edit_message_text(text=instructions, parse_mode="Markdown")
 
-# =========================
-# ADMIN CALLBACK HANDLER
-# =========================
 async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -451,9 +432,6 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await query.edit_message_text("⚠️ Request not found or already processed.")
 
-# =========================
-# ADMIN COMMANDS
-# =========================
 async def add_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -470,9 +448,6 @@ async def add_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         await update.message.reply_text("⚠️ አጠቃቀም፦ `/addbalance <user_id> <amount>`", parse_mode="Markdown")
 
-# =========================
-# HELP COMMAND
-# =========================
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "📖 *HELP*\n\n"
@@ -480,15 +455,12 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/register - Contact registration\n"
         "/play - Play Bingo WebApp\n"
         "/balance - Check balance\n"
-        "💵 Deposit - Select method, enter amount, send SMS receipt\n"
-        "💸 Withdraw - Select method, enter amount, then account",
+        f"💵 Deposit - Min: {MIN_DEPOSIT} Birr\n"
+        f"💸 Withdraw - Min: {MIN_WITHDRAW} Birr",
         parse_mode="Markdown",
         reply_markup=main_keyboard(),
     )
 
-# =========================
-# MAIN FUNCTION
-# =========================
 def main():
     app = Application.builder().token(TOKEN).build()
 
@@ -507,7 +479,7 @@ def main():
     app.add_handler(MessageHandler(filters.CONTACT, contact_received))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, button_handler))
 
-    print("🤖 Bingo Bot is running perfectly with verified 2-step flow...")
+    print("🤖 Bingo Bot is running with Min Deposit & Withdraw limits...")
     app.run_polling()
 
 if __name__ == "__main__":

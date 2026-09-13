@@ -138,6 +138,18 @@
             color: white;
         }
 
+        .error-banner {
+            background: rgba(231, 76, 60, 0.2);
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 13px;
+            text-align: center;
+            margin-bottom: 12px;
+            display: none;
+        }
+
         .game-top-bar {
             display: flex;
             justify-content: space-between;
@@ -380,6 +392,7 @@
                 <h4>Ayat Bingo Room</h4>
                 <p style="color: #a08cc4; font-size: 12px; margin: 2px 0;">• LIVE ROOM</p>
             </div>
+            <div id="errorBanner" class="error-banner">⚠️ በቂ ገንዘብ የለም! እባክዎ መጀመሪያ ሂሳብዎን ይሙሉ</div>
             <p style="font-size: 13px; color: #a08cc4;">Players: <span id="player-count">64</span> / 300</p>
             <button id="joinRoomBtn" class="join-btn" type="button">JOIN ROOM →</button>
         </div>
@@ -523,7 +536,6 @@
 
             let walletKey = `ayat_wallet_${telegramUser}`;
             let storedBalance = localStorage.getItem(walletKey);
-            // የቦርሳ ሂሳብ ካልተመዘገበ በነባሪ 0 ብር ይጀምራል (ከዚህ ቀፊት የነበረው 500 ብር ቦነስ ተወግዷል)
             let walletBalance = (storedBalance !== null && !isNaN(parseFloat(storedBalance))) ? parseFloat(storedBalance) : 0;
 
             const totalBoards = 300;
@@ -550,6 +562,7 @@
             const bingoClaimBtn = document.getElementById('bingoClaimBtn');
             const depositBtn = document.getElementById('depositBtn');
             const withdrawBtn = document.getElementById('withdrawBtn');
+            const errorBanner = document.getElementById('errorBanner');
             
             const depositModal = document.getElementById('depositModal');
             const closeDepositModal = document.getElementById('closeDepositModal');
@@ -572,14 +585,4 @@
             const callStatus = document.getElementById('callStatus');
             const bingoMatrixGrid = document.getElementById('bingoMatrixGrid');
             const cardNumLabel = document.getElementById('cardNumLabel');
-            const resultTitle = document.getElementById('resultTitle');
-            const resultDesc = document.getElementById('resultDesc');
-
-            function updateWallets() {
-                homeWalletVal.textContent = walletBalance;
-                walletVal.textContent = walletBalance;
-                localStorage.setItem(walletKey, walletBalance);
-            }
-
-            if (depositBankSelect) {
-                depositBankSelect.addEventListener('change', functi
+            const resultTitle = document.getElementById('res

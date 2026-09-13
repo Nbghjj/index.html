@@ -211,8 +211,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # 1. የብር መጠንን ከባንክ SMS ውስጥ መፈለግ
             amount_match = re.search(r'(\d+[\d,]*\.?\d*)\s*(ETB|Birr|ብር|Br)?', text, re.IGNORECASE)
             
-            # 2. የቴሌብር እና ሲቢኢ ትራንዛክሽን መለያዎችን (Transaction ID / FT / Ref) በልዩ ሁኔታ መለየት
-            # ቴሌብር አብዛኛውን ጊዜ በ FT ይጀምራል (ለምሳሌ: FT12345ABCD)፤ ሲቢኢ ደግሞ በ TR ወይም ቲቪ/ቁጥሮች ሊሆን ይችላል።
+            # 2. የቴሌብር እና ሲቢኢ ትራንዛክሽን መለያዎችን (Transaction ID / FT / Ref) መለየት
             trx_match = re.search(r'(FT[A-Za-z0-9]{8,12}|TRX[A-Za-z0-9]{6,12}|TXN[A-Za-z0-9]{6,12}|Ref[:\s]*([A-Za-z0-9]{8,15}))', text, re.IGNORECASE)
             
             amount = 0.0
@@ -242,11 +241,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # ትክክለኛውን የትራንዛክሽን ኮድ ማውጣት
             trx_id = trx_match.group(1).upper()
 
-            # 3. የባንክ ዓይነት እና የትራንዛክሽን ኮድ መጣጣሙን ማረጋገጥ
-            if bank == "Telebirr" and not trx_id.startswith("FT"):
-                # አንዳንዴ ቴሌብር ያለ FT ሊመጣ ይችላል፣ ግን ጥብቅ ቁጥጥር ለማድረግ፦
-                pass # እንደ አስፈላጊነቱ ማስተካከል ይቻላል
-            
             if trx_id in used_transactions:
                 await update.message.reply_text(
                     f"⚠️ *ማስጠንቀቂያ!*\nይህ የትራንዛክሽን ቁጥር (`{trx_id}`) ከዚህ በፊት ጥቅም ላይ ውሏል! ድጋሚ መጠቀም አይቻልም።",

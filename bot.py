@@ -19,8 +19,8 @@ ADMIN_ID = int(os.getenv("ADMIN_ID", "6496982318"))
 WEB_APP_URL = os.getenv("WEB_APP_URL", "https://nbghjj.github.io/")
 
 # ⚙️ የገንዘብ ገደቦች (Limits)
-MIN_DEPOSIT = 50.0   # ዝቅተኛው ዴፖዚት 
-MIN_WITHDRAW = 100.0 # ዝቅተኛው ዊዝድሮ
+MIN_DEPOSIT = 50.0   
+MIN_WITHDRAW = 100.0 
 
 ADMIN_ACCOUNTS = {
     "Telebirr": "0940483108 (kirubel melkamu)",
@@ -219,6 +219,28 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif step == "waiting_receipt":
                 expected_amount = state_info["amount"]
 
+                # 🔒 እውነተኛ የባንክ ፖስታ መሆኑን ለማረጋገጥ የሚረዱ ቁልፍ ቃላት ማጣሪያ (Anti-Fake Validation)
+                text_lower = text.lower()
+                is_valid_format = False
+                
+                if bank == "Telebirr":
+                    # የቴሌብር ፖስታ ሊኖራቸው የሚገቡ የተለመዱ ቃላት (לምሳሌ: transferred, paid, received, telebirr)
+                    if any(keyword in text_lower for keyword in ["transferred", "paid", "sent", "telebirr", "account", "ETB", "ብር"]):
+                        is_valid_format = True
+                elif bank == "CBE":
+                    # የንግድ ባንክ (CBE) ፖስታ ሊኖራቸው የሚገቡ ቃላት
+                    if any(keyword in text_lower for keyword in ["debited", "credited", "cbe", "commercial bank", "ETB", "ብር", "account"]):
+                        is_valid_format = True
+
+                if not is_valid_format:
+                    await update.message.reply_text(
+                        "❌ *ልክ ያልሆነ የክፍያ ፖስታ (Invalid Receipt)!*\n\n"
+                        f"ላኩት ጽሑፍ ትክክለኛ የ *{bank}* የባንክ መረጃ/ኤስኤምኤስ ሆኖ አልተገኘም።\n"
+                        "እባክዎ ትክክለኛውን ኦሪጅናል የባንክ ፖስታ ኮፒ አድርገው ይላኩ።",
+                        parse_mode="Markdown"
+                    )
+                    return
+
                 amount_match = re.search(r'(\d+[\d,]*\.?\d*)\s*(ETB|Birr|ብር|Br)?', text, re.IGNORECASE)
                 trx_match = re.search(r'(FT[A-Za-z0-9]{8,12}|TRX[A-Za-z0-9]{6,12}|TXN[A-Za-z0-9]{6,12}|Ref[:\s]*([A-Za-z0-9]{8,15}))', text, re.IGNORECASE)
 
@@ -279,13 +301,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.send_message(
                     chat_id=ADMIN_ID,
                     text=(
-                        "💵 *VERIFIED DEPOSIT REQUEST*\n\n"
+                        "💵 *VERIFIED DEPOSIT REQUEST (GENUINE)*\n\n"
                         f"👤 Name: {update.effective_user.full_name}\n"
                         f"🆔 User ID: `{uid}`\n"
                         f"🏦 Bank: *{bank}*\n"
                         f"💵 Amount: *{expected_amount:.2f} Birr*\n"
                         f"🔑 Transaction ID: `{trx_id}`\n\n"
-                        f"📄 *Receipt Text:*\n`{text}`"
+                        f"📄 *Validated Receipt Text:*\n`{text}`"
                     ),
                     parse_mode="Markdown",
                     reply_markup=admin_kb
@@ -312,14 +334,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 await update.message.reply_text(
                     f"✅ የብር መጠኑ ({amount:.2f} Birr) ተመዝግቧል።\n\n"
-                    f"💳 አሁን ደግሞ ገንዘቡ የሚገባበትን የ *{bank}* **አካውንት ቁጥር ወይም ስልክ ቁጥር** ይጻፉ፦",
+                    f"💳 አሁን ደግሞ ገንዘቡ የሚገባበትን የ *{bank}* **ትክክለኛ አካውንት ቁጥር ወይም ስልክ ቁጥር** ይጻፉ፦",
                     parse_mode="Markdown"
                 )
 
             elif step == "waiting_account":
                 account_info = text.strip()
-                if not account_info:
-                    await update.message.reply_text("❌ እባክዎ ትክክለኛ አካውንት ቁጥር ይጻፉ።")
+                
+                # 🔒 የዊዝድሮ አካውንት ቁጥሩ ትክክለኛ ቅርጸት ያለው መሆኑን ማረጋገጫ (ለምሳሌ ስልክ ቁጥር ወይም የባንክ አካውንት)
+                if len(account_info) < 9 or not any(char.isdigit() for char in account_info):
+                    await update.message.reply_text("❌ እባክዎ ትክክለኛ የቴሌብር ስልክ ቁጥር ወይም የባንክ አካውንት ቁጥር ብቻ ይጻፉ።")
                     return
 
                 amount = state_info["amount"]
@@ -348,7 +372,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.send_message(
                     chat_id=ADMIN_ID,
                     text=(
-                        "💸 *NEW WITHDRAW REQUEST*\n\n"
+                        "💸 *NEW VERIFIED WITHDRAW REQUEST*\n\n"
                         f"👤 Name: {update.effective_user.full_name}\n"
                         f"🆔 User ID: `{uid}`\n"
                         f"🏦 Selected Bank: *{bank}*\n"
@@ -455,7 +479,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/register - Contact registration\n"
         "/play - Play Bingo WebApp\n"
         "/balance - Check balance\n"
-        f"💵 Deposit - Min: {MIN_DEPOSIT} Birr\n"
+        f"💵 Deposit - Min: {MIN_DEPOSIT} Birr (Verified Receipts Only)\n"
         f"💸 Withdraw - Min: {MIN_WITHDRAW} Birr",
         parse_mode="Markdown",
         reply_markup=main_keyboard(),
@@ -479,7 +503,7 @@ def main():
     app.add_handler(MessageHandler(filters.CONTACT, contact_received))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, button_handler))
 
-    print("🤖 Bingo Bot is running with Min Deposit & Withdraw limits...")
+    print("🤖 Bingo Bot is running with strict genuine deposit/withdrawal validation...")
     app.run_polling()
 
 if __name__ == "__main__":

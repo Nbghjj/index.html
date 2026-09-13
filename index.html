@@ -22,7 +22,7 @@
         .container {
             max-width: 480px;
             margin: 0 auto;
-            display: none !important;
+            display: none;
         }
 
         .container.active-screen {
@@ -386,17 +386,13 @@
         const bingoMatrixGrid = document.getElementById('bingoMatrixGrid');
         const cardNumLabel = document.getElementById('cardNumLabel');
 
-        // ትክክለኛውን ስክሪን በፍጹም ሃይል (Forcefully) የሚያሳይ ፈንክሽን
-        function showScreen(screenId) {
-            document.querySelectorAll('.container').forEach(s => {
-                s.classList.remove('active-screen');
-                s.style.display = 'none';
-            });
-            const target = document.getElementById(screenId);
-            if (target) {
-                target.classList.add('active-screen');
-                target.style.display = 'block';
-            }
+        // ስክሪኖችን በአስተማማኝ ሁኔታ ለመቀያየር የሚያስችል ቀላል እና ጥርት ያለ ፈንክሽን
+        function showScreen(screenToShow) {
+            homeScreen.classList.remove('active-screen');
+            selectionScreen.classList.remove('active-screen');
+            liveGameScreen.classList.remove('active-screen');
+
+            screenToShow.classList.add('active-screen');
         }
 
         function updateWallets() {
@@ -537,31 +533,29 @@
         function resetSelectionScreen() {
             selectedCards = [];
             stopCardCountdown();
-            showScreen('home-screen');
+            showScreen(homeScreen);
             updateWallets();
         }
 
-        // JOIN ROOM ቁልፍ ሲጫን ያለምንም ማወላወል ወደ ካርድ መምረጫው እንዲገባ ማድረግ
-        joinRoomBtn.addEventListener('click', (e) => {
-            e.preventDefault();
+        // Join Room ቁልፍ ሲጫን ያለ ምንም ማወላወል ወደ ካርድ መምረጫው እንዲገባ ማድረግ
+        joinRoomBtn.onclick = function() {
             selectedCards = [];
             timerStarted = false;
             stopCardCountdown();
             initCardsGrid();
             updateWallets();
             winVal.textContent = totalBoards * stakeAmount;
-            showScreen('selection-screen');
-        });
+            showScreen(selectionScreen);
+        };
 
-        leaveBtn.addEventListener('click', (e) => {
-            e.preventDefault();
+        leaveBtn.onclick = function() {
             stopCardCountdown();
-            showScreen('home-screen');
-        });
+            showScreen(homeScreen);
+        };
 
         function launchLiveGame() {
             stopCardCountdown();
-            showScreen('live-game-screen');
+            showScreen(liveGameScreen);
             
             const chosenId = selectedCards[0];
             currentCardData = generateCardData(chosenId);
@@ -589,4 +583,9 @@
                 [cardObj.B[4], cardObj.I[4], cardObj.N[3], cardObj.G[4], cardObj.O[4]]
             ];
 
-          
+            matrixValues.forEach((row) => {
+                row.forEach((val) => {
+                    const cell = document.createElement('div');
+                    cell.className = 'bingo-cell';
+                    if (val === 'F') {
+                  

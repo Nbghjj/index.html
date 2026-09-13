@@ -264,7 +264,7 @@
 <body>
 
     <!-- 1. HOME SCREEN -->
-    <div id="home-screen" class="container">
+    <div id="home-screen" class="container" style="display: block;">
         <div class="card-banner">
             <h3>AYAT BINGO</h3>
             <p>Telegram Mini App Live Game.</p>
@@ -403,13 +403,13 @@
             return nums;
         }
 
-        // አንዴ በስርዓቱ መጀመሪያ ላይ ካርዶቹን መፍጠር (ሰዓት እንዳይፈጅ እና ቁልፉ ተጭኖ እንዲቀል)
         function initCardsGrid() {
             gridContainer.innerHTML = '';
             takenCards = new Set(JSON.parse(localStorage.getItem('ayat_taken_cards') || '[]'));
 
             for (let i = 1; i <= totalBoards; i++) {
                 const cardBtn = document.createElement('button');
+                cardBtn.type = 'button';
                 cardBtn.className = 'card-box';
                 cardBtn.textContent = i;
                 cardBtn.dataset.id = i;
@@ -453,7 +453,6 @@
             }
         }
 
-        // መተግበሪያው ሲከፈት ግሪዱን አስቀድሞ ማዘጋጀት
         initCardsGrid();
 
         function startSyncedCountdown() {
@@ -514,7 +513,7 @@
             updateWallets();
         }
 
-        // ጆይን ሲደረግ በቀጥታ ስክሪኑን መቀየር
+        // JOIN ROOM ቋሚ እና አስተማማኝ ስክሪን መቀያየሪያ
         joinRoomBtn.addEventListener('click', () => {
             homeScreen.style.display = 'none';
             selectionScreen.style.display = 'block';
@@ -580,4 +579,5 @@
                             }
                         });
                     }
-                    
+                    bingoMatrixGrid.appendChild(cell);
+  

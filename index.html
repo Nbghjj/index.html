@@ -345,9 +345,7 @@
         const totalBoards = 300;
         const maxSelection = 1;
         let selectedCards = [];
-        
-        // የተያዙ ካርዶች (በዚህ ዴሞ ውስጥ takenCards በ localStorage በመጠቀም በሌሎች ብራውዘሮች/ታብ ተጫዋቾች እንዳይያዙ ይደረጋል)
-        let takenCards = new Set(JSON.parse(localStorage.getItem('ayat_taken_cards') || '[]'));
+        let takenCards = new Set();
         
         let gameInterval = null;
         let cardCountdownInterval = null;
@@ -383,7 +381,7 @@
         }
 
         function generateCardData(cardId) {
-            let seed = cardId * 997; // ለእያንዳንዱ ካርድ ልዩ ቁጥሮች እንዲወጡ ማድረጊያ
+            let seed = cardId * 997;
             return {
                 id: cardId,
                 B: getSeededRandomNumbers(1, 15, 5, seed + 1),
@@ -405,10 +403,9 @@
             return nums;
         }
 
-        // የካርዶች ግሪድ መፍጠር
-        function renderCardsGrid() {
+        // አንዴ በስርዓቱ መጀመሪያ ላይ ካርዶቹን መፍጠር (ሰዓት እንዳይፈጅ እና ቁልፉ ተጭኖ እንዲቀል)
+        function initCardsGrid() {
             gridContainer.innerHTML = '';
-            // በሌሎች ሰዎች የተያዙትን ከ localStorage ማዘመን
             takenCards = new Set(JSON.parse(localStorage.getItem('ayat_taken_cards') || '[]'));
 
             for (let i = 1; i <= totalBoards; i++) {
@@ -424,7 +421,6 @@
                 cardBtn.addEventListener('click', function() {
                     const cardId = parseInt(this.dataset.id);
                     
-                    // አሁንም ሌላ ሰው የያዘውን መፈተሽ
                     takenCards = new Set(JSON.parse(localStorage.getItem('ayat_taken_cards') || '[]'));
                     if (takenCards.has(cardId)) {
                         alert("ይህ ካርድ በሌላ ተጫዋች ተይዟል!");
@@ -436,7 +432,6 @@
                         selectedCards = selectedCards.filter(id => id !== cardId);
                         this.classList.remove('selected');
                         
-                        // ካርዱን ካነሳው እና ገና 0 ካርድ ከቀረ ሰዓቱ ይቆማል
                         if (selectedCards.length === 0) {
                             stopCardCountdown();
                         }
@@ -445,7 +440,6 @@
                             selectedCards.push(cardId);
                             this.classList.add('selected');
 
-                            // ተጫዋቹ የመጀመሪያውን ካርድ ሲመርጥ ብቻ የጋራ ሰዓቱ ይጀምራል
                             if (!timerStarted) {
                                 startSyncedCountdown();
                             }
@@ -459,14 +453,16 @@
             }
         }
 
-        // ለሁሉም ተጫዋቾች ፍጹም እኩል የሆነ የሰዓት ቆጣሪ (Global Epoch Sync)
+        // መተግበሪያው ሲከፈት ግሪዱን አስቀድሞ ማዘጋጀት
+        initCardsGrid();
+
         function startSyncedCountdown() {
             timerStarted = true;
             clearInterval(cardCountdownInterval);
 
             function updateTimer() {
                 let nowSeconds = Math.floor(Date.now() / 1000);
-                let timeLeft = 35 - (nowSeconds % 35); // ከ 35 ሰከንድ ጀምሮ ለሁሉም በአንድነት ይቀንሳል
+                let timeLeft = 35 - (nowSeconds % 35);
 
                 timerDisplay.textContent = `ጨዋታው ሊጀምር: ${timeLeft}ሰ`;
                 timerDisplay.style.color = '#e74c3c';
@@ -480,7 +476,6 @@
                                 walletBalance -= stakeAmount;
                                 updateWallets();
                                 
-                                // የተመረጠውን ካርድ ለሌሎች ተጫዋቾች (በ localStorage በኩል) taken አድርጎ ማስቀመጥ
                                 let currentTaken = JSON.parse(localStorage.getItem('ayat_taken_cards') || '[]');
                                 selectedCards.forEach(id => {
                                     if (!currentTaken.includes(id)) currentTaken.push(id);
@@ -519,13 +514,14 @@
             updateWallets();
         }
 
+        // ጆይን ሲደረግ በቀጥታ ስክሪኑን መቀየር
         joinRoomBtn.addEventListener('click', () => {
             homeScreen.style.display = 'none';
             selectionScreen.style.display = 'block';
             selectedCards = [];
             timerStarted = false;
             stopCardCountdown();
-            renderCardsGrid();
+            initCardsGrid();
             updateWallets();
             winVal.textContent = totalBoards * stakeAmount;
         });
@@ -573,4 +569,15 @@
                     cell.className = 'bingo-cell';
                     if (val === 'F') {
                         cell.textContent = '★';
-                        cell.classList.add('free-cel
+                        cell.classList.add('free-cell', 'marked');
+                    } else {
+                        cell.textContent = val;
+                        cell.addEventListener('click', function() {
+                            if (calledNumbersSet.has(val)) {
+                                this.classList.toggle('marked');
+                            } else {
+                                alert("ይህ ቁጥር ገና አልተጠራም!");
+                            }
+                        });
+                    }
+                    

@@ -343,248 +343,233 @@
     </div>
 
     <script>
-        let tg = window.Telegram.WebApp;
-        if (tg) {
-            try {
-                tg.expand();
-                tg.ready();
-            } catch (e) {}
-        }
-
-        const totalBoards = 300;
-        const maxSelection = 1;
-        let selectedCards = [];
-        let takenCards = new Set();
-        
-        let gameInterval = null;
-        let cardCountdownInterval = null;
-        let currentCardData = null;
-        let calledNumbersSet = new Set();
-        let walletBalance = 500;
-        const stakeAmount = 20;
-        let timerStarted = false;
-        let roundStartTime = 0;
-
-        const homeScreen = document.getElementById('home-screen');
-        const selectionScreen = document.getElementById('selection-screen');
-        const liveGameScreen = document.getElementById('live-game-screen');
-        
-        const joinRoomBtn = document.getElementById('joinRoomBtn');
-        const leaveBtn = document.getElementById('leaveBtn');
-        const exitGameBtn = document.getElementById('exitGameBtn');
-        const bingoClaimBtn = document.getElementById('bingoClaimBtn');
-        
-        const gridContainer = document.getElementById('cardsGrid');
-        const boardsCountText = document.getElementById('boards-count');
-        const timerDisplay = document.getElementById('timer-display');
-        const homeWalletVal = document.getElementById('home-wallet-val');
-        const walletVal = document.getElementById('wallet-val');
-        const winVal = document.getElementById('win-val');
-        const currentBall = document.getElementById('currentBall');
-        const callStatus = document.getElementById('callStatus');
-        const bingoMatrixGrid = document.getElementById('bingoMatrixGrid');
-        const cardNumLabel = document.getElementById('cardNumLabel');
-
-        function showScreen(screenToShow) {
-            homeScreen.classList.remove('active-screen');
-            selectionScreen.classList.remove('active-screen');
-            liveGameScreen.classList.remove('active-screen');
-
-            screenToShow.classList.add('active-screen');
-        }
-
-        function updateWallets() {
-            homeWalletVal.textContent = walletBalance;
-            walletVal.textContent = walletBalance;
-        }
-
-        function generateCardData(cardId) {
-            let seed = cardId * 31337;
-            return {
-                id: cardId,
-                B: getUniqueRandomNumbers(1, 15, 5, seed + 11),
-                I: getUniqueRandomNumbers(16, 30, 5, seed + 22),
-                N: getUniqueRandomNumbers(31, 45, 4, seed + 33),
-                G: getUniqueRandomNumbers(46, 60, 5, seed + 44),
-                O: getUniqueRandomNumbers(61, 75, 5, seed + 55)
-            };
-        }
-
-        function getUniqueRandomNumbers(min, max, count, seed) {
-            let nums = [];
-            let currentSeed = seed;
-            function nextRandom() {
-                currentSeed = (currentSeed * 9301 + 49297) % 233280;
-                return currentSeed / 233280;
+        document.addEventListener("DOMContentLoaded", function() {
+            let tg = window.Telegram.WebApp;
+            if (tg) {
+                try {
+                    tg.expand();
+                    tg.ready();
+                } catch (e) {}
             }
 
-            while(nums.length < count) {
-                let r = Math.floor(nextRandom() * (max - min + 1)) + min;
-                if(!nums.includes(r)) {
-                    nums.push(r);
-                }
+            const totalBoards = 300;
+            const maxSelection = 1;
+            let selectedCards = [];
+            let takenCards = new Set();
+            
+            let gameInterval = null;
+            let cardCountdownInterval = null;
+            let currentCardData = null;
+            let calledNumbersSet = new Set();
+            let walletBalance = 500;
+            const stakeAmount = 20;
+            let timerStarted = false;
+            let roundStartTime = 0;
+
+            const homeScreen = document.getElementById('home-screen');
+            const selectionScreen = document.getElementById('selection-screen');
+            const liveGameScreen = document.getElementById('live-game-screen');
+            
+            const joinRoomBtn = document.getElementById('joinRoomBtn');
+            const leaveBtn = document.getElementById('leaveBtn');
+            const exitGameBtn = document.getElementById('exitGameBtn');
+            const bingoClaimBtn = document.getElementById('bingoClaimBtn');
+            
+            const gridContainer = document.getElementById('cardsGrid');
+            const boardsCountText = document.getElementById('boards-count');
+            const timerDisplay = document.getElementById('timer-display');
+            const homeWalletVal = document.getElementById('home-wallet-val');
+            const walletVal = document.getElementById('wallet-val');
+            const winVal = document.getElementById('win-val');
+            const currentBall = document.getElementById('currentBall');
+            const callStatus = document.getElementById('callStatus');
+            const bingoMatrixGrid = document.getElementById('bingoMatrixGrid');
+            const cardNumLabel = document.getElementById('cardNumLabel');
+
+            function showScreen(screenToShow) {
+                homeScreen.classList.remove('active-screen');
+                selectionScreen.classList.remove('active-screen');
+                liveGameScreen.classList.remove('active-screen');
+
+                screenToShow.classList.add('active-screen');
             }
-            return nums.sort((a, b) => a - b);
-        }
 
-        function initCardsGrid() {
-            gridContainer.innerHTML = '';
-            takenCards = new Set(JSON.parse(localStorage.getItem('ayat_taken_cards') || '[]'));
+            function updateWallets() {
+                homeWalletVal.textContent = walletBalance;
+                walletVal.textContent = walletBalance;
+            }
 
-            for (let i = 1; i <= totalBoards; i++) {
-                const cardBtn = document.createElement('button');
-                cardBtn.type = 'button';
-                cardBtn.className = 'card-box';
-                cardBtn.textContent = i;
-                cardBtn.dataset.id = i;
+            function generateCardData(cardId) {
+                let seed = cardId * 31337;
+                return {
+                    id: cardId,
+                    B: getUniqueRandomNumbers(1, 15, 5, seed + 11),
+                    I: getUniqueRandomNumbers(16, 30, 5, seed + 22),
+                    N: getUniqueRandomNumbers(31, 45, 4, seed + 33),
+                    G: getUniqueRandomNumbers(46, 60, 5, seed + 44),
+                    O: getUniqueRandomNumbers(61, 75, 5, seed + 55)
+                };
+            }
 
-                if (takenCards.has(i)) {
-                    cardBtn.classList.add('taken');
+            function getUniqueRandomNumbers(min, max, count, seed) {
+                let nums = [];
+                let currentSeed = seed;
+                function nextRandom() {
+                    currentSeed = (currentSeed * 9301 + 49297) % 233280;
+                    return currentSeed / 233280;
                 }
 
-                cardBtn.addEventListener('click', function() {
-                    const cardId = parseInt(this.dataset.id);
-                    
-                    takenCards = new Set(JSON.parse(localStorage.getItem('ayat_taken_cards') || '[]'));
-                    if (takenCards.has(cardId)) {
-                        alert("ይህ ካርድ በሌላ ተጫዋች ተይዟል!");
-                        this.classList.add('taken');
-                        return;
+                while(nums.length < count) {
+                    let r = Math.floor(nextRandom() * (max - min + 1)) + min;
+                    if(!nums.includes(r)) {
+                        nums.push(r);
+                    }
+                }
+                return nums.sort((a, b) => a - b);
+            }
+
+            function initCardsGrid() {
+                gridContainer.innerHTML = '';
+                takenCards = new Set(JSON.parse(localStorage.getItem('ayat_taken_cards') || '[]'));
+
+                for (let i = 1; i <= totalBoards; i++) {
+                    const cardBtn = document.createElement('button');
+                    cardBtn.type = 'button';
+                    cardBtn.className = 'card-box';
+                    cardBtn.textContent = i;
+                    cardBtn.dataset.id = i;
+
+                    if (takenCards.has(i)) {
+                        cardBtn.classList.add('taken');
                     }
 
-                    if (selectedCards.includes(cardId)) {
-                        selectedCards = selectedCards.filter(id => id !== cardId);
-                        this.classList.remove('selected');
+                    cardBtn.onclick = function() {
+                        const cardId = parseInt(this.dataset.id);
                         
-                        if (selectedCards.length === 0) {
-                            stopCardCountdown();
+                        takenCards = new Set(JSON.parse(localStorage.getItem('ayat_taken_cards') || '[]'));
+                        if (takenCards.has(cardId)) {
+                            alert("ይህ ካርድ በሌላ ተጫዋች ተይዟል!");
+                            this.classList.add('taken');
+                            return;
                         }
-                    } else {
-                        if (selectedCards.length < maxSelection) {
-                            selectedCards.push(cardId);
-                            this.classList.add('selected');
 
-                            if (!timerStarted) {
-                                startSyncedCountdown();
+                        if (selectedCards.includes(cardId)) {
+                            selectedCards = selectedCards.filter(id => id !== cardId);
+                            this.classList.remove('selected');
+                            
+                            if (selectedCards.length === 0) {
+                                stopCardCountdown();
                             }
                         } else {
-                            alert(`እባክዎ ከ ${maxSelection} በላይ ካርድ መምረጥ አይችሉም!`);
-                        }
-                    }
-                    boardsCountText.textContent = `Boards: ${selectedCards.length}/${maxSelection}`;
-                });
-                gridContainer.appendChild(cardBtn);
-            }
-        }
+                            if (selectedCards.length < maxSelection) {
+                                selectedCards.push(cardId);
+                                this.classList.add('selected');
 
-        function startSyncedCountdown() {
-            timerStarted = true;
-            clearInterval(cardCountdownInterval);
-
-            function updateTimer() {
-                let nowSeconds = Math.floor(Date.now() / 1000);
-                let timeLeft = 35 - (nowSeconds % 35);
-
-                timerDisplay.textContent = `ጨዋታው ሊጀምር: ${timeLeft}ሰ`;
-                timerDisplay.style.color = '#e74c3c';
-
-                if (timeLeft <= 1) {
-                    clearInterval(cardCountdownInterval);
-                    
-                    if (selectionScreen.classList.contains('active-screen')) {
-                        if (selectedCards.length > 0) {
-                            if (walletBalance >= stakeAmount) {
-                                walletBalance -= stakeAmount;
-                                updateWallets();
-                                
-                                let currentTaken = JSON.parse(localStorage.getItem('ayat_taken_cards') || '[]');
-                                selectedCards.forEach(id => {
-                                    if (!currentTaken.includes(id)) currentTaken.push(id);
-                                });
-                                localStorage.setItem('ayat_taken_cards', JSON.stringify(currentTaken));
-
-                                roundStartTime = nowSeconds + timeLeft;
-                                launchLiveGame();
+                                if (!timerStarted) {
+                                    startSyncedCountdown();
+                                }
                             } else {
-                                alert("ሂሳብዎ በቂ አይደለም!");
+                                alert(`እባክዎ ከ ${maxSelection} በላይ ካርድ መምረጥ አይችሉም!`);
+                            }
+                        }
+                        boardsCountText.textContent = `Boards: ${selectedCards.length}/${maxSelection}`;
+                    };
+                    gridContainer.appendChild(cardBtn);
+                }
+            }
+
+            function startSyncedCountdown() {
+                timerStarted = true;
+                clearInterval(cardCountdownInterval);
+
+                function updateTimer() {
+                    let nowSeconds = Math.floor(Date.now() / 1000);
+                    let timeLeft = 35 - (nowSeconds % 35);
+
+                    timerDisplay.textContent = `ጨዋታው ሊጀምር: ${timeLeft}ሰ`;
+                    timerDisplay.style.color = '#e74c3c';
+
+                    if (timeLeft <= 1) {
+                        clearInterval(cardCountdownInterval);
+                        
+                        if (selectionScreen.classList.contains('active-screen')) {
+                            if (selectedCards.length > 0) {
+                                if (walletBalance >= stakeAmount) {
+                                    walletBalance -= stakeAmount;
+                                    updateWallets();
+                                    
+                                    let currentTaken = JSON.parse(localStorage.getItem('ayat_taken_cards') || '[]');
+                                    selectedCards.forEach(id => {
+                                        if (!currentTaken.includes(id)) currentTaken.push(id);
+                                    });
+                                    localStorage.setItem('ayat_taken_cards', JSON.stringify(currentTaken));
+
+                                    roundStartTime = nowSeconds + timeLeft;
+                                    launchLiveGame();
+                                } else {
+                                    alert("ሂሳብዎ በቂ አይደለም!");
+                                    resetSelectionScreen();
+                                }
+                            } else {
+                                alert("ጊዜው አልቋል! ካርድ አልመረጡም ወደ መነሻ ይመለሳሉ።");
                                 resetSelectionScreen();
                             }
-                        } else {
-                            alert("ጊዜው አልቋል! ካርድ አልመረጡም ወደ መነሻ ይመለሳሉ።");
-                            resetSelectionScreen();
                         }
                     }
                 }
+
+                updateTimer();
+                cardCountdownInterval = setInterval(updateTimer, 1000);
             }
 
-            updateTimer();
-            cardCountdownInterval = setInterval(updateTimer, 1000);
-        }
+            function stopCardCountdown() {
+                timerStarted = false;
+                clearInterval(cardCountdownInterval);
+                timerDisplay.textContent = `ካርድ ይምረጡ...`;
+                timerDisplay.style.color = '#f1c40f';
+            }
 
-        function stopCardCountdown() {
-            timerStarted = false;
-            clearInterval(cardCountdownInterval);
-            timerDisplay.textContent = `ካርድ ይምረጡ...`;
-            timerDisplay.style.color = '#f1c40f';
-        }
+            function resetSelectionScreen() {
+                selectedCards = [];
+                stopCardCountdown();
+                showScreen(homeScreen);
+                updateWallets();
+            }
 
-        function resetSelectionScreen() {
-            selectedCards = [];
-            stopCardCountdown();
-            showScreen(homeScreen);
-            updateWallets();
-        }
+            // JOIN ROOM አዝራር ስራውን በአስተማማኝ ሁኔታ እንዲሰራ ተደርጓል
+            if (joinRoomBtn) {
+                joinRoomBtn.onclick = function() {
+                    selectedCards = [];
+                    timerStarted = false;
+                    stopCardCountdown();
+                    initCardsGrid();
+                    updateWallets();
+                    winVal.textContent = totalBoards * stakeAmount;
+                    showScreen(selectionScreen);
+                };
+            }
 
-        //  JOIN ROOM አዝራር በቀጥታ ስክሪኑን እንዲቀይር የተደረገበት ትክክለኛ አሰራር
-        joinRoomBtn.addEventListener('click', function() {
-            selectedCards = [];
-            timerStarted = false;
-            stopCardCountdown();
-            initCardsGrid();
-            updateWallets();
-            winVal.textContent = totalBoards * stakeAmount;
-            showScreen(selectionScreen);
-        });
+            if (leaveBtn) {
+                leaveBtn.onclick = function() {
+                    stopCardCountdown();
+                    showScreen(homeScreen);
+                };
+            }
 
-        leaveBtn.addEventListener('click', function() {
-            stopCardCountdown();
-            showScreen(homeScreen);
-        });
+            function launchLiveGame() {
+                stopCardCountdown();
+                showScreen(liveGameScreen);
+                
+                const chosenId = selectedCards[0];
+                currentCardData = generateCardData(chosenId);
+                cardNumLabel.textContent = `የካርቴል ቁጥር ${chosenId}`;
+                
+                renderRenderedCard(currentCardData);
+                startSyncedNumberCalling();
+            }
 
-        function launchLiveGame() {
-            stopCardCountdown();
-            showScreen(liveGameScreen);
-            
-            const chosenId = selectedCards[0];
-            currentCardData = generateCardData(chosenId);
-            cardNumLabel.textContent = `የካርቴል ቁጥር ${chosenId}`;
-            
-            renderRenderedCard(currentCardData);
-            startSyncedNumberCalling();
-        }
-
-        function getLetterForNumber(num) {
-            if (num <= 15) return 'B';
-            if (num <= 30) return 'I';
-            if (num <= 45) return 'N';
-            if (num <= 60) return 'G';
-            return 'O';
-        }
-
-        function renderRenderedCard(cardObj) {
-            bingoMatrixGrid.innerHTML = '';
-            let matrixValues = [
-                [cardObj.B[0], cardObj.I[0], cardObj.N[0], cardObj.G[0], cardObj.O[0]],
-                [cardObj.B[1], cardObj.I[1], cardObj.N[1], cardObj.G[1], cardObj.O[1]],
-                [cardObj.B[2], cardObj.I[2], 'F',          cardObj.G[2], cardObj.O[2]],
-                [cardObj.B[3], cardObj.I[3], cardObj.N[2], cardObj.G[3], cardObj.O[3]],
-                [cardObj.B[4], cardObj.I[4], cardObj.N[3], cardObj.G[4], cardObj.O[4]]
-            ];
-
-            matrixValues.forEach((row) => {
-                row.forEach((val) => {
-                    const cell = document.createElement('div');
-                    cell.className = 'bingo-cell';
-                    if (val === 'F') {
-                        cell.textContent = '★';
-                        cell.classL
+            function getLetterForNumber(num) {
+                if (num <= 15) return 'B';
+                if (num <= 30) return 'I';
+                if (num <= 45) return 'N';
+                if (num <= 60) retu

@@ -59,6 +59,46 @@
             color: #f1c40f;
         }
 
+        .wallet-box {
+            background: #1f143a;
+            padding: 15px;
+            border-radius: 14px;
+            margin-bottom: 15px;
+            border: 1px solid #3c2a6d;
+        }
+
+        .wallet-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .wallet-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .wallet-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .deposit-btn {
+            background: #2ecc71;
+            color: #fff;
+        }
+
+        .withdraw-btn {
+            background: #e74c3c;
+            color: #fff;
+        }
+
         .room-box {
             background: #1f143a;
             padding: 15px;
@@ -282,9 +322,15 @@
             <span>DEMO • 300 CARD CAPACITY</span>
         </div>
         
-        <div style="background: #1f143a; padding: 12px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #3c2a6d; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 14px; color: #a08cc4;">የኪስ ቦርሳ (Wallet):</span>
-            <span style="font-size: 16px; font-weight: bold; color: #2ecc71;"><b id="home-wallet-val">500</b> Birr</span>
+        <div class="wallet-box">
+            <div class="wallet-row">
+                <span style="font-size: 14px; color: #a08cc4;">የኪስ ቦርሳ (Wallet):</span>
+                <span style="font-size: 18px; font-weight: bold; color: #2ecc71;"><b id="home-wallet-val">500</b> Birr</span>
+            </div>
+            <div class="wallet-actions">
+                <button id="depositBtn" class="wallet-btn deposit-btn" type="button">+ Deposit</button>
+                <button id="withdrawBtn" class="wallet-btn withdraw-btn" type="button">- Withdraw</button>
+            </div>
         </div>
 
         <div class="room-box">
@@ -389,6 +435,8 @@
             const leaveBtn = document.getElementById('leaveBtn');
             const exitGameBtn = document.getElementById('exitGameBtn');
             const bingoClaimBtn = document.getElementById('bingoClaimBtn');
+            const depositBtn = document.getElementById('depositBtn');
+            const withdrawBtn = document.getElementById('withdrawBtn');
             
             const gridContainer = document.getElementById('cardsGrid');
             const boardsCountText = document.getElementById('boards-count');
@@ -415,6 +463,44 @@
             function updateWallets() {
                 homeWalletVal.textContent = walletBalance;
                 walletVal.textContent = walletBalance;
+            }
+
+            // DEPOSIT LOGIC
+            if (depositBtn) {
+                depositBtn.addEventListener('click', function() {
+                    let amountStr = prompt("ማስገባት የሚፈልጉትን መጠን (ብር) ያስገቡ:", "100");
+                    if (amountStr) {
+                        let amount = parseFloat(amountStr);
+                        if (!isNaN(amount) && amount > 0) {
+                            walletBalance += amount;
+                            updateWallets();
+                            alert(`በተሳካ ሁኔታ ${amount} ብር ገቢ (Deposit) አድርገዋል!`);
+                        } else {
+                            alert("እባክዎ ትክክለኛ ቁጥር ያስገቡ።");
+                        }
+                    }
+                });
+            }
+
+            // WITHDRAW LOGIC
+            if (withdrawBtn) {
+                withdrawBtn.addEventListener('click', function() {
+                    let amountStr = prompt("ማውጣት የሚፈልጉትን መጠን (ብር) ያስገቡ:", "100");
+                    if (amountStr) {
+                        let amount = parseFloat(amountStr);
+                        if (!isNaN(amount) && amount > 0) {
+                            if (walletBalance >= amount) {
+                                walletBalance -= amount;
+                                updateWallets();
+                                alert(`በተሳካ ሁኔታ ${amount} ብር ከዋሌትዎ ወጥቷል (Withdraw)!`);
+                            } else {
+                                alert("በሂሳብዎ ውስጥ በቂ ገንዘብ የለም!");
+                            }
+                        } else {
+                            alert("እባክዎ ትክክለኛ ቁጥር ያስገቡ።");
+                        }
+                    }
+                });
             }
 
             function generateCardData(cardId) {
@@ -503,237 +589,4 @@
                     timerDisplay.textContent = `ጨዋታው ሊጀምር: ${timeLeft}ሰ`;
                     timerDisplay.style.color = '#e74c3c';
 
-                    if (timeLeft <= 1) {
-                        clearInterval(cardCountdownInterval);
-                        
-                        if (selectionScreen.classList.contains('active-screen')) {
-                            if (selectedCards.length > 0) {
-                                if (walletBalance >= stakeAmount) {
-                                    walletBalance -= stakeAmount;
-                                    updateWallets();
-                                    
-                                    roundStartTime = nowSeconds + timeLeft;
-                                    launchLiveGame();
-                                } else {
-                                    alert("ሂሳብዎ በቂ አይደለም!");
-                                    resetSelectionScreen();
-                                }
-                            } else {
-                                alert("ጊዜው አልቋል! ካርድ አልመረጡም ወደ መነሻ ይመለሳሉ።");
-                                resetSelectionScreen();
-                            }
-                        }
-                    }
-                }
-
-                updateTimer();
-                cardCountdownInterval = setInterval(updateTimer, 1000);
-            }
-
-            function stopCardCountdown() {
-                timerStarted = false;
-                clearInterval(cardCountdownInterval);
-                timerDisplay.textContent = `ካርድ ይምረጡ...`;
-                timerDisplay.style.color = '#f1c40f';
-            }
-
-            function resetSelectionScreen() {
-                selectedCards = [];
-                stopCardCountdown();
-                showScreen(homeScreen);
-                updateWallets();
-            }
-
-            function startNewRoundSelection() {
-                selectedCards = [];
-                timerStarted = false;
-                stopCardCountdown();
-                localStorage.removeItem('ayat_taken_cards');
-                localStorage.removeItem('ayat_game_ended');
-                localStorage.removeItem('ayat_winner_card');
-                initCardsGrid();
-                updateWallets();
-                winVal.textContent = totalBoards * stakeAmount;
-                showScreen(selectionScreen);
-            }
-
-            if (joinRoomBtn) {
-                joinRoomBtn.addEventListener('click', function() {
-                    startNewRoundSelection();
-                });
-            }
-
-            if (leaveBtn) {
-                leaveBtn.addEventListener('click', function() {
-                    stopCardCountdown();
-                    showScreen(homeScreen);
-                });
-            }
-
-            function launchLiveGame() {
-                stopCardCountdown();
-                showScreen(liveGameScreen);
-                
-                chosenCardId = selectedCards[0];
-                currentCardData = generateCardData(chosenCardId);
-                cardNumLabel.textContent = `የካርቴል ቁጥር ${chosenCardId}`;
-                
-                renderRenderedCard(currentCardData);
-                startSyncedNumberCalling();
-            }
-
-            function getLetterForNumber(num) {
-                if (num <= 15) return 'B';
-                if (num <= 30) return 'I';
-                if (num <= 45) return 'N';
-                if (num <= 60) return 'G';
-                return 'O';
-            }
-
-            function renderRenderedCard(cardObj) {
-                bingoMatrixGrid.innerHTML = '';
-                let matrixValues = [
-                    [cardObj.B[0], cardObj.I[0], cardObj.N[0], cardObj.G[0], cardObj.O[0]],
-                    [cardObj.B[1], cardObj.I[1], cardObj.N[1], cardObj.G[1], cardObj.O[1]],
-                    [cardObj.B[2], cardObj.I[2], 'F',          cardObj.G[2], cardObj.O[2]],
-                    [cardObj.B[3], cardObj.I[3], cardObj.N[2], cardObj.G[3], cardObj.O[3]],
-                    [cardObj.B[4], cardObj.I[4], cardObj.N[3], cardObj.G[4], cardObj.O[4]]
-                ];
-
-                matrixValues.forEach((row) => {
-                    row.forEach((val) => {
-                        const cell = document.createElement('div');
-                        cell.className = 'bingo-cell';
-                        if (val === 'F') {
-                            cell.textContent = '★';
-                            cell.classList.add('free-cell', 'marked');
-                        } else {
-                            cell.textContent = val;
-                            cell.onclick = function() {
-                                if (localStorage.getItem('ayat_game_ended') === 'true') return;
-
-                                if (calledNumbersSet.has(val)) {
-                                    this.classList.toggle('marked');
-                                } else {
-                                    alert("ይህ ቁጥር ገና አልተጠራም!");
-                                }
-                            };
-                        }
-                        bingoMatrixGrid.appendChild(cell);
-                    });
-                });
-            }
-
-            function startSyncedNumberCalling() {
-                calledNumbersSet.clear();
-                
-                let pool = Array.from({length: 75}, (_, i) => i + 1);
-                let shuffleSeed = 88888;
-                function pseudoRandom() {
-                    shuffleSeed = (shuffleSeed * 9301 + 49297) % 233280;
-                    return shuffleSeed / 233280;
-                }
-                pool.sort(() => pseudoRandom() - 0.5);
-
-                callStatus.textContent = "ቁጥሮች እየተጠሩ ነው...";
-
-                if (roundStartTime === 0) {
-                    roundStartTime = Math.floor(Date.now() / 1000);
-                }
-
-                function updateCalledNumbersByTime() {
-                    if (localStorage.getItem('ayat_game_ended') === 'true') {
-                        clearInterval(gameInterval);
-                        let winningCard = localStorage.getItem('ayat_winner_card') || "??";
-                        resultTitle.textContent = "🎉 ዙሩ አልቋል!";
-                        resultDesc.textContent = `የካርቴል ቁጥር ${winningCard} BINGO አሸንፏል!`;
-                        showScreen(resultScreen);
-
-                        setTimeout(() => {
-                            startNewRoundSelection();
-                        }, 3000);
-                        return;
-                    }
-
-                    let currentTimestamp = Math.floor(Date.now() / 1000);
-                    let elapsedSeconds = currentTimestamp - roundStartTime;
-                    let index = Math.floor(elapsedSeconds / 2.5);
-
-                    if (index < pool.length) {
-                        calledNumbersSet.clear();
-                        let currentPoolSlice = pool.slice(0, index + 1);
-                        currentPoolSlice.forEach(n => calledNumbersSet.add(n));
-
-                        let latestNum = pool[index];
-                        let letter = getLetterForNumber(latestNum);
-                        currentBall.textContent = `${letter}-${latestNum}`;
-                    } else {
-                        clearInterval(gameInterval);
-                        callStatus.textContent = "ዙሩ አልቋል!";
-                        localStorage.setItem('ayat_game_ended', 'true');
-                        
-                        resultTitle.textContent = "ዙሩ አልቋል (Round Over)";
-                        resultDesc.textContent = "ጊዜው አልቋል ወይም ማንም አላሸነፈም።";
-                        showScreen(resultScreen);
-
-                        setTimeout(() => {
-                            startNewRoundSelection();
-                        }, 3000);
-                    }
-                }
-
-                updateCalledNumbersByTime();
-                gameInterval = setInterval(updateCalledNumbersByTime, 500);
-            }
-
-            if (bingoClaimBtn) {
-                bingoClaimBtn.addEventListener('click', function() {
-                    if (localStorage.getItem('ayat_game_ended') === 'true') {
-                        alert("ይህ ዙር አልቋል!");
-                        return;
-                    }
-
-                    const cells = bingoMatrixGrid.querySelectorAll('.bingo-cell');
-                    let markedCount = 0;
-                    cells.forEach(c => {
-                        if (c.classList.contains('marked')) {
-                            markedCount++;
-                        }
-                    });
-
-                    if (markedCount >= 5) {
-                        localStorage.setItem('ayat_game_ended', 'true');
-                        localStorage.setItem('ayat_winner_card', chosenCardId);
-                        clearInterval(gameInterval);
-
-                        walletBalance += (totalBoards * stakeAmount);
-                        updateWallets();
-                        
-                        resultTitle.textContent = "🎉 እንኳን ደስ አለህ!";
-                        resultDesc.textContent = `የካርቴል ቁጥር ${chosenCardId} BINGO አሸንፏል! ሽልማቱ ወደ ቦርሳህ ገብቷል።`;
-                        showScreen(resultScreen);
-
-                        setTimeout(() => {
-                            startNewRoundSelection();
-                        }, 3000);
-                    } else {
-                        alert("⚠️ ገና አልተሞላም! ተጨማሪ ቁጥሮች ይጠብቁ።");
-                    }
-                });
-            }
-
-            if (exitGameBtn) {
-                exitGameBtn.addEventListener('click', function() {
-                    clearInterval(gameInterval);
-                    showScreen(homeScreen);
-                    selectedCards = [];
-                    currentBall.textContent = '--';
-                });
-            }
-
-            showScreen(homeScreen);
-            updateWallets();
-        });
-    </script>
-</body>
-</html>
+                    

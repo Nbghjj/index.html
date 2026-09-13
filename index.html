@@ -357,7 +357,7 @@
     </div>
 
     <script>
-        (function() {
+        document.addEventListener("DOMContentLoaded", function() {
             let tg = window.Telegram.WebApp;
             if (tg) {
                 try {
@@ -558,16 +558,16 @@
             }
 
             if (joinRoomBtn) {
-                joinRoomBtn.onclick = function() {
+                joinRoomBtn.addEventListener('click', function() {
                     startNewRoundSelection();
-                };
+                });
             }
 
             if (leaveBtn) {
-                leaveBtn.onclick = function() {
+                leaveBtn.addEventListener('click', function() {
                     stopCardCountdown();
                     showScreen(homeScreen);
-                };
+                });
             }
 
             function launchLiveGame() {
@@ -575,6 +575,4 @@
                 showScreen(liveGameScreen);
                 
                 chosenCardId = selectedCards[0];
-                currentCardData = generateCardData(chosenCardId);
-                cardNumLabel.textContent = `የካርቴል ቁጥር ${chosenCardId}`;
-     
+                currentCardData = generateCardData(chosenCardId)

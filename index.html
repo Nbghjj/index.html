@@ -258,7 +258,6 @@
             font-weight: bold;
         }
 
-        /* 4. RESULT SCREEN */
         .result-card {
             background: #1f143a;
             border: 2px solid #f39c12;
@@ -358,7 +357,7 @@
     </div>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
+        (function() {
             let tg = window.Telegram.WebApp;
             if (tg) {
                 try {
@@ -577,4 +576,5 @@
                 
                 chosenCardId = selectedCards[0];
                 currentCardData = generateCardData(chosenCardId);
- 
+                cardNumLabel.textContent = `የካርቴል ቁጥር ${chosenCardId}`;
+     

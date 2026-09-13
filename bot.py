@@ -23,6 +23,7 @@ WEB_APP_URL = os.getenv("WEB_APP_URL", "https://nbghjj.github.io/")
 # =========================
 users = {}
 pending_withdrawals = {}
+pending_deposits = {}
 
 # =========================
 # KEYBOARDS
@@ -134,32 +135,21 @@ async def play_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def deposit(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not registered(update.effective_user.id):
-        await update.message.reply_text("❌ መጀመሪያ /register ያድርጉ።", reply_markup=register_keyboard())
-        return
-
-    await update.message.reply_text(
-        "💰 *DEPOSIT INSTRUCTIONS*\n\n"
-        "ክፍያ ለመፈጸም ከታች ባሉት የክፍያ አማራጮች ይጠቀሙ፦\n\n"
-        "📱 *Telebirr / CBE Birr*\n"
-        "• Phone: `0940484108`\n"
-        "• Name: *Kirubel*\n\n"
-        "📌 *ክፍያ ከፈፀሙ በኋላ፦*\n"
-        "1️⃣ የከፈሉበትን የ Transaction SMS ማረጋገጫ ወይም Receipt Screenshot ለAdmin ይላኩ።\n"
-        "2️⃣ Admin መረጃውን አረጋግጦ Balance ይጨምርልዎታል።",
-        parse_mode="Markdown",
-        reply_markup=main_keyboard(),
-    )
-
-async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     if not registered(uid):
         await update.message.reply_text("❌ መጀመሪያ /register ያድርጉ።", reply_markup=register_keyboard())
         return
 
-    if not context.args:
+    if len(context.args) < 2:
         await update.message.reply_text(
-            "💸 Withdrawal amount ያስገቡ።\n\nምሳሌ፦ `/withdraw 100`",
+            "💰 *DEPOSIT INSTRUCTIONS*\n\n"
+            "ክፍያ ለመፈጸም ከታች ባሉት የክፍያ አማራጮች ይጠቀሙ፦\n"
+            "📱 *Telebirr / CBE Birr*\n"
+            "• Phone: `0940484108`\n"
+            "• Name: *Kirubel*\n\n"
+            "📌 *ብር ከላኩ በኋላ በዚሁ መልኩ ላኩ፦*\n"
+            "አጠቃቀም፦ `/deposit <መጠን> <የከፈሉበት_ቁጥር>`\n"
+            "ምሳሌ፦ `/deposit 100 0911223344`",
             parse_mode="Markdown",
             reply_markup=main_keyboard(),
         )
@@ -167,8 +157,70 @@ async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         amount = float(context.args[0])
+        account_info = " ".join(context.args[1:])
     except ValueError:
-        await update.message.reply_text("❌ Amount ቁጥር መሆን አለበት።")
+        await update.message.reply_text("❌ ትክክለኛ መጠን ያስገቡ።\nምሳሌ፦ `/deposit 100 0911223344`", parse_mode="Markdown")
+        return
+
+    if amount <= 0:
+        await update.message.reply_text("❌ Amount ከ0 በላይ መሆን አለበት።")
+        return
+
+    req_id = f"d_{uid}_{random.randint(1000, 9999)}"
+    pending_deposits[req_id] = {"user_id": uid, "amount": amount, "account": account_info}
+
+    await update.message.reply_text(
+        f"✅ የ {amount:.2f} Birr ዴፖዚት ጥያቄዎ (በ አካውንት: {account_info}) ተልኳል!\n\n"
+        "⏳ Admin አረጋግጦ አካውንትዎ ላይ እስኪያስተካክለው በጥበቃ ላይ ይገኛል።",
+        reply_markup=main_keyboard(),
+    )
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("✅ Approve", callback_data=f"app_{req_id}"),
+            InlineKeyboardButton("❌ Reject", callback_data=f"rej_{req_id}")
+        ]
+    ])
+
+    try:
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=(
+                "💵 *NEW DEPOSIT REQUEST*\n\n"
+                f"👤 Name: {update.effective_user.full_name}\n"
+                f"🆔 User ID: `{uid}`\n"
+                f"📱 User Phone: `{users[uid]['phone']}`\n"
+                f"💵 Amount: *{amount:.2f} Birr*\n"
+                f"💳 Sent From Account: `{account_info}`"
+            ),
+            parse_mode="Markdown",
+            reply_markup=keyboard,
+        )
+    except Exception as e:
+        print("Admin deposit notification error:", e)
+
+async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    if not registered(uid):
+        await update.message.reply_text("❌ መጀመሪያ /register ያድርጉ።", reply_markup=register_keyboard())
+        return
+
+    if len(context.args) < 2:
+        await update.message.reply_text(
+            "💸 *WITHDRAW INSTRUCTIONS*\n\n"
+            "ገንዘብ ማውጣት ሲፈልጉ በሚከተለው መልኩ ይጠይቁ፦\n"
+            "አጠቃቀም፦ `/withdraw <መጠን> <የሚቀበሉበት_ቁጥር/ባንክ>`\n"
+            "ምሳሌ፦ `/withdraw 50 0911223344`",
+            parse_mode="Markdown",
+            reply_markup=main_keyboard(),
+        )
+        return
+
+    try:
+        amount = float(context.args[0])
+        account_info = " ".join(context.args[1:])
+    except ValueError:
+        await update.message.reply_text("❌ ትክክለኛ መጠን ያስገቡ።\nምሳሌ፦ `/withdraw 50 0911223344`", parse_mode="Markdown")
         return
 
     if amount <= 0:
@@ -180,19 +232,20 @@ async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Insufficient balance.\nYour balance: {balance_now:.2f} Birr")
         return
 
-    req_id = f"{uid}_{int(random.randint(1000, 9999))}"
-    pending_withdrawals[req_id] = {"user_id": uid, "amount": amount}
+    req_id = f"w_{uid}_{random.randint(1000, 9999)}"
+    pending_withdrawals[req_id] = {"user_id": uid, "amount": amount, "account": account_info}
 
     await update.message.reply_text(
         f"✅ Withdrawal request received.\n\n💰 Amount: {amount:.2f} Birr\n"
+        f"💳 Target Account: {account_info}\n"
         "⏳ Admin እስኪያረጋግጥ ድረስ ይጠብቁ።",
         reply_markup=main_keyboard(),
     )
 
     keyboard = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("✅ Approve", callback_data=f"app_w_{req_id}"),
-            InlineKeyboardButton("❌ Reject", callback_data=f"rej_w_{req_id}")
+            InlineKeyboardButton("✅ Approve", callback_data=f"app_{req_id}"),
+            InlineKeyboardButton("❌ Reject", callback_data=f"rej_{req_id}")
         ]
     ])
 
@@ -203,55 +256,66 @@ async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "💸 *NEW WITHDRAW REQUEST*\n\n"
                 f"👤 Name: {update.effective_user.full_name}\n"
                 f"🆔 User ID: `{uid}`\n"
-                f"📱 Phone: `{users[uid]['phone']}`\n"
+                f"📱 User Phone: `{users[uid]['phone']}`\n"
                 f"💵 Amount: *{amount:.2f} Birr*\n"
+                f"💳 Target Account: `{account_info}`\n"
                 f"💰 Current Balance: {balance_now:.2f} Birr"
             ),
             parse_mode="Markdown",
             reply_markup=keyboard,
         )
     except Exception as e:
-        print("Admin notification error:", e)
+        print("Admin withdraw notification error:", e)
 
 # =========================
-# ADMIN CALLBACK HANDLER
+# ADMIN CALLBACK HANDLER (APPROVE / REJECT)
 # =========================
 async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
     data = query.data
-    if data.startswith("app_w_"):
-        req_id = data.replace("app_w_", "")
-        if req_id in pending_withdrawals:
-            req_info = pending_withdrawals.pop(req_id)
+
+    # Check pending deposits
+    for key, req_info in list(pending_deposits.items()):
+        if key in data:
+            pending_deposits.pop(key)
             uid = req_info["user_id"]
             amount = req_info["amount"]
-
-            if users[uid]["balance"] >= amount:
-                users[uid]["balance"] -= amount
-                await query.edit_message_text(f"✅ Withdrawal of {amount} Birr APPROVED for User {uid}.")
-                await context.bot.send_message(
-                    chat_id=uid,
-                    text=f"🎉 የጥያቄዎትን {amount:.2f} Birr withdrawal Admin አጽድቆታል።\n💰 አዲሱ Balance: {users[uid]['balance']:.2f} Birr"
-                )
+            account = req_info["account"]
+            if data.startswith("app"):
+                if uid in users:
+                    users[uid]["balance"] += amount
+                    await query.edit_message_text(f"✅ Deposit of {amount:.2f} Birr from ({account}) APPROVED.\n💰 New Balance: {users[uid]['balance']:.2f}")
+                    await context.bot.send_message(chat_id=uid, text=f"🎉 የ <b>{amount:.2f} Birr</b> ዴፖዚት ጥያቄዎ ጸድቋል!\n💰 አዲሱ Balance: <b>{users[uid]['balance']:.2f} Birr</b>", parse_mode="HTML")
+                else:
+                    await query.edit_message_text("❌ User not found.")
             else:
-                await query.edit_message_text(f"❌ Failed: User ID {uid} has insufficient balance now.")
-        else:
-            await query.edit_message_text("⚠️ Request not found or already processed.")
+                await query.edit_message_text(f"❌ Deposit REJECTED.")
+                await context.bot.send_message(chat_id=uid, text=f"❌ የ {amount:.2f} Birr ዴፖዚት ጥያቄዎ ውድቅ ተደርጓል።")
+            return
 
-    elif data.startswith("rej_w_"):
-        req_id = data.replace("rej_w_", "")
-        if req_id in pending_withdrawals:
-            req_info = pending_withdrawals.pop(req_id)
+    # Check pending withdrawals
+    for key, req_info in list(pending_withdrawals.items()):
+        if key in data:
+            pending_withdrawals.pop(key)
             uid = req_info["user_id"]
             amount = req_info["amount"]
+            account = req_info["account"]
+            if data.startswith("app"):
+                if uid in users and users[uid]["balance"] >= amount:
+                    users[uid]["balance"] -= amount
+                    await query.edit_message_text(f"✅ Withdraw of {amount:.2f} Birr to ({account}) APPROVED.\n💰 Remaining: {users[uid]['balance']:.2f}")
+                    await context.bot.send_message(chat_id=uid, text=f"🎉 የ {amount:.2f} Birr withdrawal ጥያቄዎ ወደ ({account}) ተፈጽሟል!\n💰 አዲሱ Balance: {users[uid]['balance']:.2f} Birr")
+                else:
+                    await query.edit_message_text(f"❌ User has insufficient balance or not found.")
+                    await context.bot.send_message(chat_id=uid, text=f"❌ የ {amount:.2f} Birr withdrawal ጥያቄዎ አልተሳካም (Balance በቂ አይደለም)።")
+            else:
+                await query.edit_message_text(f"❌ Withdraw REJECTED.")
+                await context.bot.send_message(chat_id=uid, text=f"❌ የ {amount:.2f} Birr withdrawal ጥያቄዎ ውድቅ ተደርጓል።")
+            return
 
-            await query.edit_message_text(f"❌ Withdrawal of {amount} Birr REJECTED.")
-            await context.bot.send_message(
-                chat_id=uid,
-                text=f"❌ የ {amount:.2f} Birr withdrawal ጥያቄዎ ውድቅ ተደርጓል።"
-            )
+    await query.edit_message_text("⚠️ Request not found or already processed.")
 
 # =========================
 # ADMIN COMMANDS
@@ -282,8 +346,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/register - Register with contact\n"
         "/play - Play Bingo WebApp\n"
         "/balance - Check balance\n"
-        "/deposit - Deposit\n"
-        "/withdraw 100 - Withdraw 100 Birr",
+        "/deposit <amount> <account> - Request deposit\n"
+        "/withdraw <amount> <account> - Request withdraw",
         parse_mode="Markdown",
         reply_markup=main_keyboard(),
     )

@@ -174,14 +174,6 @@
             border-color: #fff;
         }
 
-        .card-box.taken {
-            background: #444;
-            color: #777;
-            cursor: not-allowed;
-            border-color: #333;
-            text-decoration: line-through;
-        }
-
         .live-game-layout {
             display: flex;
             flex-direction: column;
@@ -265,6 +257,20 @@
             font-size: 12px;
             font-weight: bold;
         }
+
+        /* 4. RESULT SCREEN */
+        .result-card {
+            background: #1f143a;
+            border: 2px solid #f39c12;
+            border-radius: 14px;
+            text-align: center;
+            padding: 25px;
+            margin-top: 20px;
+        }
+        .result-card h2 {
+            color: #f39c12;
+            margin-top: 0;
+        }
     </style>
 </head>
 <body>
@@ -342,6 +348,15 @@
         </div>
     </div>
 
+    <!-- 4. RESULT SCREEN -->
+    <div id="result-screen" class="container">
+        <div class="result-card">
+            <h2 id="resultTitle">የዙሩ ውጤት</h2>
+            <p id="resultDesc" style="color: #a08cc4; font-size: 14px;"></p>
+            <p style="color: #f1c40f; font-size: 12px; margin-top: 15px;">ወደ አዲስ ካርድ መምረጫ በራሱ እየተመለሰ ነው...</p>
+        </div>
+    </div>
+
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             let tg = window.Telegram.WebApp;
@@ -355,7 +370,6 @@
             const totalBoards = 300;
             const maxSelection = 1;
             let selectedCards = [];
-            let takenCards = new Set();
             
             let gameInterval = null;
             let cardCountdownInterval = null;
@@ -365,10 +379,12 @@
             const stakeAmount = 20;
             let timerStarted = false;
             let roundStartTime = 0;
+            let chosenCardId = null;
 
             const homeScreen = document.getElementById('home-screen');
             const selectionScreen = document.getElementById('selection-screen');
             const liveGameScreen = document.getElementById('live-game-screen');
+            const resultScreen = document.getElementById('result-screen');
             
             const joinRoomBtn = document.getElementById('joinRoomBtn');
             const leaveBtn = document.getElementById('leaveBtn');
@@ -385,11 +401,14 @@
             const callStatus = document.getElementById('callStatus');
             const bingoMatrixGrid = document.getElementById('bingoMatrixGrid');
             const cardNumLabel = document.getElementById('cardNumLabel');
+            const resultTitle = document.getElementById('resultTitle');
+            const resultDesc = document.getElementById('resultDesc');
 
             function showScreen(screenToShow) {
                 homeScreen.classList.remove('active-screen');
                 selectionScreen.classList.remove('active-screen');
                 liveGameScreen.classList.remove('active-screen');
+                resultScreen.classList.remove('active-screen');
 
                 screenToShow.classList.add('active-screen');
             }
@@ -430,9 +449,6 @@
 
             function initCardsGrid() {
                 gridContainer.innerHTML = '';
-                // የድሮውን የተያዘ ካርድ ማህደረ ትውስታ ማጽዳት (ለሙከራ እንዲመች)
-                takenCards = new Set();
-
                 for (let i = 1; i <= totalBoards; i++) {
                     const cardBtn = document.createElement('button');
                     cardBtn.type = 'button';
@@ -441,8 +457,12 @@
                     cardBtn.dataset.id = i;
 
                     cardBtn.onclick = function() {
+                        if (localStorage.getItem('ayat_game_ended') === 'true') {
+                            alert("የቀድሞው ዙር አብቅቷል! እባክዎ ትንሽ ይጠብቁ።");
+                            return;
+                        }
+
                         const cardId = parseInt(this.dataset.id);
-                        
                         if (selectedCards.includes(cardId)) {
                             selectedCards = selectedCards.filter(id => id !== cardId);
                             this.classList.remove('selected');
@@ -473,6 +493,11 @@
                 clearInterval(cardCountdownInterval);
 
                 function updateTimer() {
+                    if (localStorage.getItem('ayat_game_ended') === 'true') {
+                        clearInterval(cardCountdownInterval);
+                        return;
+                    }
+
                     let nowSeconds = Math.floor(Date.now() / 1000);
                     let timeLeft = 35 - (nowSeconds % 35);
 
@@ -520,17 +545,22 @@
                 updateWallets();
             }
 
-            // JOIN ROOM አዝራር ስራውን በአስተማማኝ ሁኔታ እንዲሰራ ተደርጓል
+            function startNewRoundSelection() {
+                selectedCards = [];
+                timerStarted = false;
+                stopCardCountdown();
+                localStorage.removeItem('ayat_taken_cards');
+                localStorage.removeItem('ayat_game_ended');
+                localStorage.removeItem('ayat_winner_card');
+                initCardsGrid();
+                updateWallets();
+                winVal.textContent = totalBoards * stakeAmount;
+                showScreen(selectionScreen);
+            }
+
             if (joinRoomBtn) {
                 joinRoomBtn.onclick = function() {
-                    selectedCards = [];
-                    timerStarted = false;
-                    stopCardCountdown();
-                    localStorage.removeItem('ayat_taken_cards');
-                    initCardsGrid();
-                    updateWallets();
-                    winVal.textContent = totalBoards * stakeAmount;
-                    showScreen(selectionScreen);
+                    startNewRoundSelection();
                 };
             }
 
@@ -545,9 +575,9 @@
                 stopCardCountdown();
                 showScreen(liveGameScreen);
                 
-                const chosenId = selectedCards[0];
-                currentCardData = generateCardData(chosenId);
-                cardNumLabel.textContent = `የካርቴል ቁጥር ${chosenId}`;
+                chosenCardId = selectedCards[0];
+                currentCardData = generateCardData(chosenCardId);
+                cardNumLabel.textContent = `የካርቴል ቁጥር ${chosenCardId}`;
                 
                 renderRenderedCard(currentCardData);
                 startSyncedNumberCalling();
@@ -581,6 +611,8 @@
                         } else {
                             cell.textContent = val;
                             cell.onclick = function() {
+                                if (localStorage.getItem('ayat_game_ended') === 'true') return;
+
                                 if (calledNumbersSet.has(val)) {
                                     this.classList.toggle('marked');
                                 } else {
@@ -611,6 +643,20 @@
                 }
 
                 function updateCalledNumbersByTime() {
+                    // ሌላ ተጫዋች ወይም እኛ አሸንፈን ከሆነ እዚህ ጋር እንቆጣጠራለን
+                    if (localStorage.getItem('ayat_game_ended') === 'true') {
+                        clearInterval(gameInterval);
+                        let winningCard = localStorage.getItem('ayat_winner_card') || "??";
+                        resultTitle.textContent = "🎉 ዙሩ አልቋል!";
+                        resultDesc.textContent = `የካርቴል ቁጥር ${winningCard} BINGO አሸንፏል!`;
+                        showScreen(resultScreen);
+
+                        setTimeout(() => {
+                            startNewRoundSelection();
+                        }, 3000);
+                        return;
+                    }
+
                     let currentTimestamp = Math.floor(Date.now() / 1000);
                     let elapsedSeconds = currentTimestamp - roundStartTime;
                     let index = Math.floor(elapsedSeconds / 2.5);
@@ -626,6 +672,15 @@
                     } else {
                         clearInterval(gameInterval);
                         callStatus.textContent = "ዙሩ አልቋል!";
+                        localStorage.setItem('ayat_game_ended', 'true');
+                        
+                        resultTitle.textContent = "ዙሩ አልቋል (Round Over)";
+                        resultDesc.textContent = "ጊዜው አልቋል ወይም ማንም አላሸነፈም።";
+                        showScreen(resultScreen);
+
+                        setTimeout(() => {
+                            startNewRoundSelection();
+                        }, 3000);
                     }
                 }
 
@@ -635,6 +690,11 @@
 
             if (bingoClaimBtn) {
                 bingoClaimBtn.onclick = function() {
+                    if (localStorage.getItem('ayat_game_ended') === 'true') {
+                        alert("ይህ ዙር አልቋል!");
+                        return;
+                    }
+
                     const cells = bingoMatrixGrid.querySelectorAll('.bingo-cell');
                     let markedCount = 0;
                     cells.forEach(c => {
@@ -644,12 +704,21 @@
                     });
 
                     if (markedCount >= 5) {
+                        // የጨዋታ ማብቂያ ሁኔታ እና ያሸነፈውን ካርቴል ቁጥር ለሁሉም እናሳውቃለን
+                        localStorage.setItem('ayat_game_ended', 'true');
+                        localStorage.setItem('ayat_winner_card', chosenCardId);
+                        clearInterval(gameInterval);
+
                         walletBalance += (totalBoards * stakeAmount);
                         updateWallets();
-                        alert("🎉 እንኳን ደስ አለዎት! BINGO አሸንፈዋል!");
-                        if (tg && tg.close) {
-                            tg.close();
-                        }
+                        
+                        resultTitle.textContent = "🎉 እንኳን ደስ አለህ!";
+                        resultDesc.textContent = `የካርቴል ቁጥር ${chosenCardId} BINGO አሸንፏል! ሽልማቱ ወደ ቦርሳህ ገብቷል።`;
+                        showScreen(resultScreen);
+
+                        setTimeout(() => {
+                            startNewRoundSelection();
+                        }, 3000);
                     } else {
                         alert("⚠️ ገና አልተሞላም! ተጨማሪ ቁጥሮች ይጠብቁ።");
                     }
@@ -665,7 +734,6 @@
                 };
             }
 
-            // የመጀመሪያ መክፈቻ ስክሪን
             showScreen(homeScreen);
             updateWallets();
         });

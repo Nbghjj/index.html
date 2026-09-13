@@ -23,7 +23,7 @@
         .container {
             max-width: 480px;
             margin: 0 auto;
-            display: none !important;
+            display: none;
         }
 
         .container.active-screen {
@@ -452,11 +452,8 @@
             const resultDesc = document.getElementById('resultDesc');
 
             function showScreen(screenToShow) {
-                homeScreen.classList.remove('active-screen');
-                selectionScreen.classList.remove('active-screen');
-                liveGameScreen.classList.remove('active-screen');
-                resultScreen.classList.remove('active-screen');
-
+                const allScreens = document.querySelectorAll('.container');
+                allScreens.forEach(s => s.classList.remove('active-screen'));
                 screenToShow.classList.add('active-screen');
             }
 
@@ -589,4 +586,7 @@
                     timerDisplay.textContent = `ጨዋታው ሊጀምር: ${timeLeft}ሰ`;
                     timerDisplay.style.color = '#e74c3c';
 
-                    
+                    if (timeLeft <= 1) {
+                        clearInterval(cardCountdownInterval);
+                        
+         

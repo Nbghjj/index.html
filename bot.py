@@ -209,7 +209,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # ----------------- DEPOSIT PROCESSING -----------------
         if action == "deposit":
             if step == "waiting_amount":
-                # ደረጃ 1፡ ተጠቃሚው የብር መጠኑን ሲጽፍ
                 try:
                     entered_amount = float(text.replace(',', '').strip())
                 except ValueError:
@@ -220,7 +219,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await update.message.reply_text("❌ የብር መጠኑ ከ 0 በላይ መሆን አለበት።")
                     return
 
-                # መጠኑን በመያዝ ወደ ቀጣዩ ደረጃ (የኤስኤምኤስ ፖስታ መቀበያ) እናሸጋገራለን
                 user_states[uid] = {"action": "deposit", "bank": bank, "step": "waiting_receipt", "amount": entered_amount}
                 admin_acc = ADMIN_ACCOUNTS.get(bank, "0940483108 (kirubel melkamu)")
 
@@ -234,12 +232,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
 
             elif step == "waiting_receipt":
-                # ደረጃ 2፡ ተጠቃሚው የባንክ ኤስኤምኤሱን (SMS) ሲልክ
                 expected_amount = state_info["amount"]
 
-                # የብር መጠንን ከባንክ SMS ውስጥ መፈለግ
                 amount_match = re.search(r'(\d+[\d,]*\.?\d*)\s*(ETB|Birr|ብር|Br)?', text, re.IGNORECASE)
-                # የቴሌብር እና ሲቢኢ ትራንዛክሽን መለያዎችን መለየት
                 trx_match = re.search(r'(FT[A-Za-z0-9]{8,12}|TRX[A-Za-z0-9]{6,12}|TXN[A-Za-z0-9]{6,12}|Ref[:\s]*([A-Za-z0-9]{8,15}))', text, re.IGNORECASE)
 
                 sms_amount = 0.0
@@ -258,7 +253,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
                     return
 
-                # ተጠቃሚው ያስገባው መጠን እና በባንክ ኤስኤምኤሱ ላይ ያለው መጠን መመሳሰሉን ማረጋገጥ
                 if sms_amount != expected_amount:
                     await update.message.reply_text(
                         f"❌ *የመጠን አለመመሳሰል (Mismatch Error)!*\n\n"
@@ -390,11 +384,10 @@ async def bank_selection_callback(update: Update, context: ContextTypes.DEFAULT_
 
     if data.startswith("bank_"):
         parts = data.split("_")
-        action = parts[1] # deposit ወይም withdraw
-        bank = parts[2]   # Telebirr ወይም CBE
+        action = parts[1] 
+        bank = parts[2]   
 
         if action == "deposit":
-            # 💵 ዴፖዚት ሲመረጥ በመጀመሪያ የብር መጠኑን እንዲጽፍ እንጠይቃለን (waiting_amount)
             user_states[uid] = {"action": action, "bank": bank, "step": "waiting_amount"}
             instructions = (
                 f"📱 *Selected Bank: {bank}*\n\n"
@@ -407,7 +400,7 @@ async def bank_selection_callback(update: Update, context: ContextTypes.DEFAULT_
                 "💸 እባክዎ ማውጣት የሚፈልጉትን **የብር መጠን** ብቻ ይጻፉ (ምሳሌ፦ `50`)፦"
             )
 
-        await query.edit_message_text(text=instructions, parse_Mode="Markdown")
+        await query.edit_message_text(text=instructions, parse_mode="Markdown")
 
 # =========================
 # ADMIN CALLBACK HANDLER
@@ -417,7 +410,6 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     data = query.data
 
-    # Check pending deposits
     for key, req_info in list(pending_deposits.items()):
         if key in data:
             pending_deposits.pop(key)
@@ -437,7 +429,6 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.send_message(chat_id=uid, text=f"❌ የ {amount:.2f} Birr ዴፖዚት ጥያቄዎ ውድቅ ተደርጓል።")
             return
 
-    # Check pending withdrawals
     for key, req_info in list(pending_withdrawals.items()):
         if key in data:
             pending_withdrawals.pop(key)
@@ -516,7 +507,7 @@ def main():
     app.add_handler(MessageHandler(filters.CONTACT, contact_received))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, button_handler))
 
-    print("🤖 Bingo Bot is running with 2-step Deposit verification...")
+    print("🤖 Bingo Bot is running perfectly with verified 2-step flow...")
     app.run_polling()
 
 if __name__ == "__main__":

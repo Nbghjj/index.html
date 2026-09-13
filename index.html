@@ -484,6 +484,7 @@
             gridContainer.appendChild(cardBtn);
         }
 
+        // JOIN ROOM CLICK EVENT (Fixed & Verified)
         joinRoomBtn.addEventListener('click', () => {
             homeScreen.style.display = 'none';
             selectionScreen.style.display = 'block';
@@ -565,16 +566,14 @@
                     let letter = getLetterForNumber(num);
                     
                     currentBall.textContent = `${letter}-${num}`;
-                    // Trigger animation restart
                     currentBall.style.animation = 'none';
-                    currentBall.offsetHeight; // trigger reflow
+                    currentBall.offsetHeight; 
                     currentBall.style.animation = 'pulseBall 0.5s ease-in-out';
 
                     if (tg && tg.HapticFeedback) {
                         tg.HapticFeedback.notificationOccurred('success');
                     }
 
-                    // Check Auto-Dauber
                     if (autoDauberToggle.checked) {
                         autoMarkNumber(num);
                     }
@@ -589,6 +588,7 @@
 
         function autoMarkNumber(num) {
             const cells = bingoMatrixGrid.querySelectorAll('.bingo-cell');
+            cells.scale = [];
             cells.forEach(cell => {
                 if (cell.textContent == num) {
                     cell.classList.add('marked');
@@ -596,7 +596,6 @@
             });
         }
 
-        // Check traditional 5-in-a-row (Horizontal, Vertical, Diagonal)
         function checkBingoWin() {
             const cells = Array.from(bingoMatrixGrid.querySelectorAll('.bingo-cell'));
             let grid = [];
@@ -604,6 +603,9 @@
                 grid.push(cells.slice(i * 5, (i + 1) * 5));
             }
 
-            // Check Rows
             for (let r = 0; r < 5; r++) {
-                if (grid[r].every(c 
+                if (grid[r].every(c => c.classList.contains('marked'))) return true;
+            }
+
+            for (let c = 0; c < 5; c++) {
+                le

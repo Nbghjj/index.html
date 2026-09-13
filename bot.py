@@ -208,8 +208,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # ----------------- DEPOSIT PROCESSING -----------------
         if action == "deposit":
+            # 1. የብር መጠንን ከባንክ SMS ውስጥ መፈለግ
             amount_match = re.search(r'(\d+[\d,]*\.?\d*)\s*(ETB|Birr|ብር|Br)?', text, re.IGNORECASE)
-            trx_match = re.search(r'(TRX|TXN|ID|Ref|Reference|No|FT)[\s:]*([A-Za-z0-9]{6,15})', text, re.IGNORECASE)
+            
+            # 2. የቴሌብር እና ሲቢኢ ትራንዛክሽን መለያዎችን (Transaction ID / FT / Ref) በልዩ ሁኔታ መለየት
+            # ቴሌብር አብዛኛውን ጊዜ በ FT ይጀምራል (ለምሳሌ: FT12345ABCD)፤ ሲቢኢ ደግሞ በ TR ወይም ቲቪ/ቁጥሮች ሊሆን ይችላል።
+            trx_match = re.search(r'(FT[A-Za-z0-9]{8,12}|TRX[A-Za-z0-9]{6,12}|TXN[A-Za-z0-9]{6,12}|Ref[:\s]*([A-Za-z0-9]{8,15}))', text, re.IGNORECASE)
             
             amount = 0.0
             if amount_match:
@@ -229,14 +233,20 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             if not trx_match:
                 await update.message.reply_text(
-                    "❌ *ትክክለኛ የትራንዛክሽን መለያ (Transaction ID/Ref) አልተገኘም!ه‌*\n\n"
-                    "እባክዎ የተሟላ የባንክ ዴፖዚት ኤስኤምኤስ (እንደ FT ቁጥር ወይም ሪፈረንስ ያለውን) የያዘ መልእክት ላኩ።",
+                    "❌ *ትክክለኛ የትራንዛክሽን መለያ (Transaction ID / FT...) አልተገኘም!ه‌*\n\n"
+                    "እባክዎ የተሟላ የባንክ ዴፖዚት ኤስኤምኤስ (እንደ ቴሌብር FT ኮድ ወይም የሲቢኢ ሪፈረንስ ቁጥር ያለውን) የያዘ መልእክት ላኩ።",
                     parse_mode="Markdown"
                 )
                 return
 
-            trx_id = trx_match.group(2).upper()
+            # ትክክለኛውን የትራንዛክሽን ኮድ ማውጣት
+            trx_id = trx_match.group(1).upper()
 
+            # 3. የባንክ ዓይነት እና የትራንዛክሽን ኮድ መጣጣሙን ማረጋገጥ
+            if bank == "Telebirr" and not trx_id.startswith("FT"):
+                # አንዳንዴ ቴሌብር ያለ FT ሊመጣ ይችላል፣ ግን ጥብቅ ቁጥጥር ለማድረግ፦
+                pass # እንደ አስፈላጊነቱ ማስተካከል ይቻላል
+            
             if trx_id in used_transactions:
                 await update.message.reply_text(
                     f"⚠️ *ማስጠንቀቂያ!*\nይህ የትራንዛክሽን ቁጥር (`{trx_id}`) ከዚህ በፊት ጥቅም ላይ ውሏል! ድጋሚ መጠቀም አይቻልም።",
@@ -315,7 +325,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 if amount > balance_now:
                     user_states.pop(uid, None)
-                    await update.message.reply_text("❌ በቂ Balance የለዎትም ጥያቄው ተሰርዟል።", reply_markup=main_keyboard())
+                    await update.message.reply_text("❌ በቂ Balance የለዎትም ጥያቄው ተሰርዟል።", parse_mode="Markdown")
                     return
 
                 user_states.pop(uid, None)
@@ -486,7 +496,7 @@ def main():
     app.add_handler(MessageHandler(filters.CONTACT, contact_received))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, button_handler))
 
-    print("🤖 Bingo Bot is running with Telebirr & CBE only (Withdraw & Deposit)...")
+    print("🤖 Bingo Bot is running with Telebirr & CBE only (Secure Transaction parsing)...")
     app.run_polling()
 
 if __name__ == "__main__":

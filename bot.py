@@ -1,5 +1,6 @@
 import os
 import random
+import json
 import re
 from telegram import (
     Update, ReplyKeyboardMarkup, KeyboardButton, 
@@ -174,6 +175,30 @@ async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=keyboard,
     )
 
+# 🌐 ከ Web App የሚመጡ መረጃዎችን (ለምሳሌ ጨዋታ ሲጨርስ የሚቀነሰውን ወይም የሚጨመረውን ብር) መቀበያ
+async def web_app_data_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    if not registered(uid):
+        return
+
+    try:
+        data = json.loads(update.message.web_app_data.data)
+        action = data.get("action")
+        amount = float(data.get("amount", 0))
+
+        if action == "update_balance":
+            users[uid]["balance"] += amount
+            if users[uid]["balance"] < 0:
+                users[uid]["balance"] = 0.0
+            
+            await update.message.reply_text(
+                f"🎮 የዌብ አፕ ጨዋታ ውጤት ተዘምኗል!\n💰 አዲሱ Balance: *{users[uid]['balance']:.2f} Birr*",
+                parse_mode="Markdown",
+                reply_markup=main_keyboard()
+            )
+    except Exception as e:
+        print(f"WebAppData Error: {e}")
+
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     uid = update.effective_user.id
@@ -328,7 +353,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await update.message.reply_text(f"❌ በቂ Balance የለዎትም።\nአሁን ያለዎት: {balance_now:.2f} Birr")
                     return
 
-                # ወደ ቀጣዩ ደረጃ (የአካውንት ቁጥር መቀበያ) እናልፋለን
                 user_states[uid] = {"action": "withdraw", "bank": bank, "step": "waiting_account", "amount": amount}
 
                 await update.message.reply_text(
@@ -346,7 +370,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 amount = state_info["amount"]
 
-                # ወደ የመጨረሻው ደረጃ (የባለቤቱን ስም መቀበያ) እናልፋለን
                 user_states[uid] = {
                     "action": "withdraw", 
                     "bank": bank, 
@@ -461,7 +484,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await query.edit_message_text("❌ User not found.")
             else:
                 await query.edit_message_text(f"❌ Deposit REJECTED.")
-                await context.bot.send_message(chat_id=uid, text=f"❌ የ {amount:.2f} Birr ዴፖዚት ጥያቄዎ ውድቅ ተደርጓል።")
+                await context.bot.send_message(chat_id=uid, text=f"❌ የ {amount:.2f} ዴፖዚት ጥያቄዎ ውድቅ ተደርጓል።")
             return
 
     for key, req_info in list(pending_withdrawals.items()):
@@ -532,9 +555,11 @@ def main():
     app.add_handler(CallbackQueryHandler(admin_callback))
 
     app.add_handler(MessageHandler(filters.CONTACT, contact_received))
+    # 🌐 የ Web App መረጃዎችን መቀበያ ሃንድለር ተጨምሯል
+    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, button_handler))
 
-    print("🤖 Bingo Bot is running with Withdraw Name Verification...")
+    print("🤖 Bingo Bot is running with Web App Data Synchronization...")
     app.run_polling()
 
 if __name__ == "__main__":

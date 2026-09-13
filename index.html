@@ -296,7 +296,7 @@
 
         <div class="selection-info">
             <span id="boards-count">Boards: 0/1</span>
-            <span id="timer-display" style="color: #f1c40f; font-weight: bold;">ካርድ ይምረጡ...</span>
+            <span id="timer-display" style="color: #e74c3c; font-weight: bold;">ጨዋታው ሊጀምር: 35ሰ</span>
         </div>
 
         <div class="cards-grid-container" id="cardsGrid"></div>
@@ -342,12 +342,11 @@
         let selectedCards = [];
         let takenCards = new Set();
         let gameInterval = null;
-        let countdownInterval = null;
+        let sharedCountdownInterval = null;
         let currentCardData = null;
         let calledNumbersSet = new Set();
         let walletBalance = 500;
         const stakeAmount = 20;
-        let timerStarted = false;
 
         const homeScreen = document.getElementById('home-screen');
         const selectionScreen = document.getElementById('selection-screen');
@@ -408,12 +407,6 @@
                     if (selectedCards.length < maxSelection) {
                         selectedCards.push(cardId);
                         this.classList.add('selected');
-
-                        // ተጫዋቹ የመጀመሪያውን ካርድ ሲመርጥ ብቻ የጋራ ቆጣሪውን ማስጀመር
-                        if (!timerStarted) {
-                            timerStarted = true;
-                            startSharedCountdown();
-                        }
                     } else {
                         alert(`እባክዎ ከ ${maxSelection} በላይ ካርድ መምረጥ አይችሉም!`);
                     }
@@ -425,7 +418,6 @@
 
         function resetSelectionScreen() {
             selectedCards = [];
-            timerStarted = false;
             document.querySelectorAll('.card-box').forEach(btn => {
                 let id = parseInt(btn.dataset.id);
                 btn.classList.remove('selected');
@@ -436,11 +428,11 @@
                 }
             });
             boardsCountText.textContent = `Boards: 0/1`;
-            timerDisplay.textContent = `ካርድ ይምረጡ...`;
-            timerDisplay.style.color = '#f1c40f';
             walletVal.textContent = walletBalance;
             winVal.textContent = totalBoards * stakeAmount;
-            clearInterval(countdownInterval);
+            
+            // ሩም ውስጥ ሲገባ ወዲያውኑ የሚጀምር የ 35 ሰከንድ የጋራ ቆጣሪ
+            startSharedCountdown();
         }
 
         // ሁሉም ተጫዋቾች በጋራ የሚቆጥሩበት የ 35 ሰከንድ ቆጣሪ
@@ -449,13 +441,13 @@
             timerDisplay.textContent = `ጨዋታው ሊጀምር: ${timeLeft}ሰ`;
             timerDisplay.style.color = '#e74c3c';
 
-            clearInterval(countdownInterval);
-            countdownInterval = setInterval(() => {
+            clearInterval(sharedCountdownInterval);
+            sharedCountdownInterval = setInterval(() => {
                 timeLeft--;
                 if (timeLeft > 0) {
                     timerDisplay.textContent = `ጨዋታው ሊጀምር: ${timeLeft}ሰ`;
                 } else {
-                    clearInterval(countdownInterval);
+                    clearInterval(sharedCountdownInterval);
                     
                     if (selectedCards.length > 0) {
                         if (walletBalance >= stakeAmount) {
@@ -466,10 +458,13 @@
                             launchLiveGame();
                         } else {
                             alert("ሂሳብዎ በቂ አይደለም!");
-                            resetSelectionScreen();
+                            homeScreen.style.display = 'block';
+                            selectionScreen.style.display = 'none';
                         }
                     } else {
-                        resetSelectionScreen();
+                        alert("ጊዜው አልቋል! ካርድ አልመረጡም ወደ መነሻ ይመለሳሉ።");
+                        selectionScreen.style.display = 'none';
+                        homeScreen.style.display = 'block';
                     }
                 }
             }, 1000);
@@ -482,7 +477,7 @@
         });
 
         leaveBtn.addEventListener('click', () => {
-            clearInterval(countdownInterval);
+            clearInterval(sharedCountdownInterval);
             selectionScreen.style.display = 'none';
             homeScreen.style.display = 'block';
         });
@@ -588,5 +583,4 @@
         });
     </script>
 </body>
-    </html>
-    
+</html>

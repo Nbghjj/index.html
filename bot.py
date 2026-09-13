@@ -2,6 +2,8 @@ import os
 import random
 import json
 import re
+from flask import Flask, request, jsonify
+import threading
 from telegram import (
     Update, ReplyKeyboardMarkup, KeyboardButton, 
     InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
@@ -20,7 +22,7 @@ ADMIN_ID = int(os.getenv("ADMIN_ID", "6496982318"))
 WEB_APP_URL = os.getenv("WEB_APP_URL", "https://nbghjj.github.io/")
 
 # ⚙️ የገንዘብ ገደቦች (Limits)
-MIN_DEPOSIT = 50.0   
+MIN_DEPOSIT = 50.0    
 MIN_WITHDRAW = 100.0 
 
 ADMIN_ACCOUNTS = {
@@ -33,6 +35,47 @@ pending_withdrawals = {}
 pending_deposits = {}
 user_states = {}  
 used_transactions = set()
+
+# =========================
+# FLASK BACKEND SERVER (API)
+# =========================
+app = Flask(__name__)
+bot_app_instance = None  # To send telegram messages from Flask routes
+
+@app.route('/api/balance/<user_id>', methods=['GET'])
+def api_get_balance(user_id):
+    try:
+        uid = int(user_id)
+        balance = users.get(uid, {}).get("balance", 0.0)
+        return jsonify({"balance": balance})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route('/api/update_balance', methods=['POST'])
+def api_update_balance():
+    try:
+        data = request.json
+        uid = int(data.get("userId"))
+        amount = float(data.get("amount", 0.0))
+        
+        if uid not in users:
+            users[uid] = {"name": "WebApp User", "phone": "N/A", "balance": 0.0}
+            
+        users[uid]["balance"] += amount
+        if users[uid]["balance"] < 0:
+            users[uid]["balance"] = 0.0
+            
+        return jsonify({"success": True, "newBalance": users[uid]["balance"]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+def run_flask():
+    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+
+
+# =========================
+# TELEGRAM BOT FUNCTIONS
+# =========================
 
 def register_keyboard():
     return ReplyKeyboardMarkup(
@@ -93,11 +136,13 @@ async def contact_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    users[user.id] = {
+    if user.id not in users:
+        users[user.id] = {"balance": 0.0}
+
+    users[user.id].update({
         "name": user.full_name,
         "phone": contact.phone_number,
-        "balance": 0.0,
-    }
+    })
 
     await update.message.reply_text(
         "✅ *Registration successful!*\n\n"
@@ -175,7 +220,6 @@ async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=keyboard,
     )
 
-# 🌐 ከ Web App የሚመጡ መረጃዎችን (ለምሳሌ ጨዋታ ሲጨርስ የሚቀነሰውን ወይም የሚጨመረውን ብር) መቀበያ
 async def web_app_data_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     if not registered(uid):
@@ -217,7 +261,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         bank = state_info["bank"]
         step = state_info.get("step", "default")
 
-        # ----------------- DEPOSIT PROCESSING -----------------
         if action == "deposit":
             if step == "waiting_amount":
                 try:
@@ -335,7 +378,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     reply_markup=admin_kb
                 )
 
-        # ----------------- WITHDRAW PROCESSING (3-STEPS) -----------------
         elif action == "withdraw":
             if step == "waiting_amount":
                 try:
@@ -348,7 +390,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await update.message.reply_text(f"❌ ይቅርታ፣ ዝቅተኛው የማውጫ (Withdraw) መጠን *{MIN_WITHDRAW:.2f} Birr* መሆን አለበት።", parse_mode="Markdown")
                     return
 
-                balance_now = users[uid]["balance"]
+                balance_now = users.get(uid, {}).get("balance", 0.0)
                 if amount > balance_now:
                     await update.message.reply_text(f"❌ በቂ Balance የለዎትም።\nአሁን ያለዎት: {balance_now:.2f} Birr")
                     return
@@ -393,7 +435,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 amount = state_info["amount"]
                 account_info = state_info["account"]
-                balance_now = users[uid]["balance"]
+                balance_now = users.get(uid, {}).get("balance", 0.0)
 
                 if amount > balance_now:
                     user_states.pop(uid, None)
@@ -517,12 +559,11 @@ async def add_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         target_id = int(context.args[0])
         amount = float(context.args[1])
-        if target_id in users:
-            users[target_id]["balance"] += amount
-            await update.message.reply_text(f"✅ Added {amount} Birr to {target_id}. New balance: {users[target_id]['balance']:.2f}")
-            await context.bot.send_message(chat_id=target_id, text=f"🎉 አካውንትዎ ላይ {amount:.2f} ተጨምሯል!\n💰 Balance: {users[target_id]['balance']:.2f} Birr")
-        else:
-            await update.message.reply_text("❌ ተጠቃሚው አልተገኘም።")
+        if target_id not in users:
+            users[target_id] = {"balance": 0.0}
+        users[target_id]["balance"] += amount
+        await update.message.reply_text(f"✅ Added {amount} Birr to {target_id}. New balance: {users[target_id]['balance']:.2f}")
+        await context.bot.send_message(chat_id=target_id, text=f"🎉 አካውንትዎ ላይ {amount:.2f} ተጨምሯል!\n💰 Balance: {users[target_id]['balance']:.2f} Birr")
     except Exception:
         await update.message.reply_text("⚠️ አጠቃቀም፦ `/addbalance <user_id> <amount>`", parse_mode="Markdown")
 
@@ -540,6 +581,12 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 def main():
+    # Start Flask API server in a separate background thread
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.daemon = True
+    flask_thread.start()
+    print("🌐 Flask API Server started on port 5000...")
+
     app = Application.builder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -547,7 +594,7 @@ def main():
     app.add_handler(CommandHandler("play", play_game))
     app.add_handler(CommandHandler("balance", balance))
     app.add_handler(CommandHandler("deposit", deposit))
-    app.add_handler(CommandHandler("withdraw", withdraw))
+    app.add_handler(Commandhandler("withdraw", withdraw))
     app.add_handler(CommandHandler("help", help_command))
     
     app.add_handler(CommandHandler("addbalance", add_balance))
@@ -555,11 +602,10 @@ def main():
     app.add_handler(CallbackQueryHandler(admin_callback))
 
     app.add_handler(MessageHandler(filters.CONTACT, contact_received))
-    # 🌐 የ Web App መረጃዎችን መቀበያ ሃንድለር ተጨምሯል
     app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, button_handler))
 
-    print("🤖 Bingo Bot is running with Web App Data Synchronization...")
+    print("🤖 Bingo Bot is running with Web App API Synchronization...")
     app.run_polling()
 
 if __name__ == "__main__":

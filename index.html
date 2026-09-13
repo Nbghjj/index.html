@@ -271,6 +271,11 @@
             <span>DEMO • 300 CARD CAPACITY</span>
         </div>
         
+        <div style="background: #1f143a; padding: 12px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #3c2a6d; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 14px; color: #a08cc4;">የኪስ ቦርሳ (Wallet):</span>
+            <span style="font-size: 16px; font-weight: bold; color: #2ecc71;"><b id="home-wallet-val">500</b> Birr</span>
+        </div>
+
         <div class="room-box">
             <div class="room-info">
                 <span class="stake-badge">20 BIRR</span>
@@ -360,12 +365,18 @@
         const gridContainer = document.getElementById('cardsGrid');
         const boardsCountText = document.getElementById('boards-count');
         const timerDisplay = document.getElementById('timer-display');
+        const homeWalletVal = document.getElementById('home-wallet-val');
         const walletVal = document.getElementById('wallet-val');
         const winVal = document.getElementById('win-val');
         const currentBall = document.getElementById('currentBall');
         const callStatus = document.getElementById('callStatus');
         const bingoMatrixGrid = document.getElementById('bingoMatrixGrid');
         const cardNumLabel = document.getElementById('cardNumLabel');
+
+        function updateWallets() {
+            homeWalletVal.textContent = walletBalance;
+            walletVal.textContent = walletBalance;
+        }
 
         function generateCardData(cardId) {
             return {
@@ -416,17 +427,15 @@
             gridContainer.appendChild(cardBtn);
         }
 
-        // የዓለም አቀፍ ሰዓት ማመሳሰሪያ (Global Timestamp Sync Loop) - ሁልጊዜ ለሁሉም ተጫዋቾች ሰዓቱ ፍጹም እኩል እንዲሆን ያደርጋል
         function startGlobalSyncTimer() {
             clearInterval(globalSyncInterval);
 
             function checkSyncTime() {
                 let nowSeconds = Math.floor(Date.now() / 1000);
-                let timeLeft = 35 - (nowSeconds % 35); // ከ 35 ሰከንድ ጀምሮ ወደ ታች ይቆጥራል
+                let timeLeft = 35 - (nowSeconds % 35);
 
                 timerDisplay.textContent = `ጨዋታው ሊጀምር: ${timeLeft}ሰ`;
 
-                // ሰዓቱ ወደ 0 ሲደርስ ሁሉም ተጫዋቾች በአንድ ጊዜ ወደ ላይቭ ጨዋታ ይገባሉ
                 if (timeLeft <= 1) {
                     clearInterval(globalSyncInterval);
                     
@@ -434,7 +443,7 @@
                         if (selectedCards.length > 0) {
                             if (walletBalance >= stakeAmount) {
                                 walletBalance -= stakeAmount;
-                                walletVal.textContent = walletBalance;
+                                updateWallets();
                                 
                                 selectedCards.forEach(id => takenCards.add(id));
                                 launchLiveGame();
@@ -471,10 +480,9 @@
                 }
             });
             boardsCountText.textContent = `Boards: 0/1`;
-            walletVal.textContent = walletBalance;
+            updateWallets();
             winVal.textContent = totalBoards * stakeAmount;
 
-            // ሩም ውስጥ ሲገባ የጋራ ሰዓት ቆጣሪውን ይጀምራል
             startGlobalSyncTimer();
         });
 
@@ -568,6 +576,7 @@
 
             if (markedCount >= 5) {
                 walletBalance += (totalBoards * stakeAmount);
+                updateWallets();
                 alert("🎉 እንኳን ደስ አለዎት! BINGO አሸንፈዋል!");
                 if (tg && tg.close) {
                     tg.close();
@@ -579,11 +588,3 @@
 
         exitGameBtn.addEventListener('click', () => {
             clearInterval(gameInterval);
-            liveGameScreen.style.display = 'none';
-            homeScreen.style.display = 'block';
-            selectedCards = [];
-            currentBall.textContent = '--';
-        });
-    </script>
-</body>
-</html>

@@ -4,11 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ayat Bingo - Mini App</title>
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
             background-color: #120c24;
             color: #fff;
-            font-family: sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
             padding: 10px;
         }
@@ -83,7 +85,7 @@
         }
 
         .bingo-claim-btn {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
             color: white;
         }
 
@@ -161,7 +163,7 @@
             color: #000;
         }
 
-        /* Live Game & Rendered Card Styles (እንደ ምስሉ የተዋቀረ) */
+        /* Live Game Styles */
         .live-game-layout {
             display: flex;
             flex-direction: column;
@@ -173,23 +175,23 @@
             border: 2px solid #f39c12;
             border-radius: 14px;
             text-align: center;
-            padding: 15px;
+            padding: 12px;
         }
 
         .current-ball {
-            font-size: 36px;
+            font-size: 32px;
             font-weight: bold;
             color: #f39c12;
-            margin: 5px 0;
+            margin: 4px 0;
         }
 
-        /* የቢንጎ ካርድ ፕላስቲክ ዲዛይን */
+        /* Rendered Card Design */
         .rendered-bingo-card {
             background: #ffffff;
             color: #000;
             border-radius: 10px;
             padding: 10px;
-            border: 3px solid #ff69b4; /* የሮዝ ከለር ሐንደበት ፍሬም */
+            border: 3px solid #ff69b4;
             max-width: 340px;
             margin: 0 auto;
         }
@@ -220,7 +222,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
             border-radius: 4px;
             cursor: pointer;
@@ -254,7 +256,7 @@
     <div id="home-screen" class="container">
         <div class="card-banner">
             <h3>AYAT BINGO</h3>
-            <p>Complete simulated Bingo round.</p>
+            <p>Telegram Mini App Live Game.</p>
             <span>DEMO • 300 CARD CAPACITY</span>
         </div>
         
@@ -262,28 +264,27 @@
             <div class="room-info">
                 <span class="stake-badge">20 BIRR</span>
                 <h4>Ayat Bingo Room</h4>
-                <p style="color: #a08cc4; font-size: 12px; margin: 2px 0;">• LIVE DEMO</p>
+                <p style="color: #a08cc4; font-size: 12px; margin: 2px 0;">• LIVE ROOM</p>
             </div>
-            <p style="font-size: 13px; color: #a08cc4;">Players: <span id="player-count">59</span> / 300</p>
+            <p style="font-size: 13px; color: #a08cc4;">Players: <span id="player-count">64</span> / 300</p>
             <button id="joinRoomBtn" class="join-btn">JOIN ROOM →</button>
         </div>
     </div>
 
-    <!-- 2. SELECTION SCREEN (ካርዶቹ የሚመረጡበት) -->
+    <!-- 2. SELECTION SCREEN -->
     <div id="selection-screen" class="container" style="display: none;">
         <div class="game-top-bar">
             <button id="leaveBtn" class="leave-btn">← Leave</button>
             <h3 style="margin: 0; font-size: 15px; color: #f39c12;">Ayat Bingo</h3>
             <div class="stats-box">
-                <span>W: <b id="wallet-val">0</b></span>
+                <span>W: <b id="wallet-val">500</b></span>
                 <span>S: <b id="stake-val">20</b></span>
-                <span>WIN: <b id="win-val">0</b></span>
             </div>
         </div>
 
         <div class="selection-info">
             <span id="boards-count">Boards: 0/1</span>
-            <span class="hint-text" style="color: #f1c40f;">Tap a card to join</span>
+            <span class="hint-text" style="color: #f1c40f;">ካርድ ይምረጡ (Tap a card)</span>
         </div>
 
         <div class="cards-grid-container" id="cardsGrid"></div>
@@ -291,7 +292,7 @@
         <button id="startGameBtn" class="start-game-btn" style="display: none;">START GAME</button>
     </div>
 
-    <!-- 3. LIVE GAME & RENDERED CARD SCREEN (ተመርጦ የሚወጣው ካርድ እና ጨዋታ) -->
+    <!-- 3. LIVE GAME SCREEN -->
     <div id="live-game-screen" class="container" style="display: none;">
         <div class="game-top-bar">
             <h3 style="margin: 0; font-size: 14px; color: #f39c12;">Ayat Bingo - Live</h3>
@@ -300,32 +301,35 @@
 
         <div class="live-game-layout">
             <div class="called-number-display">
-                <p style="margin: 0; color: #a08cc4; font-size: 12px;">Current Called Number</p>
+                <p style="margin: 0; color: #a08cc4; font-size: 12px;">የተጠራው ቁጥር (Current Ball)</p>
                 <div id="currentBall" class="current-ball">--</div>
-                <p id="callStatus" style="margin: 0; font-size: 11px; color: #f1c40f;">Game in progress...</p>
+                <p id="callStatus" style="margin: 0; font-size: 11px; color: #f1c40f;"> ጨዋታው ተጀምሯል...</p>
             </div>
 
-            <!-- ልክ እንደ ላከው ምስል የተሰራ የቢንጎ ካርድ ማሳያ -->
             <div class="rendered-bingo-card">
                 <div class="bingo-header-row">
                     <span>B</span><span>I</span><span>N</span><span>G</span><span>O</span>
                 </div>
-                <div id="bingoMatrixGrid" class="bingo-grid-matrix">
-                    <!-- በጃቫስክሪፕት 5x5 ማትሪክስ ይሞላል -->
-                </div>
+                <div id="bingoMatrixGrid" class="bingo-grid-matrix"></div>
                 <div class="card-footer-banner">
-                    <span style="color: #e74c3c;">ሲ.ቲ ቢንጎ</span>
+                    <span style="color: #e74c3c;">AYAT BINGO</span>
                     <span id="cardNumLabel">የካርቴል ቁጥር --</span>
                 </div>
             </div>
 
-            <button id="bingoClaimBtn" class="bingo-claim-btn">BINGO!</button>
+            <button id="bingoClaimBtn" class="bingo-claim-btn">BINGO! (አሸነፍኩ)</button>
         </div>
     </div>
 
     <script>
+        // Telegram WebApp Integration
+        let tg = window.Telegram.WebApp;
+        if (tg) {
+            tg.expand();
+        }
+
         const totalBoards = 300;
-        const maxSelection = 1; // ለአብነት 1 ካርድ እንዲመረጥ
+        const maxSelection = 1;
         let selectedCards = [];
         let gameInterval = null;
         let currentCardData = null;
@@ -348,13 +352,12 @@
         const bingoMatrixGrid = document.getElementById('bingoMatrixGrid');
         const cardNumLabel = document.getElementById('cardNumLabel');
 
-        // ካርድ ማመንጫ ሎጂክ (እንደ B-I-N-G-O ክልል)
         function generateCardData(cardId) {
             return {
                 id: cardId,
                 B: getRandomNumbers(1, 15, 5),
                 I: getRandomNumbers(16, 30, 5),
-                N: getRandomNumbers(31, 45, 4), // 4 numbers + 1 Free (F)
+                N: getRandomNumbers(31, 45, 4),
                 G: getRandomNumbers(46, 60, 5),
                 O: getRandomNumbers(61, 75, 5)
             };
@@ -369,7 +372,7 @@
             return nums;
         }
 
-        // 1-300 ካርዶችን በግሪድ መሙላት
+        // Populate 300 cards grid
         for (let i = 1; i <= totalBoards; i++) {
             const cardBtn = document.createElement('button');
             cardBtn.className = 'card-box';
@@ -405,7 +408,6 @@
             homeScreen.style.display = 'block';
         });
 
-        // START GAME ሲጫን የተመረጠውን ካርድ ዲዛይን አድርጎ ማሳየት
         startGameBtn.addEventListener('click', () => {
             selectionScreen.style.display = 'none';
             liveGameScreen.style.display = 'block';
@@ -418,10 +420,16 @@
             startNumberCalling();
         });
 
-        // ካርዱን 5x5 ማትሪክስ አድርጎ መሳል
+        function getLetterForNumber(num) {
+            if (num <= 15) return 'B';
+            if (num <= 30) return 'I';
+            if (num <= 45) return 'N';
+            if (num <= 60) return 'G';
+            return 'O';
+        }
+
         function renderRenderedCard(cardObj) {
             bingoMatrixGrid.innerHTML = '';
-            // ረድፍ በረድፍ ማዋቀር (Row-wise order from B, I, N, G, O columns)
             let matrixValues = [
                 [cardObj.B[0], cardObj.I[0], cardObj.N[0], cardObj.G[0], cardObj.O[0]],
                 [cardObj.B[1], cardObj.I[1], cardObj.N[1], cardObj.G[1], cardObj.O[1]],
@@ -430,18 +438,15 @@
                 [cardObj.B[4], cardObj.I[4], cardObj.N[3], cardObj.G[4], cardObj.O[4]]
             ];
 
-            matrixValues.forEach((row, rIdx) => {
-                row.forEach((val, cIdx) => {
+            matrixValues.forEach((row) => {
+                row.forEach((val) => {
                     const cell = document.createElement('div');
                     cell.className = 'bingo-cell';
                     if (val === 'F') {
-                        cell.textContent = 'F';
+                        cell.textContent = '★';
                         cell.classList.add('free-cell', 'marked');
-                        cell.dataset.marked = "true";
                     } else {
                         cell.textContent = val;
-                        cell.dataset.value = val;
-                        // ተጠቃሚው የጠራውን ቁጥር ነክቶ ማርክ እንዲያደርግበት
                         cell.addEventListener('click', function() {
                             if (calledNumbersSet.has(val)) {
                                 this.classList.toggle('marked');
@@ -455,40 +460,43 @@
             });
         }
 
-        // ቁጥሮች ማስተላለፊያ ሎጂክ (1-75)
         function startNumberCalling() {
             calledNumbersSet.clear();
             let pool = Array.from({length: 75}, (_, i) => i + 1).sort(() => Math.random() - 0.5);
             let idx = 0;
-            callStatus.textContent = "Game running...";
+            callStatus.textContent = "ቁጥሮች እየተጠሩ ነው...";
 
             gameInterval = setInterval(() => {
                 if (idx < pool.length) {
                     let num = pool[idx];
                     calledNumbersSet.add(num);
-                    currentBall.textContent = num;
+                    let letter = getLetterForNumber(num);
+                    currentBall.textContent = `${letter}-${num}`;
                     idx++;
                 } else {
                     clearInterval(gameInterval);
-                    callStatus.textContent = "Round Ended!";
+                    callStatus.textContent = "ዙሩ አልቋል!";
                 }
-            }, 3000);
+            }, 2500);
         }
 
-        // BINGO ቁልፍ ሲጫን የማሸነፍ ሁኔታን ማረጋገጥ
         bingoClaimBtn.addEventListener('click', () => {
             const cells = bingoMatrixGrid.querySelectorAll('.bingo-cell');
-            let allMarked = true;
+            let markedCount = 0;
             cells.forEach(c => {
-                if (!c.classList.contains('marked')) {
-                    allMarked = false;
+                if (c.classList.contains('marked')) {
+                    markedCount++;
                 }
             });
 
-            if (allMarked) {
-                alert("እንኳን ደስ አለዎት! BINGO አሸንፈዋል! 🎉");
+            // ለፈተና እንዲመች 5 ወይም ከዚያ በላይ ማርክ ሲደረግ አሸነፈ ይበል (በኋላ ሙሉ መስመር እንዲሆን መቀየር ይቻላል)
+            if (markedCount >= 5) {
+                alert("🎉 እንኳን ደስ አለዎት! BINGO አሸንፈዋል!");
+                if (tg && tg.close) {
+                    tg.close();
+                }
             } else {
-                alert("ገና አልተሞላም! ተጨማሪ ቁጥሮች ይጠብቁ ወይም ትክክለኛዎቹን ቁጥሮች ምልክት ያድርጉ።");
+                alert("⚠️ ገና አልተሞላም! ተጨማሪ ቁጥሮች ይጠብቁ።");
             }
         });
 
@@ -502,5 +510,4 @@
         });
     </script>
 </body>
-    </html>
-    
+</html>

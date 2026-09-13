@@ -192,6 +192,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         bank = state_info["bank"]
         step = state_info.get("step", "default")
 
+        # ----------------- DEPOSIT PROCESSING -----------------
         if action == "deposit":
             if step == "waiting_amount":
                 try:
@@ -218,17 +219,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             elif step == "waiting_receipt":
                 expected_amount = state_info["amount"]
-
-                # 🔒 እውነተኛ የባንክ ፖስታ መሆኑን ለማረጋገጥ የሚረዱ ቁልፍ ቃላት ማጣሪያ (Anti-Fake Validation)
                 text_lower = text.lower()
                 is_valid_format = False
                 
                 if bank == "Telebirr":
-                    # የቴሌብር ፖስታ ሊኖራቸው የሚገቡ የተለመዱ ቃላት (לምሳሌ: transferred, paid, received, telebirr)
                     if any(keyword in text_lower for keyword in ["transferred", "paid", "sent", "telebirr", "account", "ETB", "ብር"]):
                         is_valid_format = True
                 elif bank == "CBE":
-                    # የንግድ ባንክ (CBE) ፖስታ ሊኖራቸው የሚገቡ ቃላት
                     if any(keyword in text_lower for keyword in ["debited", "credited", "cbe", "commercial bank", "ETB", "ብር", "account"]):
                         is_valid_format = True
 
@@ -313,6 +310,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     reply_markup=admin_kb
                 )
 
+        # ----------------- WITHDRAW PROCESSING (3-STEPS) -----------------
         elif action == "withdraw":
             if step == "waiting_amount":
                 try:
@@ -330,6 +328,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await update.message.reply_text(f"❌ በቂ Balance የለዎትም።\nአሁን ያለዎት: {balance_now:.2f} Birr")
                     return
 
+                # ወደ ቀጣዩ ደረጃ (የአካውንት ቁጥር መቀበያ) እናልፋለን
                 user_states[uid] = {"action": "withdraw", "bank": bank, "step": "waiting_account", "amount": amount}
 
                 await update.message.reply_text(
@@ -341,12 +340,36 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif step == "waiting_account":
                 account_info = text.strip()
                 
-                # 🔒 የዊዝድሮ አካውንት ቁጥሩ ትክክለኛ ቅርጸት ያለው መሆኑን ማረጋገጫ (ለምሳሌ ስልክ ቁጥር ወይም የባንክ አካውንት)
                 if len(account_info) < 9 or not any(char.isdigit() for char in account_info):
                     await update.message.reply_text("❌ እባክዎ ትክክለኛ የቴሌብር ስልክ ቁጥር ወይም የባንክ አካውንት ቁጥር ብቻ ይጻፉ።")
                     return
 
                 amount = state_info["amount"]
+
+                # ወደ የመጨረሻው ደረጃ (የባለቤቱን ስም መቀበያ) እናልፋለን
+                user_states[uid] = {
+                    "action": "withdraw", 
+                    "bank": bank, 
+                    "step": "waiting_name", 
+                    "amount": amount, 
+                    "account": account_info
+                }
+
+                await update.message.reply_text(
+                    f"✅ አካውንት ቁጥር: `{account_info}` ተመዝግቧል።\n\n"
+                    f"👤 በመጨረሻም የዚህ አካውንት **ባለቤት ስም (Account Holder Name)** ሙሉውን ጽፈው ይላኩ (ብሩ ልክ ስሙ ላይ እንዲገባ ይረዳል)፦",
+                    parse_mode="Markdown"
+                )
+
+            elif step == "waiting_name":
+                account_name = text.strip()
+
+                if len(account_name) < 3:
+                    await update.message.reply_text("❌ እባክዎ ትክክለኛ ሙሉ ስም ይጻፉ።")
+                    return
+
+                amount = state_info["amount"]
+                account_info = state_info["account"]
                 balance_now = users[uid]["balance"]
 
                 if amount > balance_now:
@@ -356,10 +379,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 user_states.pop(uid, None)
                 req_id = f"w_{uid}_{random.randint(1000, 9999)}"
-                pending_withdrawals[req_id] = {"user_id": uid, "amount": amount, "bank": bank, "account": account_info}
+                pending_withdrawals[req_id] = {
+                    "user_id": uid, 
+                    "amount": amount, 
+                    "bank": bank, 
+                    "account": account_info, 
+                    "account_name": account_name
+                }
 
                 await update.message.reply_text(
-                    f"✅ የ {amount:.2f} Birr withdrawal ጥያቄዎ ወደ *{bank}* ({account_info}) ተልኳል!\n⏳ አድሚን እስኪያረጋግጥ ይጠብቁ።",
+                    f"✅ የ {amount:.2f} Birr withdrawal ጥያቄዎ ወደ *{bank}* ({account_info} - {account_name}) ተልኳል!\n⏳ አድሚን እስኪያረጋግጥ ይጠብቁ።",
                     parse_mode="Markdown",
                     reply_markup=main_keyboard()
                 )
@@ -373,11 +402,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     chat_id=ADMIN_ID,
                     text=(
                         "💸 *NEW VERIFIED WITHDRAW REQUEST*\n\n"
-                        f"👤 Name: {update.effective_user.full_name}\n"
+                        f"👤 Telegram Name: {update.effective_user.full_name}\n"
                         f"🆔 User ID: `{uid}`\n"
                         f"🏦 Selected Bank: *{bank}*\n"
                         f"💵 Amount: *{amount:.2f} Birr*\n"
                         f"💳 Target Account/Phone: `{account_info}`\n"
+                        f"👤 Account Holder Name: *{account_name}*\n"
                         f"💰 Current Balance: {balance_now:.2f} Birr"
                     ),
                     parse_mode="Markdown",
@@ -441,11 +471,12 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             amount = req_info["amount"]
             bank = req_info["bank"]
             account = req_info["account"]
+            account_name = req_info.get("account_name", "N/A")
             if data.startswith("app"):
                 if uid in users and users[uid]["balance"] >= amount:
                     users[uid]["balance"] -= amount
-                    await query.edit_message_text(f"✅ Withdraw of {amount:.2f} Birr to {bank} ({account}) APPROVED.\n💰 Remaining: {users[uid]['balance']:.2f}")
-                    await context.bot.send_message(chat_id=uid, text=f"🎉 የ {amount:.2f} Birr withdrawal ጥያቄዎ ወደ *{bank}* ({account}) ተፈጽሟል!\n💰 አዲሱ Balance: {users[uid]['balance']:.2f} Birr", parse_mode="Markdown")
+                    await query.edit_message_text(f"✅ Withdraw of {amount:.2f} Birr to {bank} ({account} - {account_name}) APPROVED.\n💰 Remaining: {users[uid]['balance']:.2f}")
+                    await context.bot.send_message(chat_id=uid, text=f"🎉 የ {amount:.2f} Birr withdrawal ጥያቄዎ ወደ *{bank}* ({account} - {account_name}) ተፈጽሟል!\n💰 አዲሱ Balance: {users[uid]['balance']:.2f} Birr", parse_mode="Markdown")
                 else:
                     await query.edit_message_text(f"❌ User has insufficient balance or not found.")
                     await context.bot.send_message(chat_id=uid, text=f"❌ የ {amount:.2f} withdrawal ጥያቄዎ አልተሳካም (Balance በቂ አይደለም)።")
@@ -480,7 +511,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/play - Play Bingo WebApp\n"
         "/balance - Check balance\n"
         f"💵 Deposit - Min: {MIN_DEPOSIT} Birr (Verified Receipts Only)\n"
-        f"💸 Withdraw - Min: {MIN_WITHDRAW} Birr",
+        f"💸 Withdraw - Min: {MIN_WITHDRAW} Birr (Amount -> Account -> Holder Name)",
         parse_mode="Markdown",
         reply_markup=main_keyboard(),
     )
@@ -503,7 +534,7 @@ def main():
     app.add_handler(MessageHandler(filters.CONTACT, contact_received))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, button_handler))
 
-    print("🤖 Bingo Bot is running with strict genuine deposit/withdrawal validation...")
+    print("🤖 Bingo Bot is running with Withdraw Name Verification...")
     app.run_polling()
 
 if __name__ == "__main__":

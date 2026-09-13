@@ -22,7 +22,7 @@
         .container {
             max-width: 480px;
             margin: 0 auto;
-            display: none;
+            display: none !important;
         }
 
         .container.active-screen {
@@ -364,6 +364,7 @@
         let walletBalance = 500;
         const stakeAmount = 20;
         let timerStarted = false;
+        let roundStartTime = 0;
 
         const homeScreen = document.getElementById('home-screen');
         const selectionScreen = document.getElementById('selection-screen');
@@ -385,11 +386,17 @@
         const bingoMatrixGrid = document.getElementById('bingoMatrixGrid');
         const cardNumLabel = document.getElementById('cardNumLabel');
 
-        function showScreen(screenElement) {
-            [homeScreen, selectionScreen, liveGameScreen].forEach(s => {
+        // ትክክለኛውን ስክሪን በፍጹም ሃይል (Forcefully) የሚያሳይ ፈንክሽን
+        function showScreen(screenId) {
+            document.querySelectorAll('.container').forEach(s => {
                 s.classList.remove('active-screen');
+                s.style.display = 'none';
             });
-            screenElement.classList.add('active-screen');
+            const target = document.getElementById(screenId);
+            if (target) {
+                target.classList.add('active-screen');
+                target.style.display = 'block';
+            }
         }
 
         function updateWallets() {
@@ -476,11 +483,6 @@
             }
         }
 
-        initCardsGrid();
-
-        // ጨዋታው የሚጀምረበትን ትክክለኛ ሰኮንድ (Round Start Timestamp) ማስያዣ
-        let roundStartTime = 0;
-
         function startSyncedCountdown() {
             timerStarted = true;
             clearInterval(cardCountdownInterval);
@@ -507,7 +509,6 @@
                                 });
                                 localStorage.setItem('ayat_taken_cards', JSON.stringify(currentTaken));
 
-                                // የጨዋታው ትክክለኛ መነሻ ሰዓት (የቀጣዩ 35 ሰከንድ ዑደት መጀመሪያ)
                                 roundStartTime = nowSeconds + timeLeft;
                                 launchLiveGame();
                             } else {
@@ -536,28 +537,31 @@
         function resetSelectionScreen() {
             selectedCards = [];
             stopCardCountdown();
-            showScreen(homeScreen);
+            showScreen('home-screen');
             updateWallets();
         }
 
-        joinRoomBtn.addEventListener('click', () => {
+        // JOIN ROOM ቁልፍ ሲጫን ያለምንም ማወላወል ወደ ካርድ መምረጫው እንዲገባ ማድረግ
+        joinRoomBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             selectedCards = [];
             timerStarted = false;
             stopCardCountdown();
             initCardsGrid();
             updateWallets();
             winVal.textContent = totalBoards * stakeAmount;
-            showScreen(selectionScreen);
+            showScreen('selection-screen');
         });
 
-        leaveBtn.addEventListener('click', () => {
+        leaveBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             stopCardCountdown();
-            showScreen(homeScreen);
+            showScreen('home-screen');
         });
 
         function launchLiveGame() {
             stopCardCountdown();
-            showScreen(liveGameScreen);
+            showScreen('live-game-screen');
             
             const chosenId = selectedCards[0];
             currentCardData = generateCardData(chosenId);
@@ -585,8 +589,4 @@
                 [cardObj.B[4], cardObj.I[4], cardObj.N[3], cardObj.G[4], cardObj.O[4]]
             ];
 
-            matrixValues.forEach((row) => {
-                row.forEach((val) => {
-                    const cell = document.createElement('div');
-                    cell.className = 'bingo-cell';
-                    if (val ===
+          

@@ -522,7 +522,9 @@
             }
 
             let walletKey = `ayat_wallet_${telegramUser}`;
-            let walletBalance = parseFloat(localStorage.getItem(walletKey)) || 0;
+            let storedBalance = localStorage.getItem(walletKey);
+            // የቦርሳ ሂሳብ ካልተመዘገበ በነባሪ 0 ብር ይጀምራል (ከዚህ ቀፊት የነበረው 500 ብር ቦነስ ተወግዷል)
+            let walletBalance = (storedBalance !== null && !isNaN(parseFloat(storedBalance))) ? parseFloat(storedBalance) : 0;
 
             const totalBoards = 300;
             const maxSelection = 1;
@@ -580,7 +582,4 @@
             }
 
             if (depositBankSelect) {
-                depositBankSelect.addEventListener('change', function() {
-                    let selectedBank = this.value;
-                    depositBankNameDisplay.textContent = selectedBank;
-                    depositAccountDisplay.textContent = bankAc
+                depositBankSelect.addEventListener('change', functi

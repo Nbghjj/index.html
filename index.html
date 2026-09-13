@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ayat Bingo - Telegram Bot System</title>
+    <title>Ayat Bingo - 24/7 Live Telegram System</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * {
@@ -372,7 +372,7 @@
         <div class="card-banner">
             <h3>AYAT BINGO</h3>
             <p>Admin: @Kiramk123</p>
-            <span>TELEGRAM BOT DEPOSIT & WITHDRAW SYSTEM</span>
+            <span>24/7 LIVE TELEGRAM BINGO SYSTEM</span>
         </div>
         
         <div class="wallet-box">
@@ -390,10 +390,10 @@
             <div class="room-info">
                 <span class="stake-badge">20 BIRR</span>
                 <h4>Ayat Bingo Room</h4>
-                <p style="color: #a08cc4; font-size: 12px; margin: 2px 0;">• LIVE ROOM</p>
+                <p style="color: #a08cc4; font-size: 12px; margin: 2px 0;">• 24/7 LIVE ROOM</p>
             </div>
             <div id="errorBanner" class="error-banner">⚠️ በቂ ገንዘብ የለም! እባክዎ መጀመሪያ ሂሳብዎን ይሙሉ</div>
-            <p style="font-size: 13px; color: #a08cc4;">Players: <span id="player-count">64</span> / 300</p>
+            <p style="font-size: 13px; color: #a08cc4;">Active Players: <span id="player-count">64</span> / 300</p>
             <button id="joinRoomBtn" class="join-btn" type="button">JOIN ROOM →</button>
         </div>
     </div>
@@ -429,7 +429,7 @@
             <div class="called-number-display">
                 <p style="margin: 0; color: #a08cc4; font-size: 12px;">የተጠራው ቁጥር (Current Ball)</p>
                 <div id="currentBall" class="current-ball">--</div>
-                <p id="callStatus" style="margin: 0; font-size: 11px; color: #f1c40f;">ጨዋታው ተጀምሯል...</p>
+                <p id="callStatus" style="margin: 0; font-size: 11px; color: #f1c40f;">ጨዋታው በሂደት ላይ ነው...</p>
             </div>
 
             <div class="rendered-bingo-card">
@@ -452,7 +452,7 @@
         <div class="result-card">
             <h2 id="resultTitle">የዙሩ ውጤት</h2>
             <p id="resultDesc" style="color: #a08cc4; font-size: 14px;"></p>
-            <p style="color: #f1c40f; font-size: 12px; margin-top: 15px;">ወደ አዲስ ካርድ መምረጫ በራሱ እየተመለሰ ነው...</p>
+            <p style="color: #f1c40f; font-size: 12px; margin-top: 15px;">ቀጣዩ ዙር በቅርቡ ይጀምራል...</p>
         </div>
     </div>
 
@@ -550,6 +550,20 @@
             let timerStarted = false;
             let roundStartTime = 0;
             let chosenCardId = null;
+
+            // Live Player Count Simulation (24/7 Dynamic Effect)
+            const playerCountEl = document.getElementById('player-count');
+            if (playerCountEl) {
+                let currentPlayers = Math.floor(Math.random() * (120 - 45 + 1)) + 45;
+                playerCountEl.textContent = currentPlayers;
+                setInterval(() => {
+                    let change = Math.random() > 0.5 ? 1 : -1;
+                    currentPlayers += change;
+                    if (currentPlayers < 40) currentPlayers = 42;
+                    if (currentPlayers > 280) currentPlayers = 275;
+                    playerCountEl.textContent = currentPlayers;
+                }, 6000);
+            }
 
             const homeScreen = document.getElementById('home-screen');
             const selectionScreen = document.getElementById('selection-screen');
@@ -775,7 +789,7 @@
 
                     cardBtn.onclick = function() {
                         if (localStorage.getItem('ayat_game_ended') === 'true') {
-                            alert("የቀድሞው ዙር አብቅቷል! እባክዎ ትንሽ ይጠብቁ።");
+                            alert("የቀድሞው ዙር አብቅቷል! ቀጣዩ ዙር ሊጀመር ነው ትንሽ ይጠብቁ።");
                             return;
                         }
 
@@ -805,6 +819,7 @@
                 }
             }
 
+            // 24/7 Continuous Synchronized Countdown Timer (35 seconds cycle)
             function startSyncedCountdown() {
                 timerStarted = true;
                 clearInterval(cardCountdownInterval);
@@ -862,6 +877,7 @@
                 updateWallets();
             }
 
+            // 24/7 Automatic Next Round Initialization
             function startNewRoundSelection() {
                 selectedCards = [];
                 timerStarted = false;
@@ -988,6 +1004,7 @@
                         resultDesc.textContent = `የካርቴል ቁጥር ${winningCard} BINGO አሸንፏል!`;
                         switchScreen('result-screen');
 
+                        // Automatically start next round after 3 seconds
                         setTimeout(() => {
                             startNewRoundSelection();
                         }, 3000);
@@ -1015,6 +1032,7 @@
                         resultDesc.textContent = "ጊዜው አልቋል ወይም ማንም አላሸነፈም።";
                         switchScreen('result-screen');
 
+                        // Automatically start next round after 3 seconds
                         setTimeout(() => {
                             startNewRoundSelection();
                         }, 3000);
@@ -1028,7 +1046,7 @@
             if (bingoClaimBtn) {
                 bingoClaimBtn.onclick = function() {
                     if (localStorage.getItem('ayat_game_ended') === 'true') {
-                        alert("ይህ ዙር አልቋል!");
+                        alert("ይህ ዙር አልቋል! ቀጣዩ ዙር እየጀመረ ነው።");
                         return;
                     }
 
@@ -1052,6 +1070,7 @@
                         resultDesc.textContent = `የካርቴል ቁጥር ${chosenCardId} BINGO አሸንፏል! ሽልማቱ ወደ ቦርሳህ ገብቷል።`;
                         switchScreen('result-screen');
 
+                        // Automatically start next round after 3 seconds
                         setTimeout(() => {
                             startNewRoundSelection();
                         }, 3000);

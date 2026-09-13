@@ -71,7 +71,7 @@
             font-weight: bold;
         }
 
-        .join-btn, .start-game-btn, .bingo-claim-btn {
+        .join-btn, .bingo-claim-btn {
             background: linear-gradient(135deg, #f39c12, #f1c40f);
             border: none;
             width: 100%;
@@ -82,12 +82,6 @@
             cursor: pointer;
             margin-top: 15px;
             font-size: 15px;
-        }
-
-        .join-btn:disabled, .start-game-btn:disabled {
-            background: #555;
-            color: #888;
-            cursor: not-allowed;
         }
 
         .bingo-claim-btn {
@@ -285,7 +279,6 @@
         <div class="game-top-bar">
             <button id="leaveBtn" class="leave-btn">← Leave</button>
             <h3 style="margin: 0; font-size: 14px; color: #f39c12;">Ayat Bingo</h3>
-            <!-- Wallet, Stake, and Win በግልጽ እንዲታዩ የተደረገበት ክፍል -->
             <div class="stats-box">
                 <span>W: <b id="wallet-val">500</b> Br</span>
                 <span>S: <b id="stake-val">20</b> Br</span>
@@ -295,13 +288,10 @@
 
         <div class="selection-info">
             <span id="boards-count">Boards: 0/1</span>
-            <span id="timer-display" style="color: #e74c3c; font-weight: bold;">ጊዜው ያልቃል: 35ሰ</span>
+            <span id="timer-display" style="color: #f1c40f; font-weight: bold;">ካርድ ይምረጡ...</span>
         </div>
 
-        <!-- 300 ካርዶች በግልጽ የሚታዩበት ግሪድ -->
         <div class="cards-grid-container" id="cardsGrid"></div>
-
-        <button id="startGameBtn" class="start-game-btn" style="display: none;" disabled>START GAME</button>
     </div>
 
     <!-- 3. LIVE GAME SCREEN -->
@@ -343,10 +333,9 @@
         const maxSelection = 1;
         let selectedCards = [];
         let gameInterval = null;
-        let selectionTimerInterval = null;
+        let countdownInterval = null;
         let currentCardData = null;
         let calledNumbersSet = new Set();
-        let timeLeft = 35;
         let walletBalance = 500;
         const stakeAmount = 20;
 
@@ -356,7 +345,6 @@
         
         const joinRoomBtn = document.getElementById('joinRoomBtn');
         const leaveBtn = document.getElementById('leaveBtn');
-        const startGameBtn = document.getElementById('startGameBtn');
         const exitGameBtn = document.getElementById('exitGameBtn');
         const bingoClaimBtn = document.getElementById('bingoClaimBtn');
         
@@ -390,7 +378,7 @@
             return nums;
         }
 
-        // 300 ካርዶችን በግሪድ መሙላት እና ቁጥሮቻቸውን በግልጽ ማሳየት
+        // 300 ካርዶችን በግሪድ መሙላት
         for (let i = 1; i <= totalBoards; i++) {
             const cardBtn = document.createElement('button');
             cardBtn.className = 'card-box';
@@ -398,7 +386,6 @@
             cardBtn.dataset.id = i;
 
             cardBtn.addEventListener('click', function() {
-                if (timeLeft > 0) return; // ሰዓቱ ካላለቀ መምረጥ አይቻልም
                 const cardId = parseInt(this.dataset.id);
                 if (selectedCards.includes(cardId)) {
                     selectedCards = selectedCards.filter(id => id !== cardId);
@@ -407,41 +394,51 @@
                     if (selectedCards.length < maxSelection) {
                         selectedCards.push(cardId);
                         this.classList.add('selected');
+
+                        // ካርዱን እንደመረጠ ወዲያውኑ የ 35 ሰከንድ ቆጣሪ መጀመር
+                        startPostSelectionTimer();
                     } else {
                         alert(`እባክዎ ከ ${maxSelection} በላይ ካርድ መምረጥ አይችሉም!`);
                     }
                 }
                 boardsCountText.textContent = `Boards: ${selectedCards.length}/${maxSelection}`;
-                if (selectedCards.length > 0) {
-                    startGameBtn.style.display = 'block';
-                    startGameBtn.removeAttribute('disabled');
-                } else {
-                    startGameBtn.style.display = 'none';
-                }
             });
             gridContainer.appendChild(cardBtn);
         }
 
-        function startSelectionCountdown() {
-            timeLeft = 35;
-            timerDisplay.textContent = `ጊዜው ያልቃል: ${timeLeft}ሰ`;
-            timerDisplay.style.color = '#e74c3c';
-            startGameBtn.style.display = 'none';
+        function resetSelectionScreen() {
             selectedCards = [];
             document.querySelectorAll('.card-box').forEach(btn => btn.classList.remove('selected'));
             boardsCountText.textContent = `Boards: 0/1`;
+            timerDisplay.textContent = `ካርድ ይምረጡ...`;
             walletVal.textContent = walletBalance;
-            winVal.textContent = totalBoards * stakeAmount; // አጠቃላይ ገቢ (Prize Pool)
+            winVal.textContent = totalBoards * stakeAmount;
+            clearInterval(countdownInterval);
+        }
 
-            clearInterval(selectionTimerInterval);
-            selectionTimerInterval = setInterval(() => {
+        // ካርዱ ከተያዘ በኋላ የሚቆጥረው 35 ሰከንድ ሎጂክ እና ወደ ጨዋታው ማሸጋገር
+        function startPostSelectionTimer() {
+            let timeLeft = 35;
+            timerDisplay.textContent = `ጨዋታው ሊጀምር: ${timeLeft}ሰ`;
+            timerDisplay.style.color = '#e74c3c';
+
+            clearInterval(countdownInterval);
+            countdownInterval = setInterval(() => {
                 timeLeft--;
                 if (timeLeft > 0) {
-                    timerDisplay.textContent = `ጊዜው ያልቃል: ${timeLeft}ሰ`;
+                    timerDisplay.textContent = `ጨዋታው ሊጀምር: ${timeLeft}ሰ`;
                 } else {
-                    clearInterval(selectionTimerInterval);
-                    timerDisplay.textContent = `ካርድ መያዝ ጀምር!`;
-                    timerDisplay.style.color = '#2ecc71';
+                    clearInterval(countdownInterval);
+                    
+                    // ሒሳብ መቀነስ እና ወደ live game መግባት
+                    if (walletBalance >= stakeAmount) {
+                        walletBalance -= stakeAmount;
+                        walletVal.textContent = walletBalance;
+                        launchLiveGame();
+                    } else {
+                        alert("ሂሳብዎ በቂ አይደለም!");
+                        resetSelectionScreen();
+                    }
                 }
             }, 1000);
         }
@@ -449,25 +446,16 @@
         joinRoomBtn.addEventListener('click', () => {
             homeScreen.style.display = 'none';
             selectionScreen.style.display = 'block';
-            startSelectionCountdown();
+            resetSelectionScreen();
         });
 
         leaveBtn.addEventListener('click', () => {
-            clearInterval(selectionTimerInterval);
+            clearInterval(countdownInterval);
             selectionScreen.style.display = 'none';
             homeScreen.style.display = 'block';
         });
 
-        startGameBtn.addEventListener('click', () => {
-            if (selectedCards.length === 0) return;
-            if (walletBalance < stakeAmount) {
-                alert("ሂሳብዎ በቂ አይደለም!");
-                return;
-            }
-            walletBalance -= stakeAmount; // የጨዋታ ዋጋ መቀነስ
-            walletVal.textContent = walletBalance;
-
-            clearInterval(selectionTimerInterval);
+        function launchLiveGame() {
             selectionScreen.style.display = 'none';
             liveGameScreen.style.display = 'block';
             
@@ -477,7 +465,7 @@
             
             renderRenderedCard(currentCardData);
             startNumberCalling();
-        });
+        }
 
         function getLetterForNumber(num) {
             if (num <= 15) return 'B';
@@ -549,7 +537,7 @@
             });
 
             if (markedCount >= 5) {
-                walletBalance += (totalBoards * stakeAmount); // አሸናፊውን ገንዘብ ወደ ዎሌት መጨመር
+                walletBalance += (totalBoards * stakeAmount);
                 alert("🎉 እንኳን ደስ አለዎት! BINGO አሸንፈዋል!");
                 if (tg && tg.close) {
                     tg.close();
@@ -564,10 +552,8 @@
             liveGameScreen.style.display = 'none';
             homeScreen.style.display = 'block';
             selectedCards = [];
-            startGameBtn.style.display = 'none';
             currentBall.textContent = '--';
         });
     </script>
 </body>
-            </html>
-    
+</html>

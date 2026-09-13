@@ -40,7 +40,7 @@ used_transactions = set()
 # FLASK BACKEND SERVER (API)
 # =========================
 app = Flask(__name__)
-bot_app_instance = None  # To send telegram messages from Flask routes
+bot_app_instance = None  
 
 @app.route('/api/balance/<user_id>', methods=['GET'])
 def api_get_balance(user_id):
@@ -48,6 +48,16 @@ def api_get_balance(user_id):
         uid = int(user_id)
         balance = users.get(uid, {}).get("balance", 0.0)
         return jsonify({"balance": balance})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route('/api/check_user/<user_id>', methods=['GET'])
+def api_check_user(user_id):
+    try:
+        uid = int(user_id)
+        is_registered = uid in users and bool(users[uid].get("phone"))
+        balance = users.get(uid, {}).get("balance", 0.0)
+        return jsonify({"registered": is_registered, "balance": balance})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
@@ -70,7 +80,6 @@ def api_update_balance():
         return jsonify({"error": str(e)}), 400
 
 def run_flask():
-    # 🛠️ እዚህ ላይ ማስተካከያው ተደርጓል (Host እና Port አሰጣጥ)
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 
@@ -170,7 +179,11 @@ async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def play_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     if not registered(uid):
-        await update.message.reply_text("❌ መጀመሪያ /register ያድርጉ።", reply_markup=register_keyboard())
+        await update.message.reply_text(
+            "❌ መጀመሪያ ጨዋታውን ለመጀመር እና ዌብ አፑን ለመክፈት 📱 *Share Contact* በማድረግ ሬጅስተር ማድረግ አለብዎት።",
+            parse_mode="Markdown",
+            reply_markup=register_keyboard()
+        )
         return
 
     inline_keyboard = InlineKeyboardMarkup([
@@ -583,7 +596,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 def main():
-    # Start Flask API server in a separate background thread
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.daemon = True
     flask_thread.start()

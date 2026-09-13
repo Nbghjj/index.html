@@ -70,7 +70,9 @@ def api_update_balance():
         return jsonify({"error": str(e)}), 400
 
 def run_flask():
-    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+    # 🛠️ እዚህ ላይ ማስተካከያው ተደርጓል (Host እና Port አሰጣጥ)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 
 
 # =========================
@@ -585,7 +587,7 @@ def main():
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.daemon = True
     flask_thread.start()
-    print("🌐 Flask API Server started on port 5000...")
+    print("🌐 Flask API Server started...")
 
     app = Application.builder().token(TOKEN).build()
 
@@ -594,7 +596,7 @@ def main():
     app.add_handler(CommandHandler("play", play_game))
     app.add_handler(CommandHandler("balance", balance))
     app.add_handler(CommandHandler("deposit", deposit))
-    app.add_handler(Commandhandler("withdraw", withdraw))
+    app.add_handler(CommandHandler("withdraw", withdraw))
     app.add_handler(CommandHandler("help", help_command))
     
     app.add_handler(CommandHandler("addbalance", add_balance))

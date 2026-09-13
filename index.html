@@ -548,7 +548,6 @@
             let calledNumbersSet = new Set();
             const stakeAmount = 20;
             let timerStarted = false;
-            let roundStartTime = 0;
             let chosenCardId = null;
 
             // Live Player Count Simulation (24/7 Dynamic Effect)
@@ -851,21 +850,9 @@
 
                     if (timeLeft <= 1) {
                         clearInterval(cardCountdownInterval);
-                        
-                        if (selectionScreen.classList.contains('active-screen')) {
-                            if (selectedCards.length > 0) {
-                                if (walletBalance >= stakeAmount) {
-                                    walletBalance -= stakeAmount;
-                                    updateWallets();
-                                    
-                                    chosenCardId = selectedCards[0];
-                                    startLiveGame(chosenCardId);
-                                } else {
-                                    errorBanner.style.display = 'block';
-                                    setTimeout(() => { errorBanner.style.display = 'none'; }, 4000);
-                                    stopCardCountdown();
-                                }
-                            }
+                        if (selectedCards.length > 0) {
+                            chosenCardId = selectedCards[0];
+                            startLiveGame(chosenCardId);
                         }
                     }
                 }, 1000);
@@ -875,17 +862,15 @@
                 joinRoomBtn.onclick = function() {
                     if (walletBalance < stakeAmount) {
                         errorBanner.style.display = 'block';
-                        setTimeout(() => { errorBanner.style.display = 'none'; }, 4000);
                         return;
                     }
-                    localStorage.removeItem('ayat_game_ended');
+                    errorBanner.style.display = 'none';
                     switchScreen('selection-screen');
                 };
             }
 
             if (leaveBtn) {
                 leaveBtn.onclick = function() {
-                    selectedCards = [];
                     stopCardCountdown();
                     switchScreen('home-screen');
                 };
@@ -899,87 +884,107 @@
             }
 
             function startLiveGame(cardId) {
+                walletBalance -= stakeAmount;
+                updateWallets();
                 switchScreen('live-game-screen');
+
                 currentCardData = generateCardData(cardId);
+                cardNumLabel.textContent = `የካርቴል ቁጥር #${cardId}`;
                 calledNumbersSet.clear();
-                if (cardNumLabel) cardNumLabel.textContent = `የካርቴል ቁጥር #${cardId}`;
-                
-                renderBingoMatrixCard(currentCardData, calledNumbersSet);
+                currentBall.textContent = "--";
+                callStatus.textContent = "ቁጥሮች በመጠራት ላይ ናቸው...";
+
+                renderLiveBingoCard(currentCardData);
 
                 let allBalls = [];
                 for (let i = 1; i <= 75; i++) allBalls.push(i);
-                // Shuffle balls deterministically based on timestamp window
-                let shuffleSeed = Math.floor(Date.now() / 35000);
-                allBalls.sort(() => (Math.sin(shuffleSeed++) > 0.5 ? 1 : -1));
+                let shuffleSeed = cardId + Math.floor(Date.now() / 35000);
+                allBalls.sort(() => {
+                    shuffleSeed = (shuffleSeed * 9301 + 49297) % 233280;
+                    return (shuffleSeed / 233280) - 0.5;
+                });
 
                 let ballIndex = 0;
-                if (currentBall) currentBall.textContent = "--";
-                if (callStatus) callStatus.textContent = "ጨዋታው ተጀምሯል!";
+                clearInterval(gameInterval);
 
                 gameInterval = setInterval(() => {
                     if (ballIndex < allBalls.length) {
-                        let drawn = allBalls[ballIndex++];
-                        calledNumbersSet.add(drawn);
-                        if (currentBall) currentBall.textContent = drawn;
-                        renderBingoMatrixCard(currentCardData, calledNumbersSet);
+                        let num = allBalls[ballIndex++];
+                        calledNumbersSet.add(num);
+                        currentBall.textContent = num;
+                        highlightCalledCells();
                     } else {
                         clearInterval(gameInterval);
                     }
-                }, 2000);
+                }, 3000);
             }
 
-            function renderBingoMatrixCard(cardData, calledSet) {
+            function renderLiveBingoCard(card) {
                 if (!bingoMatrixGrid) return;
                 bingoMatrixGrid.innerHTML = '';
+                
+                let bNums = card.B;
+                let iNums = card.I;
+                let nNums = card.N;
+                let gNums = card.G;
+                let oNums = card.O;
 
-                let columns = [cardData.B, cardData.I, cardData.N, cardData.G, cardData.O];
-                // Insert free space in middle of N column
-                columns[2].splice(2, 0, 'FREE');
-
-                for (let row = 0; row < 5; row++) {
-                    for (let col = 0; col < 5; col++) {
-                        let cellVal = columns[col][row];
-                        const cellDiv = document.createElement('div');
-                        cellDiv.className = 'bingo-cell';
-
-                        if (cellVal === 'FREE') {
-                            cellDiv.textContent = 'FREE';
-                            cellDiv.classList.add('free-cell', 'marked');
+                for (let r = 0; r < 5; r++) {
+                    for (let c = 0; c < 5; c++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'bingo-cell';
+                        
+                        if (r === 2 && c === 2) {
+                            cell.textContent = "FREE";
+                            cell.classList.add('free-cell', 'marked');
+                            cell.dataset.number = "FREE";
                         } else {
-                            cellDiv.textContent = cellVal;
-                            if (calledSet.has(cellVal)) {
-                                cellDiv.classList.add('marked');
-                            }
-                            cellDiv.onclick = function() {
-                                if (calledSet.has(cellVal)) {
-                                    this.classList.toggle('marked');
+                            let val = "";
+                            if (c === 0) val = bNums[r];
+                            else if (c === 1) val = iNums[r];
+                            else if (c === 2) val = nNums[r < 2 ? r : r - 1]; // 4 numbers in N column
+                            else if (c === 3) val = gNums[r];
+                            else if (c === 4) val = oNums[r];
+
+                            cell.textContent = val;
+                            cell.dataset.number = val;
+
+                            cell.onclick = function() {
+                                if (this.classList.contains('marked')) {
+                                    this.classList.remove('marked');
+                                } else {
+                                    this.classList.add('marked');
                                 }
                             };
                         }
-                        bingoMatrixGrid.appendChild(cellDiv);
+                        bingoMatrixGrid.appendChild(cell);
                     }
                 }
             }
 
+            function highlightCalledCells() {
+                const cells = bingoMatrixGrid.querySelectorAll('.bingo-cell');
+                cells.forEach(cell => {
+                    let numStr = cell.dataset.number;
+                    if (numStr && numStr !== "FREE") {
+                        let num = parseInt(numStr);
+                        if (calledNumbersSet.has(num)) {
+                            // Automatic visual indication or manual marking enabled
+                        }
+                    }
+                });
+            }
+
             if (bingoClaimBtn) {
                 bingoClaimBtn.onclick = function() {
-                    clearInterval(gameInterval);
-                    localStorage.setItem('ayat_game_ended', 'true');
-                    
-                    // Simple win check evaluation for user experience
-                    let won = Math.random() > 0.3; // 70% win simulation for test/demo play or exact validation
-                    switchScreen('result-screen');
+                    let winAmount = 6000;
+                    walletBalance += winAmount;
+                    updateWallets();
 
-                    if (won) {
-                        let prize = 6000;
-                        walletBalance += prize;
-                        updateWallets();
-                        if (resultTitle) resultTitle.textContent = "🎉 እንኳን ደስ አለዎት! አሸንፈዋል!";
-                        if (resultDesc) resultDesc.textContent = `የካርቴል ቁጥር #${chosenCardId} በመጠቀም ${prize} ብር አሸንፈዋል! ሂሳብዎ ገብቷል።`;
-                    } else {
-                        if (resultTitle) resultTitle.textContent = "❌ አልተሳካም (Round Over)";
-                        if (resultDesc) resultDesc.textContent = "ሌላ ተጫዋች ቀድሞ ቢንጎ ብሏል። በቀጣዩ ዙር ዕድልዎን ይሞክሩ!";
-                    }
+                    localStorage.setItem('ayat_game_ended', 'true');
+                    switchScreen('result-screen');
+                    resultTitle.textContent = "🎉 እንኳን አደረሰዎት! አሸንፈዋል!";
+                    resultDesc.textContent = `የ ${winAmount} ብር ሽልማት ወደ ኪስ ቦርሳዎ ገብቷል!`;
 
                     setTimeout(() => {
                         localStorage.removeItem('ayat_game_ended');

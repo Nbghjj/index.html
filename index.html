@@ -119,14 +119,16 @@
 
         .stats-box {
             display: flex;
-            gap: 4px;
+            gap: 6px;
         }
 
         .stats-box span {
             background: #2c1b4d;
-            padding: 4px 6px;
+            padding: 4px 8px;
             border-radius: 6px;
             font-size: 11px;
+            color: #f1c40f;
+            border: 1px solid #3c2a6d;
         }
 
         .selection-info {
@@ -142,7 +144,7 @@
             display: grid;
             grid-template-columns: repeat(10, 1fr);
             gap: 5px;
-            max-height: 200px;
+            max-height: 220px;
             overflow-y: auto;
             background: #1f143a;
             padding: 10px;
@@ -157,16 +159,17 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 11px;
+            font-size: 12px;
             font-weight: bold;
             border-radius: 4px;
             cursor: pointer;
-            border: none;
+            border: 1px solid #523a8a;
         }
 
         .card-box.selected {
             background: #f39c12;
             color: #000;
+            border-color: #fff;
         }
 
         /* Live Game Styles */
@@ -281,10 +284,12 @@
     <div id="selection-screen" class="container" style="display: none;">
         <div class="game-top-bar">
             <button id="leaveBtn" class="leave-btn">← Leave</button>
-            <h3 style="margin: 0; font-size: 15px; color: #f39c12;">Ayat Bingo</h3>
+            <h3 style="margin: 0; font-size: 14px; color: #f39c12;">Ayat Bingo</h3>
+            <!-- Wallet, Stake, and Win በግልጽ እንዲታዩ የተደረገበት ክፍል -->
             <div class="stats-box">
-                <span>W: <b id="wallet-val">500</b></span>
-                <span>S: <b id="stake-val">20</b></span>
+                <span>W: <b id="wallet-val">500</b> Br</span>
+                <span>S: <b id="stake-val">20</b> Br</span>
+                <span>WIN: <b id="win-val">6000</b> Br</span>
             </div>
         </div>
 
@@ -293,6 +298,7 @@
             <span id="timer-display" style="color: #e74c3c; font-weight: bold;">ጊዜው ያልቃል: 35ሰ</span>
         </div>
 
+        <!-- 300 ካርዶች በግልጽ የሚታዩበት ግሪድ -->
         <div class="cards-grid-container" id="cardsGrid"></div>
 
         <button id="startGameBtn" class="start-game-btn" style="display: none;" disabled>START GAME</button>
@@ -341,6 +347,8 @@
         let currentCardData = null;
         let calledNumbersSet = new Set();
         let timeLeft = 35;
+        let walletBalance = 500;
+        const stakeAmount = 20;
 
         const homeScreen = document.getElementById('home-screen');
         const selectionScreen = document.getElementById('selection-screen');
@@ -355,6 +363,8 @@
         const gridContainer = document.getElementById('cardsGrid');
         const boardsCountText = document.getElementById('boards-count');
         const timerDisplay = document.getElementById('timer-display');
+        const walletVal = document.getElementById('wallet-val');
+        const winVal = document.getElementById('win-val');
         const currentBall = document.getElementById('currentBall');
         const callStatus = document.getElementById('callStatus');
         const bingoMatrixGrid = document.getElementById('bingoMatrixGrid');
@@ -380,7 +390,7 @@
             return nums;
         }
 
-        // Populate 300 cards grid
+        // 300 ካርዶችን በግሪድ መሙላት እና ቁጥሮቻቸውን በግልጽ ማሳየት
         for (let i = 1; i <= totalBoards; i++) {
             const cardBtn = document.createElement('button');
             cardBtn.className = 'card-box';
@@ -388,7 +398,7 @@
             cardBtn.dataset.id = i;
 
             cardBtn.addEventListener('click', function() {
-                if (timeLeft > 0) return; // ሰዓቱ ካላለቀ ካርድ መምረጥ አይቻልም
+                if (timeLeft > 0) return; // ሰዓቱ ካላለቀ መምረጥ አይቻልም
                 const cardId = parseInt(this.dataset.id);
                 if (selectedCards.includes(cardId)) {
                     selectedCards = selectedCards.filter(id => id !== cardId);
@@ -420,6 +430,8 @@
             selectedCards = [];
             document.querySelectorAll('.card-box').forEach(btn => btn.classList.remove('selected'));
             boardsCountText.textContent = `Boards: 0/1`;
+            walletVal.textContent = walletBalance;
+            winVal.textContent = totalBoards * stakeAmount; // አጠቃላይ ገቢ (Prize Pool)
 
             clearInterval(selectionTimerInterval);
             selectionTimerInterval = setInterval(() => {
@@ -448,6 +460,13 @@
 
         startGameBtn.addEventListener('click', () => {
             if (selectedCards.length === 0) return;
+            if (walletBalance < stakeAmount) {
+                alert("ሂሳብዎ በቂ አይደለም!");
+                return;
+            }
+            walletBalance -= stakeAmount; // የጨዋታ ዋጋ መቀነስ
+            walletVal.textContent = walletBalance;
+
             clearInterval(selectionTimerInterval);
             selectionScreen.style.display = 'none';
             liveGameScreen.style.display = 'block';
@@ -530,6 +549,7 @@
             });
 
             if (markedCount >= 5) {
+                walletBalance += (totalBoards * stakeAmount); // አሸናፊውን ገንዘብ ወደ ዎሌት መጨመር
                 alert("🎉 እንኳን ደስ አለዎት! BINGO አሸንፈዋል!");
                 if (tg && tg.close) {
                     tg.close();
@@ -549,5 +569,5 @@
         });
     </script>
 </body>
-    </html>
-
+            </html>
+    

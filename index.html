@@ -166,7 +166,6 @@
             border-color: #fff;
         }
 
-        /* በሌላ ሰው የተያዘ ካርድ */
         .card-box.taken {
             background: #444;
             color: #777;
@@ -341,14 +340,14 @@
         const totalBoards = 300;
         const maxSelection = 1;
         let selectedCards = [];
-        let takenCards = new Set(); // በሌሎች ተጫዋቾች የተያዙ ካርዶች
+        let takenCards = new Set();
         let gameInterval = null;
         let countdownInterval = null;
         let currentCardData = null;
         let calledNumbersSet = new Set();
         let walletBalance = 500;
         const stakeAmount = 20;
-        let timerStarted = false; // ቆጣሪው መጀመሩን ለመቆጣጠር
+        let timerStarted = false;
 
         const homeScreen = document.getElementById('home-screen');
         const selectionScreen = document.getElementById('selection-screen');
@@ -389,7 +388,6 @@
             return nums;
         }
 
-        // 300 ካርዶችን በግሪድ መሙላት
         for (let i = 1; i <= totalBoards; i++) {
             const cardBtn = document.createElement('button');
             cardBtn.className = 'card-box';
@@ -406,13 +404,12 @@
                 if (selectedCards.includes(cardId)) {
                     selectedCards = selectedCards.filter(id => id !== cardId);
                     this.classList.remove('selected');
-                    // ካርዱን ካነሳው እና ገና ቆጣሪው ካልተጠናቀቀ ቆጣሪውን ማቆም ይቻላል (አማራጭ)
                 } else {
                     if (selectedCards.length < maxSelection) {
                         selectedCards.push(cardId);
                         this.classList.add('selected');
 
-                        // ተጫዋቹ የመጀመሪያውን ካርድ ሲመርጥ ብቻ የ 35 ሰከንድ ቆጣሪውን ለሁሉም መጀመር
+                        // ተጫዋቹ የመጀመሪያውን ካርድ ሲመርጥ ብቻ የጋራ ቆጣሪውን ማስጀመር
                         if (!timerStarted) {
                             timerStarted = true;
                             startSharedCountdown();
@@ -446,7 +443,7 @@
             clearInterval(countdownInterval);
         }
 
-        // ካርድ ሲመረጥ የሚጀምረው የ 35 ሰከንድ የጋራ ቆጣሪ
+        // ሁሉም ተጫዋቾች በጋራ የሚቆጥሩበት የ 35 ሰከንድ ቆጣሪ
         function startSharedCountdown() {
             let timeLeft = 35;
             timerDisplay.textContent = `ጨዋታው ሊጀምር: ${timeLeft}ሰ`;
@@ -465,7 +462,6 @@
                             walletBalance -= stakeAmount;
                             walletVal.textContent = walletBalance;
                             
-                            // የተመረጠውን ካርድ እንደተያዘ (taken) ምልክት ማድረግ
                             selectedCards.forEach(id => takenCards.add(id));
                             launchLiveGame();
                         } else {

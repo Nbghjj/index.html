@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ayat Bingo - Telegram Bot Deposit System</title>
+    <title>Ayat Bingo - Telegram Bot System</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * {
@@ -81,7 +81,7 @@
 
         .wallet-btn {
             flex: 1;
-            padding: 10px;
+            padding: 12px;
             border: none;
             border-radius: 8px;
             font-weight: bold;
@@ -360,7 +360,7 @@
         <div class="card-banner">
             <h3>AYAT BINGO</h3>
             <p>Admin: @Kiramk123</p>
-            <span>TELEGRAM BOT DEPOSIT SYSTEM</span>
+            <span>TELEGRAM BOT DEPOSIT & WITHDRAW SYSTEM</span>
         </div>
         
         <div class="wallet-box">
@@ -369,8 +369,8 @@
                 <span style="font-size: 18px; font-weight: bold; color: #2ecc71;"><b id="home-wallet-val">0</b> Birr</span>
             </div>
             <div class="wallet-actions">
-                <button id="depositBtn" class="wallet-btn deposit-btn" type="button">+ Deposit (ငንዘብ አስገባ)</button>
-                <button id="withdrawBtn" class="wallet-btn withdraw-btn" type="button">- Withdraw (ငንዘብ አውጣ)</button>
+                <button id="depositBtn" class="wallet-btn deposit-btn" type="button">+ Deposit</button>
+                <button id="withdrawBtn" class="wallet-btn withdraw-btn" type="button">- Withdraw</button>
             </div>
         </div>
 
@@ -446,17 +446,25 @@
     <!-- DEPOSIT MODAL -->
     <div id="depositModal" class="modal">
         <div class="modal-content">
-            <h3>ငንዘብ ማስገባት (Deposit)</h3>
+            <h3>ገንዘብ ማስገባት (Deposit)</h3>
             <p style="font-size: 13px; color: #a08cc4; margin: 0 0 10px 0;">
-                እባክዎ ከታች ባለው ቁጥር ገንዘብ ያስተላልፉ:<br>
-                • <b>Telebirr / CBE:</b> 0940483108 (ኪሩቤል)<br>
-                ከክፍያ በኋላ የብር መጠን እና የግብይት ቁጥር (TxID) ያስገቡ።
+                እባክዎ ከታች ከሚገኙት የባንክ አማራጮች አንዱን በመምረጥ ገንዘብ ያስተላልፉ:<br><br>
+                • <b>መቀበያ ስም:</b> ኪሩቤል (Kirubel)<br>
+                • <b>የተመረጠው ባንክ:</b> <span id="depositBankNameDisplay">Telebirr</span><br>
+                • <b>የአካውንት ቁጥር:</b> <span id="depositAccountDisplay" style="color:#2ecc71; font-weight:bold;">0940483108</span>
             </p>
-            <input type="number" id="depositAmountInput" placeholder="ያስተላለፉትን መጠን (ብር)" />
+            
+            <label style="font-size: 12px; color: #a08cc4;">ባንክ/አገልግሎት ይምረጡ:</label>
+            <select id="depositBankSelect">
+                <option value="Telebirr">Telebirr (0940483108)</option>
+                <option value="CBE">Commercial Bank of Ethiopia (CBE - 0940483108)</option>
+            </select>
+
+            <input type="number" id="depositAmountInput" placeholder="ያስተላለፉትን የብር መጠን" />
             <input type="text" id="depositTxIdInput" placeholder="የባንክ/ቴሌብር የግብይት ቁጥር (TxID)" />
             <div class="modal-actions">
                 <button id="submitDepositBtn" class="wallet-btn deposit-btn" type="button">ጥያቄ ላክ</button>
-                <button id="closeDepositModal" class="wallet-btn withdraw-btn" type="button">ይቅር</button>
+                <button id="closeDepositModal" class="wallet-btn" style="background:#e74c3c; color:#fff;" type="button">ይቅር</button>
             </div>
         </div>
     </div>
@@ -464,21 +472,17 @@
     <!-- WITHDRAW MODAL -->
     <div id="withdrawModal" class="modal">
         <div class="modal-content">
-            <h3>ገንዘብ ማውጣት (Withdrawal)</h3>
-            <p style="font-size: 13px; color: #a08cc4; margin: 0 0 10px 0;">
-                ጥያቄዎን ለመላክ መረጃ ይሙሉ:<br>
-                • <b>Admin Telegram:</b> @Kiramk123
-            </p>
-            <input type="number" id="withdrawAmountInput" placeholder="የሚወጣውን መጠን (ብር)" />
+            <h3>ገንዘብ ማውጣት (Withdraw)</h3>
             <select id="withdrawBankSelect">
-                <option value="Telebirr">Telebirr (0940483108)</option>
+                <option value="Telebirr">Telebirr</option>
                 <option value="CBE">Commercial Bank of Ethiopia (CBE)</option>
-                <option value="Awash">Awash Bank</option>
             </select>
-            <input type="text" id="withdrawAccountInput" placeholder="የእርስዎ የሂሳብ ቁጥር ወይም ስልክ ቁጥር" />
+            <input type="number" id="withdrawAmountInput" placeholder="የሚወጣውን የብር መጠን" />
+            <input type="text" id="withdrawAccountInput" placeholder="የባንክ/ቴሌብር አካውንት ቁጥር" />
+            <input type="text" id="withdrawNameInput" placeholder="የባንክ/ቴሌብር ስም" />
             <div class="modal-actions">
-                <button id="submitWithdrawBtn" class="wallet-btn deposit-btn" type="button">Withdraw ጠይቅ</button>
-                <button id="closeWithdrawModal" class="wallet-btn withdraw-btn" type="button">ይቅር</button>
+                <button id="submitWithdrawBtn" class="wallet-btn withdraw-btn" type="button">ጥያቄ ላክ</button>
+                <button id="closeWithdrawModal" class="wallet-btn" style="background:#7928ca; color:#fff;" type="button">ይቅር</button>
             </div>
         </div>
     </div>
@@ -486,6 +490,12 @@
     <script>
         const BOT_TOKEN = "8909328591:AAEay418mvQF9dRBqjtSKgPDM_T-WpWWJ84";
         const ADMIN_CHAT_ID = "6496982318";
+
+        // የዲፖዚት የባንክ አካውንት ቁጥሮች (ሁለቱም 0940483108 እንዲሆኑ ተደርጓል)
+        const bankAccounts = {
+            "Telebirr": "0940483108",
+            "CBE": "0940483108"
+        };
 
         function switchScreen(screenId) {
             document.querySelectorAll('.container').forEach(screen => {
@@ -541,10 +551,14 @@
             const withdrawBtn = document.getElementById('withdrawBtn');
             
             const depositModal = document.getElementById('depositModal');
-            const withdrawModal = document.getElementById('withdrawModal');
             const closeDepositModal = document.getElementById('closeDepositModal');
-            const closeWithdrawModal = document.getElementById('closeWithdrawModal');
             const submitDepositBtn = document.getElementById('submitDepositBtn');
+            const depositBankSelect = document.getElementById('depositBankSelect');
+            const depositBankNameDisplay = document.getElementById('depositBankNameDisplay');
+            const depositAccountDisplay = document.getElementById('depositAccountDisplay');
+
+            const withdrawModal = document.getElementById('withdrawModal');
+            const closeWithdrawModal = document.getElementById('closeWithdrawModal');
             const submitWithdrawBtn = document.getElementById('submitWithdrawBtn');
 
             const gridContainer = document.getElementById('cardsGrid');
@@ -566,426 +580,8 @@
                 localStorage.setItem(walletKey, walletBalance);
             }
 
-            if (depositBtn) {
-                depositBtn.onclick = function() {
-                    depositModal.style.display = 'flex';
-                };
-            }
-            if (closeDepositModal) {
-                closeDepositModal.onclick = function() {
-                    depositModal.style.display = 'none';
-                };
-            }
-
-            if (submitDepositBtn) {
-                submitDepositBtn.onclick = function() {
-                    let amt = parseFloat(document.getElementById('depositAmountInput').value);
-                    let txId = document.getElementById('depositTxIdInput').value.trim();
-                    if (isNaN(amt) || amt <= 0 || !txId) {
-                        alert("እባክዎ ትክክለኛ መጠን እና የግብይት ቁጥር (TxID) ያስገቡ።");
-                        return;
-                    }
-
-                    let message = `📥 *አዲስ የዲፖዚት ጥያቄ (Deposit Request)*\n\n` +
-                                  `👤 ተጠቃሚ: ${telegramUsername} (ID: \`${telegramUser}\`)\n` +
-                                  `💰 የብር መጠን: *${amt} Br*\n` +
-                                  `🧾 የግብይት ቁጥር (TxID): \`${txId}\``;
-
-                    let telegramApiUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-                    
-                    fetch(telegramApiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            chat_id: ADMIN_CHAT_ID,
-                            text: message,
-                            parse_mode: 'Markdown',
-                            reply_markup: {
-                                inline_keyboard: [
-                                    [
-                                        { text: "✅ አጽድቅ (Approve)", callback_data: `approve_${telegramUser}_${amt}` },
-                                        { text: "❌ ውድቅ አድርግ (Reject)", callback_data: `reject_${telegramUser}_${amt}` }
-                                    ]
-                                ]
-                            }
-                        })
-                    }).then(res => {
-                        if(res.ok) {
-                            alert("የዲፖዚት ጥያቄዎ ለአድሚን ተልኳል። አድሚኑ ሲያረጋግጠው ሂሳብዎ ይገባል!");
-                            depositModal.style.display = 'none';
-                            document.getElementById('depositAmountInput').value = '';
-                            document.getElementById('depositTxIdInput').value = '';
-                        } else {
-                            alert("ጥያቄውን መላክ አልተቻለም። እባክዎ እንደገና ይሞክሩ።");
-                        }
-                    }).catch(err => {
-                        alert("የኔትወርክ ስህተት አጋጥሟል።");
-                    });
-                };
-            }
-
-            if (withdrawBtn) {
-                withdrawBtn.onclick = function() {
-                    withdrawModal.style.display = 'flex';
-                };
-            }
-            if (closeWithdrawModal) {
-                closeWithdrawModal.onclick = function() {
-                    withdrawModal.style.display = 'none';
-                };
-            }
-            if (submitWithdrawBtn) {
-                submitWithdrawBtn.onclick = function() {
-                    let amt = parseFloat(document.getElementById('withdrawAmountInput').value);
-                    let bank = document.getElementById('withdrawBankSelect').value;
-                    let acc = document.getElementById('withdrawAccountInput').value.trim();
-
-                    if (isNaN(amt) || amt <= 0 || !acc) {
-                        alert("እባክዎ ትክክለኛ መጠን እና የሂሳብ ቁጥር ያስገቡ።");
-                        return;
-                    }
-                    if (walletBalance < amt) {
-                        alert("⚠️ በሂሳብዎ ውስጥ በቂ ገንዘብ የለም!");
-                        return;
-                    }
-
-                    walletBalance -= amt;
-                    updateWallets();
-                    alert(`የ ${amt} ብር ዊዝድሮዋል ጥያቄዎ ተመዝግቧል! ለረጋገጫ አድሚኑን (@Kiramk123) ያነጋግሩ።`);
-                    withdrawModal.style.display = 'none';
-                    document.getElementById('withdrawAmountInput').value = '';
-                    document.getElementById('withdrawAccountInput').value = '';
-                };
-            }
-
-            function generateCardData(cardId) {
-                let seed = cardId * 31337;
-                return {
-                    id: cardId,
-                    B: getUniqueRandomNumbers(1, 15, 5, seed + 11),
-                    I: getUniqueRandomNumbers(16, 30, 5, seed + 22),
-                    N: getUniqueRandomNumbers(31, 45, 4, seed + 33),
-                    G: getUniqueRandomNumbers(46, 60, 5, seed + 44),
-                    O: getUniqueRandomNumbers(61, 75, 5, seed + 55)
-                };
-            }
-
-            function getUniqueRandomNumbers(min, max, count, seed) {
-                let nums = [];
-                let currentSeed = seed;
-                function nextRandom() {
-                    currentSeed = (currentSeed * 9301 + 49297) % 233280;
-                    return currentSeed / 233280;
-                }
-
-                while(nums.length < count) {
-                    let r = Math.floor(nextRandom() * (max - min + 1)) + min;
-                    if(!nums.includes(r)) {
-                        nums.push(r);
-                    }
-                }
-                return nums.sort((a, b) => a - b);
-            }
-
-            function initCardsGrid() {
-                gridContainer.innerHTML = '';
-                for (let i = 1; i <= totalBoards; i++) {
-                    const cardBtn = document.createElement('button');
-                    cardBtn.type = 'button';
-                    cardBtn.className = 'card-box';
-                    cardBtn.textContent = i;
-                    cardBtn.dataset.id = i;
-
-                    cardBtn.onclick = function() {
-                        if (localStorage.getItem('ayat_game_ended') === 'true') {
-                            alert("የቀድሞው ዙር አብቅቷል! እባክዎ ትንሽ ይጠብቁ።");
-                            return;
-                        }
-
-                        const cardId = parseInt(this.dataset.id);
-                        if (selectedCards.includes(cardId)) {
-                            selectedCards = selectedCards.filter(id => id !== cardId);
-                            this.classList.remove('selected');
-                            
-                            if (selectedCards.length === 0) {
-                                stopCardCountdown();
-                            }
-                        } else {
-                            if (selectedCards.length < maxSelection) {
-                                selectedCards.push(cardId);
-                                this.classList.add('selected');
-
-                                if (!timerStarted) {
-                                    startSyncedCountdown();
-                                }
-                            } else {
-                                alert(`እባክዎ ከ ${maxSelection} በላይ ካርድ መምረጥ አይችሉም!`);
-                            }
-                        }
-                        boardsCountText.textContent = `Boards: ${selectedCards.length}/${maxSelection}`;
-                    };
-                    gridContainer.appendChild(cardBtn);
-                }
-            }
-
-            function startSyncedCountdown() {
-                timerStarted = true;
-                clearInterval(cardCountdownInterval);
-
-                function updateTimer() {
-                    if (localStorage.getItem('ayat_game_ended') === 'true') {
-                        clearInterval(cardCountdownInterval);
-                        return;
-                    }
-
-                    let nowSeconds = Math.floor(Date.now() / 1000);
-                    let timeLeft = 35 - (nowSeconds % 35);
-
-                    timerDisplay.textContent = `ጨዋታው ሊጀምር: ${timeLeft}ሰ`;
-                    timerDisplay.style.color = '#e74c3c';
-
-                    if (timeLeft <= 1) {
-                        clearInterval(cardCountdownInterval);
-                        
-                        if (selectionScreen.classList.contains('active-screen')) {
-                            if (selectedCards.length > 0) {
-                                if (walletBalance >= stakeAmount) {
-                                    walletBalance -= stakeAmount;
-                                    updateWallets();
-                                    
-                                    roundStartTime = nowSeconds + timeLeft;
-                                    launchLiveGame();
-                                } else {
-                                    alert("ሂሳብዎ በቂ አይደለም!");
-                                    resetSelectionScreen();
-                                }
-                            } else {
-                                alert("ጊዜው አልቋል! ካርድ አልመረጡም ወደ መነሻ ይመለሳሉ።");
-                                resetSelectionScreen();
-                            }
-                        }
-                    }
-                }
-
-                updateTimer();
-                cardCountdownInterval = setInterval(updateTimer, 1000);
-            }
-
-            function stopCardCountdown() {
-                timerStarted = false;
-                clearInterval(cardCountdownInterval);
-                timerDisplay.textContent = `ካርድ ይምረጡ...`;
-                timerDisplay.style.color = '#f1c40f';
-            }
-
-            function resetSelectionScreen() {
-                selectedCards = [];
-                stopCardCountdown();
-                switchScreen('home-screen');
-                updateWallets();
-            }
-
-            function startNewRoundSelection() {
-                selectedCards = [];
-                timerStarted = false;
-                stopCardCountdown();
-                localStorage.removeItem('ayat_game_ended');
-                localStorage.removeItem('ayat_winner_card');
-                initCardsGrid();
-                updateWallets();
-                winVal.textContent = totalBoards * stakeAmount;
-                switchScreen('selection-screen');
-            }
-
-            if (joinRoomBtn) {
-                joinRoomBtn.onclick = function(e) {
-                    e.preventDefault();
-                    
-                    if (walletBalance < stakeAmount) {
-                        alert("⚠️ በቂ ገንዘብ የለም! እባክዎ መጀመሪያ (+ Deposit) በማድረግ ሂሳብዎን ይሙሉን።");
-                        return;
-                    }
-
-                    if (localStorage.getItem('ayat_game_ended') === 'true') {
-                        localStorage.removeItem('ayat_game_ended');
-                        localStorage.removeItem('ayat_winner_card');
-                    }
-
-                    startNewRoundSelection();
-                };
-            }
-
-            if (leaveBtn) {
-                leaveBtn.onclick = function() {
-                    stopCardCountdown();
-                    switchScreen('home-screen');
-                };
-            }
-
-            function launchLiveGame() {
-                stopCardCountdown();
-                switchScreen('live-game-screen');
-                
-                chosenCardId = selectedCards[0];
-                currentCardData = generateCardData(chosenCardId);
-                cardNumLabel.textContent = `የካርቴል ቁጥር ${chosenCardId}`;
-                
-                renderRenderedCard(currentCardData);
-                startSyncedNumberCalling();
-            }
-
-            function getLetterForNumber(num) {
-                if (num <= 15) return 'B';
-                if (num <= 30) return 'I';
-                if (num <= 45) return 'N';
-                if (num <= 60) return 'G';
-                return 'O';
-            }
-
-            function renderRenderedCard(cardObj) {
-                bingoMatrixGrid.innerHTML = '';
-                let matrixValues = [
-                    [cardObj.B[0], cardObj.I[0], cardObj.N[0], cardObj.G[0], cardObj.O[0]],
-                    [cardObj.B[1], cardObj.I[1], cardObj.N[1], cardObj.G[1], cardObj.O[1]],
-                    [cardObj.B[2], cardObj.I[2], 'F',          cardObj.G[2], cardObj.O[2]],
-                    [cardObj.B[3], cardObj.I[3], cardObj.N[2], cardObj.G[3], cardObj.O[3]],
-                    [cardObj.B[4], cardObj.I[4], cardObj.N[3], cardObj.G[4], cardObj.O[4]]
-                ];
-
-                matrixValues.forEach((row) => {
-                    row.forEach((val) => {
-                        const cell = document.createElement('div');
-                        cell.className = 'bingo-cell';
-                        if (val === 'F') {
-                            cell.textContent = '★';
-                            cell.classList.add('free-cell', 'marked');
-                        } else {
-                            cell.textContent = val;
-                            cell.onclick = function() {
-                                if (localStorage.getItem('ayat_game_ended') === 'true') return;
-
-                                if (calledNumbersSet.has(val)) {
-                                    this.classList.toggle('marked');
-                                } else {
-                                    alert("ይህ ቁጥር ገና አልተጠራም!");
-                                }
-                            };
-                        }
-                        bingoMatrixGrid.appendChild(cell);
-                    });
-                });
-            }
-
-            function startSyncedNumberCalling() {
-                calledNumbersSet.clear();
-                
-                let pool = Array.from({length: 75}, (_, i) => i + 1);
-                let shuffleSeed = 88888;
-                function pseudoRandom() {
-                    shuffleSeed = (shuffleSeed * 9301 + 49297) % 233280;
-                    return shuffleSeed / 233280;
-                }
-                pool.sort(() => pseudoRandom() - 0.5);
-
-                callStatus.textContent = "ቁጥሮች እየተጠሩ ነው...";
-
-                if (roundStartTime === 0) {
-                    roundStartTime = Math.floor(Date.now() / 1000);
-                }
-
-                function updateCalledNumbersByTime() {
-                    if (localStorage.getItem('ayat_game_ended') === 'true') {
-                        clearInterval(gameInterval);
-                        let winningCard = localStorage.getItem('ayat_winner_card') || "??";
-                        resultTitle.textContent = "🎉 ዙሩ አልቋል!";
-                        resultDesc.textContent = `የካርቴል ቁጥር ${winningCard} BINGO አሸንፏል!`;
-                        switchScreen('result-screen');
-
-                        setTimeout(() => {
-                            startNewRoundSelection();
-                        }, 3000);
-                        return;
-                    }
-
-                    let currentTimestamp = Math.floor(Date.now() / 1000);
-                    let elapsedSeconds = currentTimestamp - roundStartTime;
-                    let index = Math.floor(elapsedSeconds / 2.5);
-
-                    if (index < pool.length) {
-                        calledNumbersSet.clear();
-                        let currentPoolSlice = pool.slice(0, index + 1);
-                        currentPoolSlice.forEach(n => calledNumbersSet.add(n));
-
-                        let latestNum = pool[index];
-                        let letter = getLetterForNumber(latestNum);
-                        currentBall.textContent = `${letter}-${latestNum}`;
-                    } else {
-                        clearInterval(gameInterval);
-                        callStatus.textContent = "ዙሩ አልቋል!";
-                        localStorage.setItem('ayat_game_ended', 'true');
-                        
-                        resultTitle.textContent = "ዙሩ አልቋል (Round Over)";
-                        resultDesc.textContent = "ጊዜው አልቋል ወይም ማንም አላሸነፈም።";
-                        switchScreen('result-screen');
-
-                        setTimeout(() => {
-                            startNewRoundSelection();
-                        }, 3000);
-                    }
-                }
-
-                updateCalledNumbersByTime();
-                gameInterval = setInterval(updateCalledNumbersByTime, 500);
-            }
-
-            if (bingoClaimBtn) {
-                bingoClaimBtn.onclick = function() {
-                    if (localStorage.getItem('ayat_game_ended') === 'true') {
-                        alert("ይህ ዙር አልቋል!");
-                        return;
-                    }
-
-                    const cells = bingoMatrixGrid.querySelectorAll('.bingo-cell');
-                    let markedCount = 0;
-                    cells.forEach(c => {
-                        if (c.classList.contains('marked')) {
-                            markedCount++;
-                        }
-                    });
-
-                    if (markedCount >= 5) {
-                        localStorage.setItem('ayat_game_ended', 'true');
-                        localStorage.setItem('ayat_winner_card', chosenCardId);
-                        clearInterval(gameInterval);
-
-                        walletBalance += (totalBoards * stakeAmount);
-                        updateWallets();
-                        
-                        resultTitle.textContent = "🎉 እንኳን ደስ አለህ!";
-                        resultDesc.textContent = `የካርቴል ቁጥር ${chosenCardId} BINGO አሸንፏል! ሽልማቱ ወደ ቦርሳህ ገብቷል።`;
-                        switchScreen('result-screen');
-
-                        setTimeout(() => {
-                            startNewRoundSelection();
-                        }, 3000);
-                    } else {
-                        alert("⚠️ ገና አልተሞላም! ተጨማሪ ቁጥሮች ይጠብቁ።");
-                    }
-                };
-            }
-
-            if (exitGameBtn) {
-                exitGameBtn.onclick = function() {
-                    clearInterval(gameInterval);
-                    switchScreen('home-screen');
-                    selectedCards = [];
-                    currentBall.textContent = '--';
-                };
-            }
-
-            updateWallets();
-            switchScreen('home-screen');
-        });
-    </script>
-</body>
-</html>
+            if (depositBankSelect) {
+                depositBankSelect.onchange = function() {
+                    let selectedBank = this.value;
+                    depositBankNameDisplay.textContent = selectedBank;
+                    depositAccountDisplay.textCon

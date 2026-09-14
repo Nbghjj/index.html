@@ -1,144 +1,131 @@
-<!DOCTYPE html>
-<html lang="am">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ayat Bingo - Live Mini App</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background-color: #120c24; color: #fff; font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 10px; user-select: none; }
-        .container { max-width: 480px; margin: 0 auto; display: none; }
-        .container.active-screen { display: block !important; }
+import os
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import telebot
+from telebot import types
+
+# --------------------------------------------------
+# CONFIGURATION
+# --------------------------------------------------
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8909328591:AAEay418mvQF9dRBqjtSKgPDM_T-WpWWJ84")
+ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID", "6496982318")
+
+app = Flask(__name__)
+CORS(app)
+
+bot = telebot.TeleBot(BOT_TOKEN, parse_mode=None)
+
+# --------------------------------------------------
+# PERSISTENT STORAGE
+# --------------------------------------------------
+DATA_FILE = "registered_users.txt"
+
+def load_registered_users():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r") as f:
+            return set(line.strip() for line in f if line.strip())
+    return set()
+
+def save_registered_user(user_id):
+    registered_users.add(str(user_id))
+    with open(DATA_FILE, "a") as f:
+        f.write(f"{user_id}\n")
+
+registered_users = load_registered_users()
+
+# --------------------------------------------------
+# TELEGRAM BOT HANDLERS
+# --------------------------------------------------
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    try:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+        contact_btn = types.KeyboardButton(text="📱 Share Contact", request_contact=True)
+        markup.add(contact_btn)
         
-        .card-banner { background: linear-gradient(135deg, #2c1b4d, #1f143a); padding: 20px; border-radius: 14px; text-align: center; border: 1px solid #3c2a6d; margin-bottom: 15px; }
-        .card-banner h3 { color: #f39c12; margin: 0 0 5px 0; font-size: 22px; }
-        .card-banner p { color: #a08cc4; font-size: 13px; margin: 0 0 10px 0; }
+        msg_text = (
+            "እንኳን ደህና መጡ ወደ Ayat Bingo!\n\n"
+            "⚠️ Bot-ን እና Mini App-ን ለመጠቀም መጀመሪያ Register ማድረግ አለብዎት።\n"
+            "እባክዎ ከታች ያለውን '📱 Share Contact' የሚለውን አዝራር ይጫኑ።"
+        )
+        bot.send_message(message.chat.id, msg_text, reply_markup=markup)
+        print(f"Start command processed for chat: {message.chat.id}")
+    except Exception as e:
+        print(f"Error in start command: {e}")
+
+@bot.message_handler(content_types=['contact'])
+def handle_contact(message):
+    try:
+        if message.contact is not None:
+            user_id = str(message.from_user.id)
+            phone_number = message.contact.phone_number
+            first_name = message.from_user.first_name or ""
+            
+            save_registered_user(user_id)
+            
+            admin_msg = (
+                f"👤 *አዲስ ስልክ ቁጥር ተላከ*\n\n"
+                f"• ስም: {first_name}\n"
+                f"• ስልክ: `{phone_number}`\n"
+                f"• Telegram ID: `{user_id}`"
+            )
+            bot.send_message(ADMIN_CHAT_ID, admin_msg, parse_mode='Markdown')
+            
+            bot.send_message(
+                message.chat.id, 
+                "✅ ምዝገባዎ ተጠናቋል! አሁን ከታች ያለውን 'Play Bingo' በመጫን መጫወት ይችላሉ።",
+                reply_markup=types.ReplyKeyboardRemove()
+            )
+            print(f"Registered user: {user_id}")
+    except Exception as e:
+        print(f"Error in contact handler: {e}")
+
+# --------------------------------------------------
+# WEBHOOK ENDPOINT
+# --------------------------------------------------
+@app.route(f"/{BOT_TOKEN}", methods=['POST'])
+def webhook():
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return "OK", 200
+    else:
+        return "Invalid content type", 403
+
+@app.route('/set_webhook', methods=['GET', 'POST'])
+def setup_webhook():
+    host_url = request.host_url.rstrip('/')
+    webhook_url = f"{host_url}/{BOT_TOKEN}"
+    bot.remove_webhook()
+    status = bot.set_webhook(url=webhook_url)
+    if status:
+        return f"Webhook successfully setup to: {webhook_url}", 200
+    return "Webhook setup failed", 500
+
+# --------------------------------------------------
+# API ENDPOINT FOR MINI APP
+# --------------------------------------------------
+@app.route('/api/check-registration', methods=['POST'])
+def check_registration():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"registered": False, "error": "No JSON data"}), 400
+            
+        user_id = str(data.get('user_id', ''))
         
-        .wallet-box, .room-box { background: #1f143a; padding: 15px; border-radius: 14px; border: 1px solid #3c2a6d; margin-bottom: 15px; }
-        .wallet-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .wallet-actions { display: flex; gap: 10px; }
-        .wallet-btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .deposit-btn { background: #2ecc71; color: #fff; }
-        .withdraw-btn { background: #e74c3c; color: #fff; }
-        
-        .join-btn, .bingo-claim-btn { background: linear-gradient(135deg, #f39c12, #f1c40f); border: none; width: 100%; padding: 16px; border-radius: 8px; color: #000; font-weight: bold; cursor: pointer; font-size: 16px; }
-        
-        /* RESTRICTION / ERROR SCREEN */
-        .blocked-screen { text-align: center; padding: 40px 20px; }
-        .blocked-screen h2 { color: #e74c3c; margin-bottom: 10px; }
-        .blocked-screen p { color: #a08cc4; font-size: 14px; line-height: 1.6; }
-        .close-app-btn { background: #f39c12; border: none; padding: 12px 24px; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 20px; color: #000; }
-        
-        .loader { border: 4px solid #2c1b4d; border-top: 4px solid #f39c12; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 50px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
-</head>
-<body>
+        if user_id in registered_users:
+            return jsonify({"registered": True}), 200
+        else:
+            return jsonify({"registered": False}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    <!-- LOADING SCREEN -->
-    <div id="loading-screen" class="container active-screen">
-        <div class="loader"></div>
-        <p style="text-align: center; color: #a08cc4; font-size: 13px;">መረጃዎ እየተረጋገጠ ነው...</p>
-    </div>
+@app.route('/')
+def index():
+    return "Ayat Bingo Bot Server is Running Live!"
 
-    <!-- BLOCKED SCREEN (CONTACT ያልላከ ሰው የሚያየው) -->
-    <div id="blocked-screen" class="container">
-        <div class="card-banner">
-            <h3>AYAT BINGO</h3>
-            <p>መተግበሪያው አልተከፈተም</p>
-        </div>
-        <div class="blocked-screen">
-            <h2>⚠️ አልተመዘገቡም!</h2>
-            <p>
-                ይህንን Mini App ለመጠቀም እባክዎ መጀመሪያ ቦቱ ላይ የሚገኘውን <br>
-                <b style="color: #f1c40f;">"📱 Share Contact"</b> የሚለውን ተጭነው ስልክ ቁጥርዎን ያጋሩ።
-            </p>
-            <button class="close-app-btn" onclick="if(window.Telegram) Telegram.WebApp.close();">ወደ ቦቱ ተመለስ</button>
-        </div>
-    </div>
-
-    <!-- HOME SCREEN -->
-    <div id="home-screen" class="container">
-        <div class="card-banner">
-            <h3>AYAT BINGO</h3>
-            <p id="welcomeUserText">Admin: @Kiramk123</p>
-            <span>24/7 LIVE TELEGRAM BINGO SYSTEM</span>
-        </div>
-        
-        <div class="wallet-box">
-            <div class="wallet-row">
-                <span style="font-size: 14px; color: #a08cc4;">የኪስ ቦርሳ (Wallet):</span>
-                <span style="font-size: 18px; font-weight: bold; color: #2ecc71;"><b id="home-wallet-val">0</b> Birr</span>
-            </div>
-            <div class="wallet-actions">
-                <button class="wallet-btn deposit-btn" type="button">+ Deposit</button>
-                <button class="wallet-btn withdraw-btn" type="button">- Withdraw</button>
-            </div>
-        </div>
-
-        <div class="room-box">
-            <h4>Ayat Bingo Room (20 Birr)</h4>
-            <p style="font-size: 13px; color: #a08cc4;">Active Players: <span id="player-count">85</span> / 300</p>
-            <button class="join-btn" type="button">JOIN ROOM →</button>
-        </div>
-    </div>
-
-    <script>
-        // ⚠️ ማስታወሻ: ይህንን URL በ Render/Hosting Server URLህ ተካው!
-        const SERVER_BACKEND_URL = "https://YOUR-RENDER-APP-NAME.onrender.com";
-
-        function switchScreen(screenId) {
-            document.querySelectorAll('.container').forEach(s => s.classList.remove('active-screen'));
-            const target = document.getElementById(screenId);
-            if (target) target.classList.add('active-screen');
-        }
-
-        document.addEventListener("DOMContentLoaded", function() {
-            let tg = window.Telegram ? window.Telegram.WebApp : null;
-            let telegramUser = null;
-            let telegramUsername = "Player";
-
-            if (tg) {
-                try {
-                    tg.expand();
-                    tg.ready();
-                    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                        telegramUser = tg.initDataUnsafe.user.id.toString();
-                        telegramUsername = tg.initDataUnsafe.user.first_name || "Player";
-                    }
-                } catch (e) {}
-            }
-
-            // Telegram ID ከሌለ ወይም በብራውዘር ከተከፈተ
-            if (!telegramUser) {
-                switchScreen('blocked-screen');
-                return;
-            }
-
-            // BACKEND VERIFICATION (የስልክ ቁጥሩን መላኩን ማረጋገጥ)
-            fetch(`${SERVER_BACKEND_URL}/api/check-registration`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: telegramUser })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.registered) {
-                    // ከተመዘገበ ወደ ጨዋታው ማለፍ
-                    document.getElementById('welcomeUserText').textContent = `ሰላም ${telegramUsername} | Admin: @Kiramk123`;
-                    switchScreen('home-screen');
-                } else {
-                    // ካልተመዘገበ መከልከል
-                    switchScreen('blocked-screen');
-                }
-            })
-            .catch(err => {
-                console.error("Verification Error:", err);
-                // የኔትወርክ ስህተት ካለ ለጊዜው ወደ blocked ይልካል
-                switchScreen('blocked-screen');
-            });
-        });
-    </script>
-</body>
-</html>
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)

@@ -1,5 +1,4 @@
 import os
-import threading
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import telebot
@@ -17,7 +16,7 @@ CORS(app)
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # --------------------------------------------------
-# PERSISTENT STORAGE (የተመዘገቡ ተጠቃሚዎችን በፋይል መያዣ)
+# PERSISTENT STORAGE
 # --------------------------------------------------
 DATA_FILE = "registered_users.txt"
 
@@ -50,7 +49,6 @@ def send_welcome(message):
             "እባክዎ ከታች ያለውን '📱 Share Contact' የሚለውን አዝራር ይጫኑ።"
         )
         bot.send_message(message.chat.id, msg_text, reply_markup=markup)
-        print(f"Start command handled for {message.from_user.id}")
     except Exception as e:
         print(f"Error in start command: {e}")
 
@@ -77,9 +75,30 @@ def handle_contact(message):
                 "✅ ምዝገባዎ ተጠናቋል! አሁን ከታች ያለውን 'Play Bingo' በመጫን መጫወት ይችላሉ።",
                 reply_markup=types.ReplyKeyboardRemove()
             )
-            print(f"User {user_id} registered successfully.")
     except Exception as e:
         print(f"Error in contact handler: {e}")
+
+# --------------------------------------------------
+# WEBHOOK ENDPOINT FOR TELEGRAM
+# --------------------------------------------------
+@app.route('/' + BOT_TOKEN, methods=['POST'])
+def getMessage():
+    json_string = request.get_data().decode('utf-8')
+    update = telebot.types.Update.de_json(json_string)
+    bot.process_new_updates([update])
+    return "!", 200
+
+# Webhook-ን በራስ-ሰር Render URL ጋር ማገናኛ
+@app.route('/set_webhook', methods=['GET', 'POST'])
+def webhook_setup():
+    # በ Render የተሰጠዎትን URL እዚህ ያገኛል
+    host_url = request.host_url.rstrip('/')
+    webhook_url = f"{host_url}/{BOT_TOKEN}"
+    s = bot.set_webhook(url=webhook_url)
+    if s:
+        return f"Webhook successfully setup to: {webhook_url}", 200
+    else:
+        return "Webhook setup failed", 500
 
 # --------------------------------------------------
 # API ENDPOINT FOR MINI APP VERIFICATION
@@ -103,18 +122,6 @@ def check_registration():
 @app.route('/')
 def index():
     return "Ayat Bingo Bot Server is Running Live!"
-
-# --------------------------------------------------
-# RUN BOT IN BACKGROUND THREAD
-# --------------------------------------------------
-def start_bot():
-    print(">>> Telegram Bot Polling Started... <<<")
-    bot.remove_webhook()
-    bot.infinity_polling(timeout=10, long_polling_timeout=5, skip_pending=True)
-
-# Gunicorn ሲነሳ ቦቱ በጀርባ አብሮ እንዲነሳ ማድረግ
-bot_thread = threading.Thread(target=start_bot, daemon=True)
-bot_thread.start()
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))

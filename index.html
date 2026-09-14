@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>AYAT BINGO — Telegram Mini App</title>
+<title>AYAT BINGO — Real Money</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -13,233 +13,151 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
 .panel{background:#1f143a;border:1px solid #3c2a6d;border-radius:14px;padding:16px;margin-bottom:12px}
 .hero{text-align:center;background:linear-gradient(135deg,#2c1b4d,#1f143a)}
 .hero h1{margin:4px 0;color:#f39c12;font-size:28px}.muted{color:#a08cc4;font-size:13px}
-.badge{display:inline-block;background:#3c2a6d;color:#f1c40f;padding:5px 10px;border-radius:20px;font-size:11px}
-.btn{width:100%;border:0;border-radius:9px;padding:14px;font-weight:700;font-size:15px;cursor:pointer}
-.adminInput{width:100%;margin:6px 0 12px;padding:12px;border-radius:9px;border:1px solid #4b377d;background:#120c24;color:#fff;font-size:15px}
-.adminBtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.badge{display:inline-block;background:#27ae60;color:#fff;padding:5px 10px;border-radius:20px;font-size:11px}
+.btn{width:100%;border:0;border-radius:9px;padding:14px;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px}
 .primary{background:linear-gradient(135deg,#f39c12,#f1c40f);color:#111}
 .green{background:#27ae60;color:#fff}.dark{background:#3c2a6d;color:#fff}
 .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.smallbtn{border:0;border-radius:7px;padding:8px 11px;background:#7928ca;color:#fff;font-weight:700}
-.stats{display:flex;gap:6px;flex-wrap:wrap}.stat{background:#2c1b4d;border:1px solid #3c2a6d;border-radius:7px;padding:5px 8px;font-size:11px;color:#f1c40f}
 .cards{display:grid;grid-template-columns:repeat(10,1fr);gap:5px;max-height:330px;overflow:auto;padding:8px;background:#1f143a;border:1px solid #3c2a6d;border-radius:10px}
 .card{aspect-ratio:1;border:1px solid #523a8a;border-radius:5px;background:#3c2a6d;color:#fff;font-weight:700;cursor:pointer}
-.card.selected{background:#f39c12;color:#111;border-color:#fff}
+.card.selected{background:#f39c12;color:#111}
 .bingo{background:#fff;color:#000;border:3px solid #ff69b4;border-radius:12px;padding:9px;max-width:350px;margin:0 auto}
-.head{display:grid;grid-template-columns:repeat(5,1fr);background:#ff69b4;color:#fff;border-radius:6px;padding:6px;text-align:center;font-weight:800;font-size:18px}
+.head{display:grid;grid-template-columns:repeat(5,1fr);background:#ff69b4;color:#fff;border-radius:6px;padding:6px;text-align:center;font-weight:800}
 .matrix{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:7px}
 .cell{aspect-ratio:1;border:2px solid #000;border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;cursor:pointer}
-.cell.free{background:#ff69b4;color:#fff}.cell.marked{background:#f39c12}
+.cell.marked{background:#f39c12}
 .ball{text-align:center;border:2px solid #f39c12;border-radius:14px;padding:12px;margin-bottom:12px}
-.ballnum{font-size:40px;font-weight:900;color:#f39c12;margin:4px}
-.called{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-top:10px}
-.called span{padding:5px 0;text-align:center;border-radius:4px;background:#2c1b4d;color:#8d7aa9;font-size:10px}
-.called span.on{background:#f39c12;color:#111;font-weight:800}
-.notice{padding:10px;border-radius:8px;background:#241746;color:#cdbfe5;font-size:12px;margin-bottom:12px}
-.result{text-align:center;padding:28px}.result h2{color:#f39c12}
+.ballnum{font-size:40px;font-weight:900;color:#f39c12}
 .access{max-width:460px;margin:60px auto;text-align:center;padding:25px;background:#1f143a;border:1px solid #e74c3c;border-radius:14px}
 </style>
 </head>
 <body>
+
 <div id="access" class="access" style="display:none">
-<h2>⚠️ Telegram ውስጥ ይክፈቱ</h2>
-<p class="muted">ይህ Mini App ከTelegram Bot ውስጥ ለመክፈት የተዘጋጀ ነው።</p>
+  <h2>⚠️ Telegram ውስጥ ይክፈቱ</h2>
+  <p class="muted">ይህ Mini App ከTelegram Bot ውስጥ ብቻ ይሰራል::</p>
 </div>
 
 <main id="app" class="container">
-<section id="home" class="screen active">
-<div class="panel hero">
-<h1>AYAT BINGO</h1>
-<p class="muted">Telegram Mini App • 1–75 Bingo</p>
-<span class="badge">DEMO / VIRTUAL POINTS</span>
-</div>
-<div class="panel">
-<div class="top"><span class="muted">Virtual Points</span><strong id="points">1000</strong></div>
-<p class="muted">Real-money deposit/withdrawal አልተካተተም። ይህ የDemo ጨዋታ ነው። Admin Points ደግሞ local/demo ብቻ ነው።</p>
-</div>
-<div class="panel">
-<div class="top"><div><b>Ayat Bingo Room</b><div class="muted">1–75 • 300 Cards</div></div><span class="badge">20 POINTS</span></div>
-<p class="muted">Active players: <b id="players">64</b> / 300</p>
-<button id="join" class="btn primary">JOIN ROOM →</button>
-<button id="openAdmin" class="btn dark" style="margin-top:8px">⚙️ ADMIN POINTS</button>
-</div>
-</section>
+  <section id="home" class="screen active">
+    <div class="panel hero">
+      <h1>AYAT BINGO</h1>
+      <p class="muted">የእውነተኛ ብር ቢንጎ ጨዋታ</p>
+      <span class="badge">REAL MONEY GAME</span>
+    </div>
+    
+    <div class="panel">
+      <div class="top">
+        <span class="muted">የእርስዎ ባላንስ:</span>
+        <strong id="balance">0.00 ETB</strong>
+      </div>
+      <button id="depositBtn" class="btn green">ብር አስገባ (Deposit)</button>
+      <button id="withdrawBtn" class="btn dark">ብር አውጣ (Withdraw)</button>
+    </div>
 
-<section id="select" class="screen">
-<div class="panel">
-<div class="top"><button id="backHome" class="smallbtn">← Back</button><b>Choose Card</b><span class="badge">1 / 300</span></div>
-<p class="muted">አንድ ካርድ ብቻ ይምረጡ። 10 ሰከንድ በኋላ ጨዋታው ይጀምራል።</p>
-<div id="selectionInfo" class="muted">Selected: 0 / 1</div>
-</div>
-<div id="cards" class="cards"></div>
-<div class="panel"><button id="start" class="btn primary" disabled>START GAME</button></div>
-</section>
+    <div class="panel">
+      <div class="top">
+        <div><b>Ayat Bingo Room</b><div class="muted">መግቢያ: 20 ETB</div></div>
+      </div>
+      <button id="joinBtn" class="btn primary">ጨዋታ ጀምር (JOIN ROOM)</button>
+    </div>
+  </section>
 
-<section id="game" class="screen">
-<div class="panel top"><b>AYAT BINGO — LIVE</b><button id="exit" class="smallbtn">Exit</button></div>
-<div class="ball">
-<div class="muted">Current Ball</div>
-<div id="ball" class="ballnum">--</div>
-<div id="status" class="muted">ጨዋታው ይጀምራል...</div>
-</div>
-<div class="bingo">
-<div class="head"><span>B</span><span>I</span><span>N</span><span>G</span><span>O</span></div>
-<div id="matrix" class="matrix"></div>
-<div class="muted" style="text-align:center;margin-top:7px">Card #<span id="cardNo">--</span></div>
-</div>
-<div class="panel">
-<b>Called Numbers</b><div id="called" class="called"></div>
-</div>
-<button id="claim" class="btn green">BINGO! 🎉</button>
-</section>
+  <section id="select" class="screen">
+    <div class="panel">
+      <b>ካርድ ይምረጡ</b>
+      <div id="cards" class="cards"></div>
+      <button id="startBtn" class="btn primary" disabled>ካርድ አረጋግጥ</button>
+    </div>
+  </section>
 
-<section id="admin" class="screen">
-<div class="panel">
-  <div class="top"><button id="adminBack" class="smallbtn">← Back</button><b>ADMIN • Virtual Points</b></div>
-  <p class="muted">Demo-only point management. Points are stored locally in this browser.</p>
-  <label class="muted">Telegram User ID</label>
-  <input id="adminUserId" class="adminInput" inputmode="numeric" placeholder="e.g. 123456789">
-  <label class="muted">Amount</label>
-  <input id="adminAmount" class="adminInput" type="number" min="1" step="1" placeholder="e.g. 100">
-  <div class="adminBtns">
-    <button id="addPoints" class="btn green">+ ADD POINTS</button>
-    <button id="removePoints" class="btn dark">− REMOVE POINTS</button>
-  </div>
-  <div id="adminMsg" class="notice">Enter a Telegram User ID and amount.</div>
-</div>
-</section>
-
-<section id="result" class="screen">
-<div class="panel result">
-<h2 id="resultTitle">Round Result</h2>
-<p id="resultText" class="muted"></p>
-<button id="again" class="btn primary">PLAY AGAIN</button>
-</div>
-</section>
+  <section id="game" class="screen">
+    <div class="ball">
+      <div class="muted">የተጠራው ቁጥር</div>
+      <div id="ball" class="ballnum">--</div>
+    </div>
+    <div class="bingo">
+      <div class="head"><span>B</span><span>I</span><span>N</span><span>G</span><span>O</span></div>
+      <div id="matrix" class="matrix"></div>
+    </div>
+    <button id="claimBtn" class="btn green">BINGO! 🎉</button>
+  </section>
 </main>
 
 <script>
 (() => {
-"use strict";
-const tg = window.Telegram?.WebApp;
-const valid = !!(tg?.initDataUnsafe?.user?.id);
-if(!valid){document.getElementById("app").style.display="none";document.getElementById("access").style.display="block";return;}
-try{tg.ready();tg.expand();}catch(e){}
-
-const userId=String(tg.initDataUnsafe.user.id);
-const pointsKey="ayat_demo_points_"+userId;
-let points=Number(localStorage.getItem(pointsKey));
-if(!Number.isFinite(points)) points=1000;
-
-const TOTAL=300, STAKE=20, PRIZE=600;
-let selected=null, cardData=null, called=new Set(), balls=[], index=0, timer=null, countdown=null;
-
-const $=id=>document.getElementById(id);
-function screen(id){document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));$(id).classList.add("active");}
-function save(){localStorage.setItem(pointsKey,String(points));$("points").textContent=points;}
-save();
-
-function rng(seed){let x=seed>>>0;return()=>{x=(1664525*x+1013904223)>>>0;return x/4294967296}}
-function nums(min,max,count,seed){
- const r=rng(seed), a=[]; while(a.length<count){let n=min+Math.floor(r()*(max-min+1));if(!a.includes(n))a.push(n)}
- return a.sort((x,y)=>x-y);
-}
-function makeCard(id){
- let s=id*31337;
- return {id,B:nums(1,15,5,s+11),I:nums(16,30,5,s+22),N:nums(31,45,4,s+33),G:nums(46,60,5,s+44),O:nums(61,75,5,s+55)};
-}
-function buildCards(){
- const box=$("cards");box.innerHTML="";
- for(let i=1;i<=TOTAL;i++){
-  const b=document.createElement("button");b.className="card";b.textContent=i;b.dataset.id=i;
-  b.onclick=()=>{selected=i;document.querySelectorAll(".card.selected").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");$("selectionInfo").textContent="Selected: 1 / 1";$("start").disabled=false};
-  box.appendChild(b);
- }
-}
-buildCards();
-
-function renderCard(c){
- $("matrix").innerHTML="";
- for(let row=0;row<5;row++)for(let col=0;col<5;col++){
-  const el=document.createElement("div");el.className="cell";
-  if(row===2&&col===2){el.textContent="FREE";el.classList.add("free","marked");}
-  else{
-   let v=col===0?c.B[row]:col===1?c.I[row]:col===2?c.N[row>2?row-1:row]:col===3?c.G[row]:c.O[row];
-   el.textContent=v;el.dataset.num=v;
-   el.onclick=()=>{if(called.has(v))el.classList.toggle("marked");else alert("ይህ ቁጥር እስካሁን አልተጠራም።")};
-  }
-  $("matrix").appendChild(el);
- }
- $("cardNo").textContent=c.id;
-}
-function renderCalled(){
- $("called").innerHTML="";
- for(let n=1;n<=75;n++){const s=document.createElement("span");s.textContent=n;s.className=called.has(n)?"on":"";$("called").appendChild(s)}
-}
-function autoMark(n){document.querySelectorAll(".cell[data-num]").forEach(c=>{if(Number(c.dataset.num)===n)c.classList.add("marked")})}
-function letter(n){return n<=15?"B":n<=30?"I":n<=45?"N":n<=60?"G":"O"}
-
-function startGame(){
- if(selected===null)return;
- if(points<STAKE){alert("በቂ Virtual Points የለዎትም።");return}
- points-=STAKE;save();
- cardData=makeCard(selected);called=new Set();index=0;
- balls=Array.from({length:75},(_,i)=>i+1);
- for(let i=balls.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[balls[i],balls[j]]=[balls[j],balls[i]]}
- renderCard(cardData);renderCalled();$("ball").textContent="--";$("status").textContent="ጨዋታው በሂደት ላይ ነው...";
- screen("game");
- clearInterval(timer);
- timer=setInterval(draw,3000);
- draw();
-}
-function draw(){
- if(index>=balls.length){clearInterval(timer);finish(false,"75ቱም ቁጥሮች ተጠርተዋል።");return}
- const n=balls[index++];called.add(n);$("ball").textContent=letter(n)+"-"+n;autoMark(n);renderCalled();
-}
-function hasBingo(){
- const cells=[...document.querySelectorAll(".cell")];
- const m=[];
- for(let r=0;r<5;r++){m[r]=[];for(let c=0;c<5;c++)m[r][c]=cells[r*5+c].classList.contains("marked")}
- return [...m.map(row=>row.every(Boolean)),...Array.from({length:5},(_,c)=>m.every(row=>row[c])),m.every((_,i)=>m[i][i]),m.every((_,i)=>m[i][4-i])].some(Boolean);
-}
-function finish(win,msg){
- clearInterval(timer);
- if(win){points+=PRIZE;save();}
- $("resultTitle").textContent=win?"🎉 BINGO!":"Round Over";
- $("resultText").textContent=win?`አሸንፈዋል! +${PRIZE} Virtual Points`:msg;
- screen("result");
-}
-function adminKey(id){return "ayat_demo_points_"+String(id).trim()}
-function adminGet(id){
-  const v=Number(localStorage.getItem(adminKey(id)));
-  return Number.isFinite(v)?v:0;
-}
-function adminChange(delta){
-  const id=$("adminUserId").value.trim();
-  const amount=Number($("adminAmount").value);
-  if(!id || !Number.isInteger(amount) || amount<=0){
-    $("adminMsg").textContent="User ID እና ትክክለኛ amount ያስገቡ።";
+  "use strict";
+  const BACKEND_URL = "https://your-backend-api.com"; // የሰርቨርህ አድራሻ
+  const tg = window.Telegram?.WebApp;
+  
+  if(!tg?.initDataUnsafe?.user?.id){
+    document.getElementById("app").style.display="none";
+    document.getElementById("access").style.display="block";
     return;
   }
-  const current=adminGet(id);
-  const next=Math.max(0,current+delta*amount);
-  localStorage.setItem(adminKey(id),String(next));
-  $("adminMsg").textContent=`User ${id}: ${current} → ${next} Virtual Points`;
-  if(id===userId){points=next;save();}
-}
-$("openAdmin").onclick=()=>{ $("adminUserId").value=userId; $("adminAmount").value="100"; $("adminMsg").textContent="Your current demo balance: "+adminGet(userId)+" points"; screen("admin"); };
-$("adminBack").onclick=()=>screen("home");
-$("addPoints").onclick=()=>adminChange(1);
-$("removePoints").onclick=()=>adminChange(-1);
+  tg.ready(); tg.expand();
 
-$("join").onclick=()=>{if(points<STAKE){alert("20 Virtual Points ያስፈልጋሉ።");return}screen("select")};
-$("backHome").onclick=()=>screen("home");
-$("start").onclick=startGame;
-$("exit").onclick=()=>{clearInterval(timer);screen("home")};
-$("claim").onclick=()=>{if(hasBingo())finish(true,"");else alert("BINGO አልተሟላም። የተጠሩትን ቁጥሮች ብቻ ያስመልክቱ።")};
-$("again").onclick=()=>{selected=null;document.querySelectorAll(".card.selected").forEach(x=>x.classList.remove("selected"));$("start").disabled=true;$("selectionInfo").textContent="Selected: 0 / 1";screen("select")};
+  const user = tg.initDataUnsafe.user;
+  let selectedCard = null;
 
-setInterval(()=>{$("players").textContent=Math.floor(45+Math.random()*236)},6000);
+  // 1. የይዘት/የባላንስ መረጃ ከሰርቨር ማምጫ
+  async function fetchUserData() {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/user/${user.id}`, {
+        headers: { 'Authorization': tg.initData }
+      });
+      const data = await res.json();
+      document.getElementById("balance").textContent = `${data.balance} ETB`;
+    } catch(e) {
+      console.error("Backend connection error", e);
+    }
+  }
+
+  // 2. Deposit (Telebirr/Chapa) ጥያቄ ለሰርቨር መላክ
+  document.getElementById("depositBtn").onclick = async () => {
+    const amount = prompt("ምንያህል ማስገባት ይፈልጋሉ (ETB)?", "100");
+    if(!amount) return;
+
+    const res = await fetch(`${BACKEND_URL}/api/pay/deposit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", 'Authorization': tg.initData },
+      body: JSON.stringify({ userId: user.id, amount: Number(amount) })
+    });
+    const data = await res.json();
+    if(data.checkoutUrl) {
+      tg.openInvoice(data.checkoutUrl); // ወይም Telegram Payment URL
+    }
+  };
+
+  // 3. ጨዋታ መቀላቀል
+  document.getElementById("joinBtn").onclick = () => {
+    showScreen("select");
+    buildCards();
+  };
+
+  function showScreen(id) {
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+  }
+
+  function buildCards() {
+    const box = document.getElementById("cards");
+    box.innerHTML = "";
+    for(let i=1; i<=300; i++){
+      const b = document.createElement("button");
+      b.className = "card";
+      b.textContent = i;
+      b.onclick = () => {
+        selectedCard = i;
+        document.querySelectorAll(".card").forEach(c => c.classList.remove("selected"));
+        b.classList.add("selected");
+        document.getElementById("startBtn").disabled = false;
+      };
+      box.appendChild(b);
+    }
+  }
+
+  fetchUserData();
 })();
 </script>
 </body>

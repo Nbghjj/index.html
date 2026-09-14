@@ -2,214 +2,165 @@
 <html lang="en">
 
 <head>
-    <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <title>Ayat Bingo Mini App</title>
 
-
-    <meta name="keywords"
-        content="Online Bingo Games, Free Bingo Online, Play Bingo for Real Money, Best Online Bingo Sites, No Deposit Bingo, Mobile Bingo Games, Bingo Room, Online Bingo Community,Bingo Tournaments, Play Bingo on Mobile, 24/7 Bingo Online,Best Bingo Promotions " />
-    <meta name="description" content="Free Bingo. No login. No app to install." />
-
-
-
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.8.2/css/all.min.css" rel="stylesheet" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.8.2/css/brands.css" rel="stylesheet" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.8.2/css/solid.css" rel="stylesheet" />
     <link href="https://bootswatch.com/5/spacelab/bootstrap.css" rel="stylesheet" id="themedStyle">
-
-    <link rel="stylesheet" href="https://aaronrs2002.github.io/black-jack/css/animate.min.css" />
-    <link href="https://aaronrs2002.github.io/black-jack/css/shared.css" rel="stylesheet">
-
     <link href="css/style.css" rel="stylesheet">
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JJWFFXF8G0"></script>
-    <script>
-        const urlStr = window.location.href;
-        if (urlStr.indexOf("file:///Users/") !== -1 || urlStr.indexOf("exclude") !== -1) {
-            console.log("Not running GA");
-        } else {
-            window.dataLayer = window.dataLayer || [];
-            function gtag() { dataLayer.push(arguments); }
-            gtag('js', new Date());
-            gtag('config', 'G-JJWFFXF8G0');
-        }
-    </script>
-    <title>Bingo</title>
 </head>
 
 <body>
 
-    <div class="container">
+    <!-- ያልተመዘገቡ ተጠቃሚዎችን የማገጃ ክፍል (Registration Check Layer) -->
+    <div id="unregisteredOverlay" class="container text-center py-5" style="display: none;">
+        <div class="alert alert-warning role="alert">
+            <h4 class="alert-heading">⚠️ አልተመዘገቡም!</h4>
+            <p>ቢንጎ ለመጫወት መጀመሪያ በ Telegram Bot በኩል ስልክ ቁጥርዎን Share ማድረግ አለብዎት።</p>
+            <hr>
+            <p class="mb-0">እባክዎን ወደ Bot ተመልሰው <b>📱 Share Contact</b> የሚለውን ተጫኑ።</p>
+        </div>
+    </div>
+
+    <!-- የጨዋታው ዋና ክፍል (Main Game Container) -->
+    <div class="container" id="gameContainer">
         <div class="row mb-2">
 
+            <!-- የውርርድ (Bet) አዝራሮች -->
             <div class="col-md-12">
-                <div class="btn-group form-control mb-2  animated fadeInDown" role="group" id="startGame"
-                    alt="Free Bingo Online">
-                    <button type="button" class="btn btn-primary dealAmt" alt="any" id="betAny"
-                        onClick="toggle('anyAmount');focusOnField('anyAmount');">Any
-                        $</button>
-                    <!--<button type="button" class="btn btn-primary" alt="1" onClick="startGame(Number(1))">$1</button>-->
-                    <button type="button" class="btn btn-primary" alt="5" onClick="startGame(Number(5))">$5</button>
-                    <button type="button" class="btn btn-primary" alt="10" onClick="startGame(Number(10))">$10</button>
-                    <button type="button" class="btn btn-primary" alt="25" onClick="startGame(Number(25))">$25</button>
-                    <button type="button" class="btn btn-primary" alt="50" onClick="startGame(Number(50))">$50</button>
-                    <button type="button" class="btn btn-primary" alt="100"
-                        onClick="startGame(Number(100))">$100</button>
+                <div class="btn-group form-control mb-2 animated fadeInDown" role="group" id="startGame">
+                    <button type="button" class="btn btn-primary dealAmt" id="betAny" onClick="toggle('anyAmount');focusOnField('anyAmount');">Any $</button>
+                    <button type="button" class="btn btn-primary" onClick="startGame(5)">$5</button>
+                    <button type="button" class="btn btn-primary" onClick="startGame(10)">$10</button>
+                    <button type="button" class="btn btn-primary" onClick="startGame(25)">$25</button>
+                    <button type="button" class="btn btn-primary" onClick="startGame(50)">$50</button>
+                    <button type="button" class="btn btn-primary" onClick="startGame(100)">$100</button>
                 </div>
             </div>
-            <div class="col-md-12 hide" data-toggle="anyAmount">
 
+            <!-- ብጁ መጠን ማስገቢያ (Any Amount Input) -->
+            <div class="col-md-12 hide" data-toggle="anyAmount">
                 <div class="input-group mb-3">
-                    <input type="number" class="form-control" name="anyAmount"
-                        placeholder="Any Amount. Numerical characters only please." onKeyUp="updateBetAny()">
+                    <input type="number" class="form-control" name="anyAmount" placeholder="Any Amount" onKeyUp="updateBetAny()">
                     <button class="btn btn-primary" onClick="startGame('any')">Bet</button>
                 </div>
             </div>
+
+            <!-- የሂሳብ መጠን እና የጨዋታ ሁኔታ -->
             <div class="col-md-12">
                 <div class="alert alert-info" role="alert">
                     <div class="row">
-                        <div class="col-3">
-                            <h3>Balance: $<span id="playerMoney"></span></h3>
-                            <span class="badge bg-dark text-light"><i id="highScoreTarget"></i></span>
+                        <div class="col-4">
+                            <h3>Balance: $<span id="playerMoney">100</span></h3>
                         </div>
-                        <div class="col-3">
+                        <div class="col-4 text-center">
                             <h3 id="betTarget"></h3>
                         </div>
-                        <div class="col-6">
-
-                            <h3 id="selectedItem" class="text-center text-uppercase" alt="Bingo Room">Welcome to BINGO
-                            </h3>
+                        <div class="col-4 text-end">
+                            <h3 id="selectedItem" class="text-uppercase">AYAT BINGO</h3>
                         </div>
-
                     </div>
-                    <h3 id="announcement" class="text-uppercase"></h3>
+                    <h3 id="announcement" class="text-uppercase text-center mt-2"></h3>
                 </div>
-
             </div>
 
+            <!-- የጨዋታ መቆጣጠሪያዎች (Controls) -->
             <div class="col-md-12">
                 <div class="btn-group form-control mb-2 hide" role="group" id="playerOptions">
-
-                    <button type="button" class="btn btn-primary" id="timerOn" onClick="toggleTimer()">Play with timer
-                        <i data-timer="false" class="pointer far fa-clock"></i> </button>
-
-                    <button type="button" class="btn btn-primary active" id="timerOff" onClick="toggleTimer()"
-                        disabled>Play
-                        at your pace</button>
-
-                    <button class="btn btn-primary  px-0 " onClick="startCalling('manual')" id="callSquare">Select Next
-                        Square</button>
-
-
+                    <button type="button" class="btn btn-primary" id="timerOn" onClick="toggleTimer()">Play with timer <i class="far fa-clock"></i></button>
+                    <button type="button" class="btn btn-primary active" id="timerOff" onClick="toggleTimer()" disabled>Play at pace</button>
+                    <button class="btn btn-primary px-0" onClick="startCalling('manual')" id="callSquare">Select Next Square</button>
                 </div>
             </div>
 
-
-
-
+            <!-- የተጠሩ ቁጥሮች ማሳያ -->
             <div class="col-md-12">
-
-                <div id="calledList"></div>
-            </div>
-            <div class="col-md-3">
-                <div class="alert-light d-flex justify-content-center" id="player1">
-                </div>
-                <div class="text-center text-light alert-dark " data-details="1"></div>
+                <div id="calledList" class="mb-3"></div>
             </div>
 
-
+            <!-- የተጫዋቾች የካርድ ቦታ (Players Grid) -->
             <div class="col-md-3">
-                <div class="alert-light d-flex justify-content-center" id="player2">
-                </div>
+                <div class="alert-light d-flex justify-content-center" id="player1"></div>
+                <div class="text-center text-light alert-dark" data-details="1"></div>
+            </div>
+            <div class="col-md-3">
+                <div class="alert-light d-flex justify-content-center" id="player2"></div>
                 <div class="text-center text-light alert-dark" data-details="2"></div>
             </div>
-
             <div class="col-md-3">
-                <div class="alert-light d-flex justify-content-center" id="player3"> </div>
+                <div class="alert-light d-flex justify-content-center" id="player3"></div>
                 <div class="text-center text-light alert-dark" data-details="3"></div>
             </div>
-
             <div class="col-md-3">
-                <div class="alert-light d-flex justify-content-center" id="player4">
-                </div>
+                <div class="alert-light d-flex justify-content-center" id="player4"></div>
                 <div class="text-center text-light alert-dark" data-details="4"></div>
             </div>
 
+            <!-- የህግ ማስገንዘቢያ (Rules Section) -->
             <div class="col-md-12 mt-3">
-
                 <div class="d-grid gap-2">
-                    <button class="btn btn-info" onClick="javascript:toggle('rules')" type="button"
-                        data-toggle="default">View Rules</button>
-                    <button class="btn btn-info hide" onClick="javascript:toggle('default')" type="button"
-                        data-toggle="rules">Hide Rules</button>
+                    <button class="btn btn-info" onClick="toggle('rules')" type="button">View Rules</button>
                 </div>
-
-                <div class="card hide" data-toggle="rules">
+                <div class="card hide mt-2" data-toggle="rules">
                     <div class="card-body">
-                        <h5 class="card-title">Bingo rules:</h5>
-                        <p>Players can win by covering a complete horizontal, vertical or diagonal line. Pattern bingo
-                            is often played in 75-ball games.</p>
-                        <p>To start, select the amount you are willing to bet from the top. The first square will be
-                            called and this is where you start verifiying if you have the square announced.
-                            While the other players automatically fill in the squares their card has, you need to locate
-                            the square called on your card and click it to move on. If you do not have this square,
-                            select any of your squares or "Select Next Square" to move on.</p>
-
-                        <hr />
-                        <h5>Airplane mode</h5>
-                        <label> To play this game in airplane mode:</label>
-                        <ul class="list-group">
-                            <li class="list-group-item">Start the game in a browser window. <span class="text-danger">Do
-                                    not use incognito
-                                    mode.</span></li>
-
-                            <li class="list-group-item">Once game has loaded, you can switch your
-                                device to airplane mode.</li>
-                            <li class="list-group-item">The game runs entirely in your browser and will continue to
-                                function normally after this point.</li>
-                        </ul>
-
-
-
-
-
+                        <h5 class="card-title">Bingo Rules:</h5>
+                        <p>Players can win by covering a complete horizontal, vertical, or diagonal line.</p>
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
-    <div class="hide alert fadeInUp" role="alert" id="globalAlert"></div>
-    <footer class="footer mt-auto py-3 animated fadeInUp">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="btn-group block my-2" role="group" id="gameLinks"></div>
-                </div>
-                <div class="col-md-2 my-2"> <select class="form-control" onChange="changeTheme()" id="themes"></select>
-                </div>
-                <div class="col-md-4" id="socialList">
-                </div>
-                <div class="col-md-2 my-3" id="year"></div>
-            </div>
-        </div>
-    </footer>
 
+    <!-- Telegram Mini App & Server Verification Script -->
+    <script>
+        // Telegram WebApp ን ማስነሳት
+        const tg = window.Telegram ? window.Telegram.WebApp : null;
+        if (tg) {
+            tg.expand(); // Mini App ሙሉ ስክሪን እንዲሆን ያደርጋል
+        }
+
+        // Render ላይ ካለው Backend ጋር የትስስር ፍተሻ
+        async function verifyUserRegistration() {
+            if (!tg || !tg.initDataUnsafe || !tg.initDataUnsafe.user) {
+                console.warn("Not running inside Telegram. Registration check skipped.");
+                return;
+            }
+
+            const userId = tg.initDataUnsafe.user.id;
+
+            try {
+                // የራስህን የ Render URL እዚህ ጋር ማስገባት ትችላለህ (ወይም Relative Path መጠቀም ትችላለህ)
+                const response = await fetch('/api/check-registration', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+
+                const data = await response.json();
+
+                if (!data.registered) {
+                    // ተጠቃሚው ካልተመዘገበ የጨዋታውን ክፍል ደብቆ ማስጠንቀቂያውን ያሳያል
+                    document.getElementById('gameContainer').style.display = 'none';
+                    document.getElementById('unregisteredOverlay').style.display = 'block';
+                }
+            } catch (err) {
+                console.error("Error verifying registration:", err);
+            }
+        }
+
+        // ገጹ ሲከፈት ፍተሻውን ያስጀምራል
+        window.onload = verifyUserRegistration;
+    </script>
+
+    <!-- የጨዋታው ዋና Script logic -->
+    <script src="js/functionality.js"></script>
 </body>
-<script src="https://aaronrs2002.github.io/black-jack/js/footer.js"></script>
-<script src="js/functionality.js"></script>
 
 </html>
-
-<!--
-    https://en.wikipedia.org/wiki/Bingo_(American_version)#Bingo_cards
-    A typical Bingo game utilizes the numbers 1 through 75. The five columns of the card are labeled 'B', 'I', 'N', 'G', and 'O' from left to right. 
-    The center space is usually marked "Free" or "Free Space", and is considered automatically filled. 
-    The range of printed numbers that can appear on the card is normally restricted by column, with the 'B' column only containing numbers between 1 and 15 inclusive, 
-    the 'I' column containing only 16 through 30, 'N' containing 31 through 45, 'G' containing 46 through 60, and 'O' containing 61 through 75.
--->

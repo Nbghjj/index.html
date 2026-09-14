@@ -13,7 +13,7 @@ ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID", "6496982318")
 app = Flask(__name__)
 CORS(app)
 
-bot = telebot.TeleBot(BOT_TOKEN)
+bot = telebot.TeleBot(BOT_TOKEN, parse_mode=None)
 
 # --------------------------------------------------
 # PERSISTENT STORAGE
@@ -49,6 +49,7 @@ def send_welcome(message):
             "እባክዎ ከታች ያለውን '📱 Share Contact' የሚለውን አዝራር ይጫኑ።"
         )
         bot.send_message(message.chat.id, msg_text, reply_markup=markup)
+        print(f"Start command processed for chat: {message.chat.id}")
     except Exception as e:
         print(f"Error in start command: {e}")
 
@@ -75,33 +76,35 @@ def handle_contact(message):
                 "✅ ምዝገባዎ ተጠናቋል! አሁን ከታች ያለውን 'Play Bingo' በመጫን መጫወት ይችላሉ።",
                 reply_markup=types.ReplyKeyboardRemove()
             )
+            print(f"Registered user: {user_id}")
     except Exception as e:
         print(f"Error in contact handler: {e}")
 
 # --------------------------------------------------
-# WEBHOOK ENDPOINT FOR TELEGRAM
+# WEBHOOK ENDPOINT
 # --------------------------------------------------
-@app.route('/' + BOT_TOKEN, methods=['POST'])
-def getMessage():
-    json_string = request.get_data().decode('utf-8')
-    update = telebot.types.Update.de_json(json_string)
-    bot.process_new_updates([update])
-    return "!", 200
+@app.route(f"/{BOT_TOKEN}", methods=['POST'])
+def webhook():
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return "OK", 200
+    else:
+        return "Invalid content type", 403
 
-# Webhook-ን በራስ-ሰር Render URL ጋር ማገናኛ
 @app.route('/set_webhook', methods=['GET', 'POST'])
-def webhook_setup():
-    # በ Render የተሰጠዎትን URL እዚህ ያገኛል
+def setup_webhook():
     host_url = request.host_url.rstrip('/')
     webhook_url = f"{host_url}/{BOT_TOKEN}"
-    s = bot.set_webhook(url=webhook_url)
-    if s:
+    bot.remove_webhook()
+    status = bot.set_webhook(url=webhook_url)
+    if status:
         return f"Webhook successfully setup to: {webhook_url}", 200
-    else:
-        return "Webhook setup failed", 500
+    return "Webhook setup failed", 500
 
 # --------------------------------------------------
-# API ENDPOINT FOR MINI APP VERIFICATION
+# API ENDPOINT FOR MINI APP
 # --------------------------------------------------
 @app.route('/api/check-registration', methods=['POST'])
 def check_registration():

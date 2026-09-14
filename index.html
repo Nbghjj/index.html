@@ -1,205 +1,61 @@
-<!DOCTYPE html>
-<html lang="am">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>AYAT BINGO — Real Money</title>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-.container{max-width:480px;margin:auto}
-.screen{display:none}.screen.active{display:block}
-.panel{background:#1f143a;border:1px solid #3c2a6d;border-radius:14px;padding:16px;margin-bottom:12px}
-.hero{text-align:center;background:linear-gradient(135deg,#2c1b4d,#1f143a)}
-.hero h1{margin:4px 0;color:#f39c12;font-size:28px}.muted{color:#a08cc4;font-size:13px}
-.badge{display:inline-block;background:#27ae60;color:#fff;padding:5px 10px;border-radius:20px;font-size:11px}
-.btn{width:100%;border:0;border-radius:9px;padding:14px;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px}
-.primary{background:linear-gradient(135deg,#f39c12,#f1c40f);color:#111}
-.green{background:#27ae60;color:#fff}.dark{background:#3c2a6d;color:#fff}.red{background:#e74c3c;color:#fff}
-.top{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.input{width:100%;padding:12px;margin:6px 0 12px;border-radius:8px;border:1px solid #4b377d;background:#120c24;color:#fff;font-size:14px}
-select.input{color:#fff}
-.bank-info{background:#2c1b4d;padding:10px;border-radius:8px;margin-bottom:12px;border-left:4px solid #f39c12}
-.smallbtn{border:0;border-radius:7px;padding:8px 11px;background:#7928ca;color:#fff;font-weight:700;cursor:pointer}
-</style>
-</head>
-<body>
-
-<main id="app" class="container">
-  <!-- HOME SCREEN -->
-  <section id="home" class="screen active">
-    <div class="panel hero">
-      <h1>AYAT BINGO</h1>
-      <p class="muted">የእውነተኛ ብር ቢንጎ ጨዋታ</p>
-      <span class="badge">REAL MONEY GAME</span>
-    </div>
-    
-    <div class="panel">
-      <div class="top">
-        <span class="muted">የእርስዎ ባላንስ:</span>
-        <strong id="balance">0.00 ETB</strong>
-      </div>
-      <button id="goDeposit" class="btn green">ብር አስገባ (Deposit)</button>
-      <button id="goWithdraw" class="btn dark">ብር አውጣ (Withdraw)</button>
-    </div>
-
-    <div class="panel">
-      <div class="top">
-        <div><b>Ayat Bingo Room</b><div class="muted">መግቢያ: 20 ETB</div></div>
-      </div>
-      <button id="joinBtn" class="btn primary">ጨዋታ ጀምር (JOIN ROOM)</button>
-      <button id="goAdmin" class="btn dark" style="display:none;margin-top:10px;">⚙️ Admin Panel</button>
-    </div>
-  </section>
-
-  <!-- DEPOSIT SCREEN -->
-  <section id="deposit" class="screen">
-    <div class="panel">
-      <div class="top"><button class="smallbtn backHome">← ተመለስ</button><b>ብር ማስገቢያ (Deposit)</b></div>
-      <p class="muted">ከታች ከተዘረዘሩት የባንክ ሂሳቦች በአንዱ ገንዘብ ገቢ አድርገው የግብይት ቁጥሩን (Txn Ref) ያስገቡ።</p>
-      
-      <div class="bank-info">
-        <div><b>CBE (ንግድ ባንክ):</b> 1000123456789</div>
-        <div><b>Telebirr:</b> 0911000000</div>
-        <div><b>CBE Birr:</b> 0911000000</div>
-        <div class="muted" style="margin-top:4px">ስም: AYAT BINGO / KIRUBEL</div>
-      </div>
-
-      <label class="muted">የተጠቀሙት የክፍያ መንገድ</label>
-      <select id="depBank" class="input">
-        <option value="CBE">CBE (ንግድ ባንክ)</option>
-        <option value="Telebirr">Telebirr</option>
-        <option value="CBE Birr">CBE Birr</option>
-      </select>
-
-      <label class="muted">የያስገቡት መጠን (ETB)</label>
-      <input id="depAmount" type="number" class="input" placeholder="ምሳሌ: 200">
-
-      <label class="muted">የደረሰኝ / Transaction Reference No.</label>
-      <input id="depRef" type="text" class="input" placeholder="ምሳሌ: FT24XXXXXX ወይም Transaction ID">
-
-      <button id="submitDeposit" class="btn green">ጥያቄውን ላክ</button>
-    </div>
-  </section>
-
-  <!-- WITHDRAW SCREEN -->
-  <section id="withdraw" class="screen">
-    <div class="panel">
-      <div class="top"><button class="smallbtn backHome">← ተመለስ</button><b>ብር ማውጫ (Withdraw)</b></div>
-      
-      <label class="muted">መቀበያ ባንክ / ቴሌብር</label>
-      <select id="withBank" class="input">
-        <option value="CBE">CBE (ንግድ ባንክ)</option>
-        <option value="Telebirr">Telebirr</option>
-        <option value="Abyssinia">አቢሲንያ ባንክ</option>
-        <option value="Awash">አዋሽ ባንክ</option>
-      </select>
-
-      <label class="muted">የሂሳብ ቁጥር (Account / Phone Number)</label>
-      <input id="withAcc" type="text" class="input" placeholder="የባንክ ሂሳብ ወይም ስልክ ቁጥር">
-
-      <label class="muted">የተቀባይ ሙሉ ስም</label>
-      <input id="withName" type="text" class="input" placeholder="በባንክ መታወቂያው ላይ ያለ ስም">
-
-      <label class="muted">ማውጣት የሚፈልጉት መጠን (ETB)</label>
-      <input id="withAmount" type="number" class="input" placeholder="ምሳሌ: 500">
-
-      <button id="submitWithdraw" class="btn dark">የማውጣት ጥያቄ ላክ</button>
-    </div>
-  </section>
-
-  <!-- ADMIN PANEL (ለአድሚኑ ብቻ የሚታይ) -->
-  <section id="admin" class="screen">
-    <div class="panel">
-      <div class="top"><button class="smallbtn backHome">← ተመለስ</button><b>Admin Panel</b></div>
-      <h3>የDeposit ጥያቄዎች</h3>
-      <div id="pendingDeposits"></div>
-      
-      <h3>የWithdrawal ጥያቄዎች</h3>
-      <div id="pendingWithdraws"></div>
-    </div>
-  </section>
-</main>
-
 <script>
 (() => {
   "use strict";
-  const BACKEND_URL = "https://your-backend-api.com"; // የሰርቨርህ አድራሻ
-  const ADMIN_ID = "123456789"; // የኪሩቤል Telegram User ID
+  const BACKEND_URL = "https://your-backend-api.com";
+  const ADMIN_ID = "123456789"; // የAdmin Telegram User ID
+  const STAKE = 20; // የመግቢያ ክፍያ
   
   const tg = window.Telegram?.WebApp;
   tg?.ready(); tg?.expand();
 
   const user = tg?.initDataUnsafe?.user || { id: "demo_user", first_name: "Test" };
+  let selectedCard = null;
 
+  // የስክሪን መለወጫ Function
   function showScreen(id) {
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
-    document.getElementById(id).classList.add("active");
+    const target = document.getElementById(id);
+    if(target) target.classList.add("active");
   }
 
-  // አድሚን ከሆነ የAdmin አዝራር ይታያል
-  if (String(user.id) === String(ADMIN_ID)) {
-    document.getElementById("goAdmin").style.display = "block";
+  // 1. JOIN ROOM አዝራር
+  document.getElementById("joinBtn").onclick = () => {
+    showScreen("select");
+    buildCards();
+  };
+
+  // 2. 300 የቢንጎ ካርዶችን መገንቢያ Function
+  function buildCards() {
+    const box = document.getElementById("cards");
+    if(!box) return;
+    box.innerHTML = "";
+    
+    for(let i = 1; i <= 300; i++) {
+      const b = document.createElement("button");
+      b.className = "card";
+      b.textContent = i;
+      b.onclick = () => {
+        selectedCard = i;
+        document.querySelectorAll(".card").forEach(c => c.classList.remove("selected"));
+        b.classList.add("selected");
+        const startBtn = document.getElementById("startBtn");
+        if(startBtn) startBtn.disabled = false;
+      };
+      box.appendChild(b);
+    }
   }
 
-  // Navigation Click Actions
+  // 3. Navigation አዝራሮች
   document.getElementById("goDeposit").onclick = () => showScreen("deposit");
   document.getElementById("goWithdraw").onclick = () => showScreen("withdraw");
-  document.getElementById("goAdmin").onclick = () => { showScreen("admin"); fetchAdminRequests(); };
-  document.querySelectorAll(".backHome").forEach(b => b.onclick = () => showScreen("home"));
-
-  // 1. DEPOSIT REQUEST SUBMIT
-  document.getElementById("submitDeposit").onclick = async () => {
-    const bank = document.getElementById("depBank").value;
-    const amount = Number(document.getElementById("depAmount").value);
-    const ref = document.getElementById("depRef").value.trim();
-
-    if(!amount || !ref) { alert("እባክዎን ሁሉንም መረጃዎች በአግባቡ ይሙሉ!"); return; }
-
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/deposit/request`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id, userName: user.first_name, bank, amount, ref })
-      });
-      const data = await res.json();
-      alert("የገንዘብ ማስገባት ጥያቄዎ ለአድሚን ተልኳል። ከተረጋገጠ በኋላ ባላንስዎ ላይ ይደመራል።");
-      showScreen("home");
-    } catch(e) {
-      alert("ጥያቄውን መላክ አልተቻለም። ሰርቨሩን ያረጋግጡ።");
-    }
-  };
-
-  // 2. WITHDRAW REQUEST SUBMIT
-  document.getElementById("submitWithdraw").onclick = async () => {
-    const bank = document.getElementById("withBank").value;
-    const account = document.getElementById("withAcc").value.trim();
-    const accName = document.getElementById("withName").value.trim();
-    const amount = Number(document.getElementById("withAmount").value);
-
-    if(!amount || !account || !accName) { alert("እባክዎን መረጃዎችን ሙሉ በሙሉ ይሙሉ!"); return; }
-
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/withdraw/request`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id, bank, account, accName, amount })
-      });
-      const data = await res.json();
-      alert("የማውጣት ጥያቄዎ ተልኳል። አድሚኑ ወደ ባንክዎ ገቢ አድርጎ ያረጋግጥልዎታል።");
-      showScreen("home");
-    } catch(e) {
-      alert("ጥያቄውን መላክ አልተቻለም።");
-    }
-  };
-
-  // 3. ADMIN: Request ማምጫ እና Approve ማድረጊያ
-  async function fetchAdminRequests() {
-    // ከBackend የሚመጡ ጥያቄዎችን በቅደም ተከተል አሳይቶ Approve/Reject ማድረጊያ አሰራር
+  
+  const goAdmin = document.getElementById("goAdmin");
+  if (goAdmin && String(user.id) === String(ADMIN_ID)) {
+    goAdmin.style.display = "block";
+    goAdmin.onclick = () => showScreen("admin");
   }
+
+  document.querySelectorAll(".backHome").forEach(b => b.onclick = () => showScreen("home"));
 
 })();
 </script>
-</body>
-</html>

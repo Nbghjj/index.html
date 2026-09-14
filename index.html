@@ -10,7 +10,6 @@
 body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 .container{max-width:480px;margin:auto}
 
-/* CSS Fix: ስክሪኖች እንዲታዩና እንዲሰወሩ የተደረገ ማስተካከያ */
 .screen{display:none}
 .screen.active{display:block !important}
 
@@ -19,7 +18,7 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
 .hero h1{margin:4px 0;color:#f39c12;font-size:28px}.muted{color:#a08cc4;font-size:13px}
 .badge{display:inline-block;background:#27ae60;color:#fff;padding:5px 10px;border-radius:20px;font-size:11px}
 .btn{width:100%;border:0;border-radius:9px;padding:14px;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px}
-.btn:disabled{opacity:0.5;cursor:not-allowed}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
 .primary{background:linear-gradient(135deg,#f39c12,#f1c40f);color:#111}
 .green{background:#27ae60;color:#fff}.dark{background:#3c2a6d;color:#fff}
 .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -27,19 +26,21 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
 .bank-info{background:#2c1b4d;padding:10px;border-radius:8px;margin-bottom:12px;border-left:4px solid #f39c12}
 .smallbtn{border:0;border-radius:7px;padding:8px 11px;background:#7928ca;color:#fff;font-weight:700;cursor:pointer}
 
-/* የካርድ መምረጫ Grid */
-.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;max-height:300px;overflow-y:auto;padding:8px;background:#120c24;border:1px solid #3c2a6d;border-radius:10px}
-.card-item{aspect-ratio:1;border:1px solid #523a8a;border-radius:6px;background:#3c2a6d;color:#fff;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
-.card-item.selected{background:#f39c12;color:#111;border-color:#fff}
+/* 300 የካርድ ቁጥሮች በግልጽ እንዲታዩ የተስተካከለ Grid */
+.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;max-height:360px;overflow-y:auto;padding:10px;background:#120c24;border:1px solid #3c2a6d;border-radius:10px}
+.card-item{padding:12px 0;border:1px solid #523a8a;border-radius:8px;background:#3c2a6d;color:#fff;font-size:15px;font-weight:800;cursor:pointer;text-align:center;transition:0.2s}
+.card-item:hover{border-color:#f39c12}
+.card-item.selected{background:#f39c12;color:#111;border-color:#fff;transform:scale(1.03)}
 
-/* የቢንጎ ሰሌዳ */
+/* የቢንጎ ቦርድ CSS */
 .bingo{background:#fff;color:#000;border:3px solid #ff69b4;border-radius:12px;padding:9px;max-width:350px;margin:0 auto}
-.head{display:grid;grid-template-columns:repeat(5,1fr);background:#ff69b4;color:#fff;border-radius:6px;padding:6px;text-align:center;font-weight:800}
+.head{display:grid;grid-template-columns:repeat(5,1fr);background:#ff69b4;color:#fff;border-radius:6px;padding:6px;text-align:center;font-weight:800;font-size:18px}
 .matrix{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:7px}
-.cell{aspect-ratio:1;border:2px solid #000;border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;cursor:pointer}
-.cell.marked{background:#f39c12;color:#fff}
+.cell{aspect-ratio:1;border:2px solid #000;border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;cursor:pointer;background:#fff}
+.cell.free{background:#ff69b4;color:#fff}
+.cell.marked{background:#f39c12;color:#000}
 .ball{text-align:center;border:2px solid #f39c12;border-radius:14px;padding:12px;margin-bottom:12px}
-.ballnum{font-size:36px;font-weight:900;color:#f39c12}
+.ballnum{font-size:38px;font-weight:900;color:#f39c12}
 </style>
 </head>
 <body>
@@ -70,16 +71,16 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
     </div>
   </section>
 
-  <!-- 2. CARD SELECT SCREEN -->
+  <!-- 2. CARD SELECT SCREEN (300 ካርዶች) -->
   <section id="select" class="screen">
     <div class="panel">
       <div class="top">
         <button class="smallbtn backHome">← ተመለስ</button>
-        <b>ካርድ ይምረጡ</b>
+        <b>ካርድ ይምረጡ (1–300)</b>
       </div>
-      <p class="muted">ለመጫወት የሚፈልጉትን የካርድ ቁጥር ይምረጡ (1-300)</p>
+      <p class="muted" id="selectedInfo">እባክዎን ከታች ካሉት 300 ካርዶች አንዱን ይጫኑ፡</p>
       <div id="cardsList" class="cards"></div>
-      <button id="startBtn" class="btn primary" disabled>ጨዋታውን ጀምር</button>
+      <button id="startBtn" class="btn primary" disabled>ካርድ #<span id="cardNumTxt">--</span> አረጋግጥ</button>
     </div>
   </section>
 
@@ -97,6 +98,7 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
       <div class="bingo">
         <div class="head"><span>B</span><span>I</span><span>N</span><span>G</span><span>O</span></div>
         <div id="matrix" class="matrix"></div>
+        <div class="muted" style="text-align:center;margin-top:6px;color:#333;">Card #<span id="cardNoLabel">--</span></div>
       </div>
       <button id="claimBtn" class="btn green" style="margin-top:12px;">BINGO! 🎉</button>
     </div>
@@ -139,58 +141,105 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
 
   let selectedCard = null;
 
-  // የስክሪን መለወጫ Function
   function showScreen(id) {
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
     const target = document.getElementById(id);
     if(target) target.classList.add("active");
   }
 
-  // 1. JOIN ROOM አዝራር ሲነካ
+  // 1. JOIN ROOM አዝራር
   document.getElementById("joinBtn").onclick = () => {
     showScreen("select");
     buildCards();
   };
 
-  // 2. 300 የቢንጎ ካርዶችን መፍጠሪያ
+  // 2. 300 የካርድ ቁጥሮችን በግልጽ የመስሪያ Function
   function buildCards() {
     const box = document.getElementById("cardsList");
     box.innerHTML = "";
     for(let i = 1; i <= 300; i++) {
       const b = document.createElement("div");
       b.className = "card-item";
-      b.textContent = `#${i}`;
+      b.textContent = i;
       b.onclick = () => {
         selectedCard = i;
         document.querySelectorAll(".card-item").forEach(c => c.classList.remove("selected"));
         b.classList.add("selected");
+        document.getElementById("cardNumTxt").textContent = i;
+        document.getElementById("selectedInfo").textContent = `የተመረጠው ካርድ: #${i}`;
         document.getElementById("startBtn").disabled = false;
       };
       box.appendChild(b);
     }
   }
 
-  // 3. START GAME - ጨዋታውን መጀመር
+  // 3. Random Numbers Generator (ለተወሰነ Seed)
+  function rng(seed) {
+    let x = seed >>> 0;
+    return () => {
+      x = (1664525 * x + 1013904223) >>> 0;
+      return x / 4294967296;
+    };
+  }
+
+  function getUniqueNumbers(min, max, count, seed) {
+    const r = rng(seed), arr = [];
+    while(arr.length < count) {
+      let n = min + Math.floor(r() * (max - min + 1));
+      if(!arr.includes(n)) arr.push(n);
+    }
+    return arr.sort((a, b) => a - b);
+  }
+
+  // 4. B-I-N-G-O ቁጥሮችን በትክክለኛው ህግ ማዘጋጀት
+  function generateBingoCard(cardId) {
+    const s = cardId * 31337;
+    return {
+      B: getUniqueNumbers(1, 15, 5, s + 1),   // B: 1-15
+      I: getUniqueNumbers(16, 30, 5, s + 2),  // I: 16-30
+      N: getUniqueNumbers(31, 45, 4, s + 3),  // N: 31-45 (ከመሃሉ FREE ስለሚገባ 4 ቁጥር)
+      G: getUniqueNumbers(46, 60, 5, s + 4),  // G: 46-60
+      O: getUniqueNumbers(61, 75, 5, s + 5)   // O: 61-75
+    };
+  }
+
+  // 5. START GAME
   document.getElementById("startBtn").onclick = () => {
+    if(!selectedCard) return;
     showScreen("game");
-    renderBoard();
+    renderBoard(selectedCard);
   };
 
-  // 4. የቢንጎ ሰሌዳ መሳያ
-  function renderBoard() {
+  // 6. የ B-I-N-G-O ሰሌዳን መሳል
+  function renderBoard(cardId) {
     const matrix = document.getElementById("matrix");
     matrix.innerHTML = "";
-    for(let i = 0; i < 25; i++) {
-      const cell = document.createElement("div");
-      cell.className = "cell";
-      if(i === 12) {
-        cell.textContent = "FREE";
-        cell.classList.add("marked");
-      } else {
-        cell.textContent = Math.floor(Math.random() * 75) + 1;
-        cell.onclick = () => cell.classList.toggle("marked");
+    document.getElementById("cardNoLabel").textContent = cardId;
+
+    const data = generateBingoCard(cardId);
+
+    for(let row = 0; row < 5; row++) {
+      for(let col = 0; col < 5; col++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+
+        // መሃል ላይ ያለውን FREE ቦታ ማስተካከል (Row 2, Col 2)
+        if(row === 2 && col === 2) {
+          cell.textContent = "FREE";
+          cell.classList.add("free", "marked");
+        } else {
+          let val;
+          if(col === 0) val = data.B[row];
+          else if(col === 1) val = data.I[row];
+          else if(col === 2) val = data.N[row > 2 ? row - 1 : row];
+          else if(col === 3) val = data.G[row];
+          else if(col === 4) val = data.O[row];
+
+          cell.textContent = val;
+          cell.onclick = () => cell.classList.toggle("marked");
+        }
+        matrix.appendChild(cell);
       }
-      matrix.appendChild(cell);
     }
   }
 

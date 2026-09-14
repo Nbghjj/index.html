@@ -1,4 +1,5 @@
 import os
+import threading
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import telebot
@@ -13,9 +14,9 @@ ADMIN_CHAT_ID = "6496982318"
 app = Flask(__name__)
 CORS(app)  # Cross-Origin Resource Sharing ለ Mini App ይፈቅዳል
 
-bot = telebot.TeleBot(BOT_TOKEN)
+bot = telebot.TeleBot(BOT_TOKEN, parse_mode=None)
 
-# የተመዘገቡ ተጠቃሚዎችን በሜሞሪ መያዣ (ምርት ላይ Database መጠቀም ይመረጣል)
+# የተመዘገቡ ተጠቃሚዎችን መያዣ
 registered_users = set()
 
 # --------------------------------------------------
@@ -23,44 +24,48 @@ registered_users = set()
 # --------------------------------------------------
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    user_id = str(message.from_user.id)
-    
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    contact_btn = types.KeyboardButton(text="📱 Share Contact", request_contact=True)
-    markup.add(contact_btn)
-    
-    msg_text = (
-        "እንኳን ደህና መጡ ወደ Ayat Bingo!\n\n"
-        "⚠️ Bot-ን እና Mini App-ን ለመጠቀም መጀመሪያ Register ማድረግ አለብዎት።\n"
-        "እባክዎ ከታች ያለውን '📱 Share Contact' የሚለውን አዝራር ይጫኑ።"
-    )
-    bot.send_message(message.chat.id, msg_text, reply_markup=markup)
+    try:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+        contact_btn = types.KeyboardButton(text="📱 Share Contact", request_contact=True)
+        markup.add(contact_btn)
+        
+        msg_text = (
+            "እንኳን ደህና መጡ ወደ Ayat Bingo!\n\n"
+            "⚠️ Bot-ን እና Mini App-ን ለመጠቀም መጀመሪያ Register ማድረግ አለብዎት።\n"
+            "እባክዎ ከታች ያለውን '📱 Share Contact' የሚለውን አዝራር ይጫኑ።"
+        )
+        bot.send_message(message.chat.id, msg_text, reply_markup=markup)
+    except Exception as e:
+        print(f"Error in start command: {e}")
 
 @bot.message_handler(content_types=['contact'])
 def handle_contact(message):
-    if message.contact is not None:
-        user_id = str(message.from_user.id)
-        phone_number = message.contact.phone_number
-        first_name = message.from_user.first_name or ""
-        
-        # ተጠቃሚውን እንደተመዘገበ መመዝገብ
-        registered_users.add(user_id)
-        
-        # ለአድሚን ማሳወቂያ መላክ
-        admin_msg = (
-            f"👤 *አዲስ ስልክ ቁጥር ተላከ*\n\n"
-            f"• ስም: {first_name}\n"
-            f"• ስልክ: `{phone_number}`\n"
-            f"• Telegram ID: `{user_id}`"
-        )
-        bot.send_message(ADMIN_CHAT_ID, admin_msg, parse_mode='Markdown')
-        
-        # ለተጠቃሚው ማረጋገጫ መላክ
-        bot.send_message(
-            message.chat.id, 
-            "✅ ምዝገባዎ ተጠናቋል! አሁን ከታች ያለውን 'Play Bingo' በመጫን መጫወት ይችላሉ።",
-            reply_markup=types.ReplyKeyboardRemove()
-        )
+    try:
+        if message.contact is not None:
+            user_id = str(message.from_user.id)
+            phone_number = message.contact.phone_number
+            first_name = message.from_user.first_name or ""
+            
+            # ተጠቃሚውን መመዝገብ
+            registered_users.add(user_id)
+            
+            # ለአድሚን ማሳወቂያ መላክ
+            admin_msg = (
+                f"👤 *አዲስ ስልክ ቁጥር ተላከ*\n\n"
+                f"• ስም: {first_name}\n"
+                f"• ስልክ: `{phone_number}`\n"
+                f"• Telegram ID: `{user_id}`"
+            )
+            bot.send_message(ADMIN_CHAT_ID, admin_msg, parse_mode='Markdown')
+            
+            # ለተጠቃሚው ማረጋገጫ መላክ
+            bot.send_message(
+                message.chat.id, 
+                "✅ ምዝገባዎ ተጠናቋል! አሁን Mini App-ን ከፍትው መጫወት ይችላሉ።",
+                reply_markup=types.ReplyKeyboardRemove()
+            )
+    except Exception as e:
+        print(f"Error in contact handler: {e}")
 
 # --------------------------------------------------
 # API ENDPOINT FOR MINI APP VERIFICATION
@@ -69,6 +74,9 @@ def handle_contact(message):
 def check_registration():
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({"registered": False, "error": "No JSON data"}), 400
+            
         user_id = str(data.get('user_id', ''))
         
         if user_id in registered_users:
@@ -82,7 +90,19 @@ def check_registration():
 def index():
     return "Ayat Bingo Bot Server is Running Live!"
 
+# --------------------------------------------------
+# RUN BOT IN BACKGROUND THREAD
+# --------------------------------------------------
+def run_bot():
+    print("Telegram Bot Polling Started...")
+    # non_stop=True ሰርቨሩ ሳይቋረጥ በጀርባ እንዲሰራ ያደርገዋል
+    bot.infinity_polling(timeout=10, long_polling_timeout=5)
+
 if __name__ == '__main__':
-    # Render PORT Environment Variable
-    port = int(os.environ.get("PORT", 5000))
+    # Telegram Bot-ን በጀርባ Thread ማስነሳት
+    bot_thread = threading.Thread(target=run_bot, daemon=True)
+    bot_thread.start()
+
+    # Flask Web Server ማስነሳት
+    port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)

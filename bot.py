@@ -8,16 +8,32 @@ from telebot import types
 # --------------------------------------------------
 # CONFIGURATION
 # --------------------------------------------------
-BOT_TOKEN = "8909328591:AAEay418mvQF9dRBqjtSKgPDM_T-WpWWJ84"
-ADMIN_CHAT_ID = "6496982318"
+# Token እና Admin ID ከ Environment Variable ያነባል፤ ከሌለ ነባሪውን ይወስዳል
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8909328591:AAEay418mvQF9dRBqjtSKgPDM_T-WpWWJ84")
+ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID", "6496982318")
 
 app = Flask(__name__)
 CORS(app)
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode=None)
 
-# የተመዘገቡ ተጠቃሚዎችን መያዣ
-registered_users = set()
+# --------------------------------------------------
+# PERSISTENT STORAGE (የተመዘገቡ ተጠቃሚዎችን በፋይል መያዣ)
+# --------------------------------------------------
+DATA_FILE = "registered_users.txt"
+
+def load_registered_users():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r") as f:
+            return set(line.strip() for line in f if line.strip())
+    return set()
+
+def save_registered_user(user_id):
+    registered_users.add(str(user_id))
+    with open(DATA_FILE, "a") as f:
+        f.write(f"{user_id}\n")
+
+registered_users = load_registered_users()
 
 # --------------------------------------------------
 # TELEGRAM BOT HANDLERS
@@ -46,8 +62,8 @@ def handle_contact(message):
             phone_number = message.contact.phone_number
             first_name = message.from_user.first_name or ""
             
-            # ተጠቃሚውን መመዝገብ
-            registered_users.add(user_id)
+            # ተጠቃሚውን በቋሚነት መመዝገብ
+            save_registered_user(user_id)
             
             # ለአድሚን ማሳወቂያ መላክ
             admin_msg = (
@@ -91,15 +107,19 @@ def index():
     return "Ayat Bingo Bot Server is Running Live!"
 
 # --------------------------------------------------
-# RUN BOT IN BACKGROUND THREAD
+# RUN BOT IN BACKGROUND THREAD (SAFE FOR GUNICORN)
 # --------------------------------------------------
-def run_bot():
+def start_bot():
     print("Telegram Bot Polling Started...")
-    bot.infinity_polling(timeout=10, long_polling_timeout=5)
+    try:
+        bot.infinity_polling(timeout=10, long_polling_timeout=5, skip_pending=True)
+    except Exception as e:
+        print(f"Bot Polling Error: {e}")
 
-# ቴሌግራም ቦቱን በጀርባ ማስነሳት
-bot_thread = threading.Thread(target=run_bot, daemon=True)
-bot_thread.start()
+# Gunicorn ወይም Direct Run ሲሆን ቦቱ ሁለቴ እንዳይነሳ መከላከያ
+if not os.environ.get("WERKZEUG_RUN_MAIN"):
+    bot_thread = threading.Thread(target=start_bot, daemon=True)
+    bot_thread.start()
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))

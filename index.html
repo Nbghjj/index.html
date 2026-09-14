@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>AYAT BINGO — Real Money</title>
+<title>AYAT BINGO — Compact Card Selection</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -26,18 +26,12 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
 .bank-info{background:#2c1b4d;padding:10px;border-radius:8px;margin-bottom:12px;border-left:4px solid #f39c12}
 .smallbtn{border:0;border-radius:7px;padding:8px 11px;background:#7928ca;color:#fff;font-weight:700;cursor:pointer}
 
-/* Scroll ማስቀሪያ - Pagination Controls */
-.page-btn{padding:8px 12px;background:#3c2a6d;border:1px solid #523a8a;border-radius:6px;color:#fff;font-weight:700;cursor:pointer}
-.page-btn.active{background:#f39c12;color:#111}
-.page-controls{display:flex;gap:6px;justify-content:center;margin-bottom:10px;flex-wrap:wrap}
+/* Compact Dropdown & Selection Styling (Scroll የማያደርግ) */
+.select-box{width:100%;padding:14px;background:#2c1b4d;border:2px solid #f39c12;border-radius:8px;color:#fff;font-size:16px;font-weight:700;outline:none;cursor:pointer;margin:8px 0 14px;}
+.select-box option{background:#1f143a;color:#fff;padding:10px}
+.card-display-badge{text-align:center;background:#27ae60;color:#fff;padding:10px;border-radius:8px;font-weight:800;font-size:18px;margin-bottom:12px}
 
-/* 300 የካርድ ቁጥሮች (የተገደበ Grid) */
-.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:10px;background:#120c24;border:1px solid #3c2a6d;border-radius:10px}
-.card-item{padding:12px 0;border:1px solid #523a8a;border-radius:8px;background:#3c2a6d;color:#fff;font-size:15px;font-weight:800;cursor:pointer;text-align:center;transition:0.2s}
-.card-item:hover{border-color:#f39c12}
-.card-item.selected{background:#f39c12;color:#111;border-color:#fff;transform:scale(1.03)}
-
-/* የቢንጎ ቦርድ CSS */
+/* Bingo Board CSS */
 .bingo{background:#fff;color:#000;border:3px solid #ff69b4;border-radius:12px;padding:9px;max-width:350px;margin:0 auto}
 .head{display:grid;grid-template-columns:repeat(5,1fr);background:#ff69b4;color:#fff;border-radius:6px;padding:6px;text-align:center;font-weight:800;font-size:18px}
 .matrix{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:7px}
@@ -76,7 +70,7 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
     </div>
   </section>
 
-  <!-- 2. CARD SELECT SCREEN (ከነ Direct Input & Pagination) -->
+  <!-- 2. CARD SELECT SCREEN (COMPACT & NO SCROLL) -->
   <section id="select" class="screen">
     <div class="panel">
       <div class="top">
@@ -84,22 +78,23 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
         <b>ካርድ ይምረጡ (1–300)</b>
       </div>
       
-      <!-- የካርድ ቁጥር ቀጥታ መፃፊያ -->
-      <label class="muted" style="margin-top:8px;display:block;">የካርድ ቁጥር በቀጥታ ይፃፉ፡</label>
-      <input id="cardSearch" type="number" min="1" max="300" class="input" placeholder="ምሳሌ፡ 45" style="margin-bottom:8px;">
+      <!-- Option A: Direct Input -->
+      <label class="muted" style="margin-top:12px;display:block;">1. የካርድ ቁጥር ይፃፉ፡</label>
+      <input id="cardInput" type="number" min="1" max="300" class="input" placeholder="ከ 1 እስከ 300 ቁጥር ያስገቡ...">
 
-      <!-- የገጽ መለወጫ (Pagination) -->
-      <div class="page-controls">
-        <button class="page-btn active" data-start="1" data-end="60">1-60</button>
-        <button class="page-btn" data-start="61" data-end="120">61-120</button>
-        <button class="page-btn" data-start="121" data-end="180">121-180</button>
-        <button class="page-btn" data-start="181" data-end="240">181-240</button>
-        <button class="page-btn" data-start="241" data-end="300">241-300</button>
+      <div style="text-align:center;margin:4px 0;" class="muted">— ወይም —</div>
+
+      <!-- Option B: Compact Dropdown List -->
+      <label class="muted" style="display:block;">2. ከዝርዝሩ ውስጥ ይምረጡ፡</label>
+      <select id="cardDropdown" class="select-box">
+        <option value="">-- ካርድ ይምረጡ --</option>
+      </select>
+
+      <div id="statusBadge" class="card-display-badge" style="display:none;">
+        የተመረጠው ካርድ፡ #<span id="cardNumTxt">--</span>
       </div>
 
-      <p class="muted" id="selectedInfo">እባክዎን ከታች ካሉት ካርዶች አንዱን ይጫኑ፡</p>
-      <div id="cardsList" class="cards"></div>
-      <button id="startBtn" class="btn primary" disabled>ካርድ #<span id="cardNumTxt">--</span> አረጋግጥ</button>
+      <button id="startBtn" class="btn primary" disabled>ካርዱን አረጋግጥና ጀምር</button>
     </div>
   </section>
 
@@ -132,9 +127,9 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
         <div><b>Telebirr:</b> 0911000000</div>
       </div>
       <label class="muted">የያስገቡት መጠን (ETB)</label>
-      <input id="depAmount" type="number" class="input" placeholder="200">
+      <input type="number" class="input" placeholder="200">
       <label class="muted">Transaction Reference No.</label>
-      <input id="depRef" type="text" class="input" placeholder="FT24XXXXXX">
+      <input type="text" class="input" placeholder="FT24XXXXXX">
       <button id="submitDeposit" class="btn green">ጥያቄውን ላክ</button>
     </div>
   </section>
@@ -166,67 +161,46 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
     if(target) target.classList.add("active");
   }
 
-  // 1. JOIN ROOM አዝራር
-  document.getElementById("joinBtn").onclick = () => {
-    showScreen("select");
-    renderCardsPage(1, 60);
+  // 1. Populating Dropdown Options (1-300)
+  const dropdown = document.getElementById("cardDropdown");
+  for (let i = 1; i <= 300; i++) {
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = `Card #${i}`;
+    dropdown.appendChild(opt);
+  }
+
+  // 2. Navigation & Actions
+  document.getElementById("joinBtn").onclick = () => showScreen("select");
+
+  function setSelected(num) {
+    if(num >= 1 && num <= 300) {
+      selectedCard = num;
+      document.getElementById("cardNumTxt").textContent = num;
+      document.getElementById("statusBadge").style.display = "block";
+      document.getElementById("startBtn").disabled = false;
+    } else {
+      selectedCard = null;
+      document.getElementById("statusBadge").style.display = "none";
+      document.getElementById("startBtn").disabled = true;
+    }
+  }
+
+  // Handle Input typing
+  document.getElementById("cardInput").oninput = (e) => {
+    const val = Number(e.target.value);
+    dropdown.value = (val >= 1 && val <= 300) ? val : "";
+    setSelected(val);
   };
 
-  // 2. የተወሰነ範囲 ካርዶችን የመሳል Function (Scroll ማስቀሪያ)
-  function renderCardsPage(start, end) {
-    const box = document.getElementById("cardsList");
-    box.innerHTML = "";
-    for(let i = start; i <= end; i++) {
-      const b = document.createElement("div");
-      b.className = "card-item" + (selectedCard === i ? " selected" : "");
-      b.textContent = i;
-      b.onclick = () => selectCard(i);
-      box.appendChild(b);
-    }
-  }
-
-  function selectCard(num) {
-    if(num < 1 || num > 300) return;
-    selectedCard = num;
-    document.querySelectorAll(".card-item").forEach(c => {
-      c.classList.toggle("selected", Number(c.textContent) === num);
-    });
-    document.getElementById("cardNumTxt").textContent = num;
-    document.getElementById("cardSearch").value = num;
-    document.getElementById("selectedInfo").textContent = `የተመረጠው ካርድ: #${num}`;
-    document.getElementById("startBtn").disabled = false;
-  }
-
-  // 3. በቀጥታ ቁጥር ጽፎ መምረጫ (Input Handler)
-  document.getElementById("cardSearch").oninput = (e) => {
+  // Handle Dropdown select
+  dropdown.onchange = (e) => {
     const val = Number(e.target.value);
-    if(val >= 1 && val <= 300) {
-      selectCard(val);
-      // ከተፃፈው ቁጥር ጋር የሚስማማውን ገጽ ከፍቶ ማሳየት
-      const start = Math.floor((val - 1) / 60) * 60 + 1;
-      renderCardsPage(start, start + 59);
-      updatePageButtons(start);
-    }
-  }
+    document.getElementById("cardInput").value = val || "";
+    setSelected(val);
+  };
 
-  // 4. የገጽ መለወጫ አዝራሮች (Pagination Buttons)
-  document.querySelectorAll(".page-btn").forEach(btn => {
-    btn.onclick = () => {
-      document.querySelectorAll(".page-btn").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      const start = Number(btn.dataset.start);
-      const end = Number(btn.dataset.end);
-      renderCardsPage(start, end);
-    };
-  });
-
-  function updatePageButtons(activeStart) {
-    document.querySelectorAll(".page-btn").forEach(b => {
-      b.classList.toggle("active", Number(b.dataset.start) === activeStart);
-    });
-  }
-
-  // 5. Random Numbers Generator (ለተወሰነ Seed)
+  // Pseudo Generator Functions
   function rng(seed) {
     let x = seed >>> 0;
     return () => {
@@ -244,7 +218,6 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
     return arr.sort((a, b) => a - b);
   }
 
-  // 6. B-I-N-G-O ቁጥሮች ማዘጋጀት
   function generateBingoCard(cardId) {
     const s = cardId * 31337;
     return {
@@ -256,14 +229,13 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
     };
   }
 
-  // 7. START GAME
+  // Start Game Event
   document.getElementById("startBtn").onclick = () => {
     if(!selectedCard) return;
     showScreen("game");
     renderBoard(selectedCard);
   };
 
-  // 8. የ B-I-N-G-O ሰሌዳን መሳል
   function renderBoard(cardId) {
     const matrix = document.getElementById("matrix");
     matrix.innerHTML = "";

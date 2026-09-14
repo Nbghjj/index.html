@@ -12,7 +12,7 @@ BOT_TOKEN = "8909328591:AAEay418mvQF9dRBqjtSKgPDM_T-WpWWJ84"
 ADMIN_CHAT_ID = "6496982318"
 
 app = Flask(__name__)
-CORS(app)  # Cross-Origin Resource Sharing ለ Mini App ይፈቅዳል
+CORS(app)
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode=None)
 
@@ -95,14 +95,12 @@ def index():
 # --------------------------------------------------
 def run_bot():
     print("Telegram Bot Polling Started...")
-    # non_stop=True ሰርቨሩ ሳይቋረጥ በጀርባ እንዲሰራ ያደርገዋል
     bot.infinity_polling(timeout=10, long_polling_timeout=5)
 
-if __name__ == '__main__':
-    # Telegram Bot-ን በጀርባ Thread ማስነሳት
-    bot_thread = threading.Thread(target=run_bot, daemon=True)
-    bot_thread.start()
+# ቴሌግራም ቦቱን በጀርባ ማስነሳት
+bot_thread = threading.Thread(target=run_bot, daemon=True)
+bot_thread.start()
 
-    # Flask Web Server ማስነሳት
+if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)

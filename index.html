@@ -15,6 +15,8 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
 .hero h1{margin:4px 0;color:#f39c12;font-size:28px}.muted{color:#a08cc4;font-size:13px}
 .badge{display:inline-block;background:#3c2a6d;color:#f1c40f;padding:5px 10px;border-radius:20px;font-size:11px}
 .btn{width:100%;border:0;border-radius:9px;padding:14px;font-weight:700;font-size:15px;cursor:pointer}
+.adminInput{width:100%;margin:6px 0 12px;padding:12px;border-radius:9px;border:1px solid #4b377d;background:#120c24;color:#fff;font-size:15px}
+.adminBtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .primary{background:linear-gradient(135deg,#f39c12,#f1c40f);color:#111}
 .green{background:#27ae60;color:#fff}.dark{background:#3c2a6d;color:#fff}
 .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -53,12 +55,13 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
 </div>
 <div class="panel">
 <div class="top"><span class="muted">Virtual Points</span><strong id="points">1000</strong></div>
-<p class="muted">Real-money deposit/withdrawal አልተካተተም። ይህ የDemo ጨዋታ ነው።</p>
+<p class="muted">Real-money deposit/withdrawal አልተካተተም። ይህ የDemo ጨዋታ ነው። Admin Points ደግሞ local/demo ብቻ ነው።</p>
 </div>
 <div class="panel">
 <div class="top"><div><b>Ayat Bingo Room</b><div class="muted">1–75 • 300 Cards</div></div><span class="badge">20 POINTS</span></div>
 <p class="muted">Active players: <b id="players">64</b> / 300</p>
 <button id="join" class="btn primary">JOIN ROOM →</button>
+<button id="openAdmin" class="btn dark" style="margin-top:8px">⚙️ ADMIN POINTS</button>
 </div>
 </section>
 
@@ -88,6 +91,22 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
 <b>Called Numbers</b><div id="called" class="called"></div>
 </div>
 <button id="claim" class="btn green">BINGO! 🎉</button>
+</section>
+
+<section id="admin" class="screen">
+<div class="panel">
+  <div class="top"><button id="adminBack" class="smallbtn">← Back</button><b>ADMIN • Virtual Points</b></div>
+  <p class="muted">Demo-only point management. Points are stored locally in this browser.</p>
+  <label class="muted">Telegram User ID</label>
+  <input id="adminUserId" class="adminInput" inputmode="numeric" placeholder="e.g. 123456789">
+  <label class="muted">Amount</label>
+  <input id="adminAmount" class="adminInput" type="number" min="1" step="1" placeholder="e.g. 100">
+  <div class="adminBtns">
+    <button id="addPoints" class="btn green">+ ADD POINTS</button>
+    <button id="removePoints" class="btn dark">− REMOVE POINTS</button>
+  </div>
+  <div id="adminMsg" class="notice">Enter a Telegram User ID and amount.</div>
+</div>
 </section>
 
 <section id="result" class="screen">
@@ -190,6 +209,29 @@ function finish(win,msg){
  $("resultText").textContent=win?`አሸንፈዋል! +${PRIZE} Virtual Points`:msg;
  screen("result");
 }
+function adminKey(id){return "ayat_demo_points_"+String(id).trim()}
+function adminGet(id){
+  const v=Number(localStorage.getItem(adminKey(id)));
+  return Number.isFinite(v)?v:0;
+}
+function adminChange(delta){
+  const id=$("adminUserId").value.trim();
+  const amount=Number($("adminAmount").value);
+  if(!id || !Number.isInteger(amount) || amount<=0){
+    $("adminMsg").textContent="User ID እና ትክክለኛ amount ያስገቡ።";
+    return;
+  }
+  const current=adminGet(id);
+  const next=Math.max(0,current+delta*amount);
+  localStorage.setItem(adminKey(id),String(next));
+  $("adminMsg").textContent=`User ${id}: ${current} → ${next} Virtual Points`;
+  if(id===userId){points=next;save();}
+}
+$("openAdmin").onclick=()=>{ $("adminUserId").value=userId; $("adminAmount").value="100"; $("adminMsg").textContent="Your current demo balance: "+adminGet(userId)+" points"; screen("admin"); };
+$("adminBack").onclick=()=>screen("home");
+$("addPoints").onclick=()=>adminChange(1);
+$("removePoints").onclick=()=>adminChange(-1);
+
 $("join").onclick=()=>{if(points<STAKE){alert("20 Virtual Points ያስፈልጋሉ።");return}screen("select")};
 $("backHome").onclick=()=>screen("home");
 $("start").onclick=startGame;

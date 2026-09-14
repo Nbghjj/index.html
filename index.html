@@ -26,8 +26,13 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
 .bank-info{background:#2c1b4d;padding:10px;border-radius:8px;margin-bottom:12px;border-left:4px solid #f39c12}
 .smallbtn{border:0;border-radius:7px;padding:8px 11px;background:#7928ca;color:#fff;font-weight:700;cursor:pointer}
 
-/* 300 የካርድ ቁጥሮች በግልጽ እንዲታዩ የተስተካከለ Grid */
-.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;max-height:360px;overflow-y:auto;padding:10px;background:#120c24;border:1px solid #3c2a6d;border-radius:10px}
+/* Scroll ማስቀሪያ - Pagination Controls */
+.page-btn{padding:8px 12px;background:#3c2a6d;border:1px solid #523a8a;border-radius:6px;color:#fff;font-weight:700;cursor:pointer}
+.page-btn.active{background:#f39c12;color:#111}
+.page-controls{display:flex;gap:6px;justify-content:center;margin-bottom:10px;flex-wrap:wrap}
+
+/* 300 የካርድ ቁጥሮች (የተገደበ Grid) */
+.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:10px;background:#120c24;border:1px solid #3c2a6d;border-radius:10px}
 .card-item{padding:12px 0;border:1px solid #523a8a;border-radius:8px;background:#3c2a6d;color:#fff;font-size:15px;font-weight:800;cursor:pointer;text-align:center;transition:0.2s}
 .card-item:hover{border-color:#f39c12}
 .card-item.selected{background:#f39c12;color:#111;border-color:#fff;transform:scale(1.03)}
@@ -71,14 +76,28 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
     </div>
   </section>
 
-  <!-- 2. CARD SELECT SCREEN (300 ካርዶች) -->
+  <!-- 2. CARD SELECT SCREEN (ከነ Direct Input & Pagination) -->
   <section id="select" class="screen">
     <div class="panel">
       <div class="top">
         <button class="smallbtn backHome">← ተመለስ</button>
         <b>ካርድ ይምረጡ (1–300)</b>
       </div>
-      <p class="muted" id="selectedInfo">እባክዎን ከታች ካሉት 300 ካርዶች አንዱን ይጫኑ፡</p>
+      
+      <!-- የካርድ ቁጥር ቀጥታ መፃፊያ -->
+      <label class="muted" style="margin-top:8px;display:block;">የካርድ ቁጥር በቀጥታ ይፃፉ፡</label>
+      <input id="cardSearch" type="number" min="1" max="300" class="input" placeholder="ምሳሌ፡ 45" style="margin-bottom:8px;">
+
+      <!-- የገጽ መለወጫ (Pagination) -->
+      <div class="page-controls">
+        <button class="page-btn active" data-start="1" data-end="60">1-60</button>
+        <button class="page-btn" data-start="61" data-end="120">61-120</button>
+        <button class="page-btn" data-start="121" data-end="180">121-180</button>
+        <button class="page-btn" data-start="181" data-end="240">181-240</button>
+        <button class="page-btn" data-start="241" data-end="300">241-300</button>
+      </div>
+
+      <p class="muted" id="selectedInfo">እባክዎን ከታች ካሉት ካርዶች አንዱን ይጫኑ፡</p>
       <div id="cardsList" class="cards"></div>
       <button id="startBtn" class="btn primary" disabled>ካርድ #<span id="cardNumTxt">--</span> አረጋግጥ</button>
     </div>
@@ -150,30 +169,64 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
   // 1. JOIN ROOM አዝራር
   document.getElementById("joinBtn").onclick = () => {
     showScreen("select");
-    buildCards();
+    renderCardsPage(1, 60);
   };
 
-  // 2. 300 የካርድ ቁጥሮችን በግልጽ የመስሪያ Function
-  function buildCards() {
+  // 2. የተወሰነ範囲 ካርዶችን የመሳል Function (Scroll ማስቀሪያ)
+  function renderCardsPage(start, end) {
     const box = document.getElementById("cardsList");
     box.innerHTML = "";
-    for(let i = 1; i <= 300; i++) {
+    for(let i = start; i <= end; i++) {
       const b = document.createElement("div");
-      b.className = "card-item";
+      b.className = "card-item" + (selectedCard === i ? " selected" : "");
       b.textContent = i;
-      b.onclick = () => {
-        selectedCard = i;
-        document.querySelectorAll(".card-item").forEach(c => c.classList.remove("selected"));
-        b.classList.add("selected");
-        document.getElementById("cardNumTxt").textContent = i;
-        document.getElementById("selectedInfo").textContent = `የተመረጠው ካርድ: #${i}`;
-        document.getElementById("startBtn").disabled = false;
-      };
+      b.onclick = () => selectCard(i);
       box.appendChild(b);
     }
   }
 
-  // 3. Random Numbers Generator (ለተወሰነ Seed)
+  function selectCard(num) {
+    if(num < 1 || num > 300) return;
+    selectedCard = num;
+    document.querySelectorAll(".card-item").forEach(c => {
+      c.classList.toggle("selected", Number(c.textContent) === num);
+    });
+    document.getElementById("cardNumTxt").textContent = num;
+    document.getElementById("cardSearch").value = num;
+    document.getElementById("selectedInfo").textContent = `የተመረጠው ካርድ: #${num}`;
+    document.getElementById("startBtn").disabled = false;
+  }
+
+  // 3. በቀጥታ ቁጥር ጽፎ መምረጫ (Input Handler)
+  document.getElementById("cardSearch").oninput = (e) => {
+    const val = Number(e.target.value);
+    if(val >= 1 && val <= 300) {
+      selectCard(val);
+      // ከተፃፈው ቁጥር ጋር የሚስማማውን ገጽ ከፍቶ ማሳየት
+      const start = Math.floor((val - 1) / 60) * 60 + 1;
+      renderCardsPage(start, start + 59);
+      updatePageButtons(start);
+    }
+  }
+
+  // 4. የገጽ መለወጫ አዝራሮች (Pagination Buttons)
+  document.querySelectorAll(".page-btn").forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll(".page-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const start = Number(btn.dataset.start);
+      const end = Number(btn.dataset.end);
+      renderCardsPage(start, end);
+    };
+  });
+
+  function updatePageButtons(activeStart) {
+    document.querySelectorAll(".page-btn").forEach(b => {
+      b.classList.toggle("active", Number(b.dataset.start) === activeStart);
+    });
+  }
+
+  // 5. Random Numbers Generator (ለተወሰነ Seed)
   function rng(seed) {
     let x = seed >>> 0;
     return () => {
@@ -191,26 +244,26 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
     return arr.sort((a, b) => a - b);
   }
 
-  // 4. B-I-N-G-O ቁጥሮችን በትክክለኛው ህግ ማዘጋጀት
+  // 6. B-I-N-G-O ቁጥሮች ማዘጋጀት
   function generateBingoCard(cardId) {
     const s = cardId * 31337;
     return {
-      B: getUniqueNumbers(1, 15, 5, s + 1),   // B: 1-15
-      I: getUniqueNumbers(16, 30, 5, s + 2),  // I: 16-30
-      N: getUniqueNumbers(31, 45, 4, s + 3),  // N: 31-45 (ከመሃሉ FREE ስለሚገባ 4 ቁጥር)
-      G: getUniqueNumbers(46, 60, 5, s + 4),  // G: 46-60
-      O: getUniqueNumbers(61, 75, 5, s + 5)   // O: 61-75
+      B: getUniqueNumbers(1, 15, 5, s + 1),
+      I: getUniqueNumbers(16, 30, 5, s + 2),
+      N: getUniqueNumbers(31, 45, 4, s + 3),
+      G: getUniqueNumbers(46, 60, 5, s + 4),
+      O: getUniqueNumbers(61, 75, 5, s + 5)
     };
   }
 
-  // 5. START GAME
+  // 7. START GAME
   document.getElementById("startBtn").onclick = () => {
     if(!selectedCard) return;
     showScreen("game");
     renderBoard(selectedCard);
   };
 
-  // 6. የ B-I-N-G-O ሰሌዳን መሳል
+  // 8. የ B-I-N-G-O ሰሌዳን መሳል
   function renderBoard(cardId) {
     const matrix = document.getElementById("matrix");
     matrix.innerHTML = "";
@@ -223,7 +276,6 @@ body{margin:0;padding:12px;background:#120c24;color:#fff;font-family:-apple-syst
         const cell = document.createElement("div");
         cell.className = "cell";
 
-        // መሃል ላይ ያለውን FREE ቦታ ማስተካከል (Row 2, Col 2)
         if(row === 2 && col === 2) {
           cell.textContent = "FREE";
           cell.classList.add("free", "marked");

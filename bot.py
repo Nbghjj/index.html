@@ -8,7 +8,6 @@ from telebot import types
 # --------------------------------------------------
 # CONFIGURATION
 # --------------------------------------------------
-# Token እና Admin ID ከ Environment Variable ያነባል፤ ከሌለ ነባሪውን ይወስዳል
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8909328591:AAEay418mvQF9dRBqjtSKgPDM_T-WpWWJ84")
 ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID", "6496982318")
 
@@ -51,6 +50,7 @@ def send_welcome(message):
             "እባክዎ ከታች ያለውን '📱 Share Contact' የሚለውን አዝራር ይጫኑ።"
         )
         bot.send_message(message.chat.id, msg_text, reply_markup=markup)
+        print(f"Start command received from user: {message.from_user.id}")
     except Exception as e:
         print(f"Error in start command: {e}")
 
@@ -80,6 +80,7 @@ def handle_contact(message):
                 "✅ ምዝገባዎ ተጠናቋል! አሁን Mini App-ን ከፍትው መጫወት ይችላሉ።",
                 reply_markup=types.ReplyKeyboardRemove()
             )
+            print(f"User {user_id} registered successfully.")
     except Exception as e:
         print(f"Error in contact handler: {e}")
 
@@ -107,19 +108,19 @@ def index():
     return "Ayat Bingo Bot Server is Running Live!"
 
 # --------------------------------------------------
-# RUN BOT IN BACKGROUND THREAD (SAFE FOR GUNICORN)
+# RUN BOT IN BACKGROUND THREAD
 # --------------------------------------------------
 def start_bot():
-    print("Telegram Bot Polling Started...")
+    print(">>> Telegram Bot Polling Started... <<<")
     try:
-        bot.infinity_polling(timeout=10, long_polling_timeout=5, skip_pending=True)
+        bot.skip_pending = True
+        bot.infinity_polling(timeout=10, long_polling_timeout=5)
     except Exception as e:
         print(f"Bot Polling Error: {e}")
 
-# Gunicorn ወይም Direct Run ሲሆን ቦቱ ሁለቴ እንዳይነሳ መከላከያ
-if not os.environ.get("WERKZEUG_RUN_MAIN"):
-    bot_thread = threading.Thread(target=start_bot, daemon=True)
-    bot_thread.start()
+# ቦቱን በጀርባ ማስነሳት
+bot_thread = threading.Thread(target=start_bot, daemon=True)
+bot_thread.start()
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))

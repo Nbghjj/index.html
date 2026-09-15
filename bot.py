@@ -5,8 +5,9 @@ from flask import Flask, render_template, request, jsonify
 app = Flask(__name__)
 
 user_balances = {}
-taken_cards = {}
+taken_cards = {}  # {card_id: user_id}
 STAKE_PRICE = 10
+MAX_CARDS_PER_USER = 4  # አንዱ ተጫዋች መያዝ የሚችለው ከፍተኛ የካርድ ብዛት
 
 game_state = {
     "status": "waiting",  # waiting, countdown, playing
@@ -41,21 +42,19 @@ def get_state():
                 game_state["called_numbers_history"] = []
                 game_state["current_called_number"] = None
     else:
-        game_state["status"] = "waiting"
+        game_state["status"] == "waiting"
         game_state["countdown_end"] = 0
         game_state["winner"] = None
         game_state["winning_card"] = None
 
     if game_state["status"] == "playing":
         if now >= game_state["playing_end"]:
-            # ሰዓቱ ካለቀ ጨዋታው ሪሴት ይደረጋል
             game_state["status"] = "waiting"
             game_state["countdown_end"] = 0
             game_state["winner"] = None
             game_state["winning_card"] = None
             taken_cards.clear()
         else:
-            # በየጥቂት ሰኮንድ ውስጥ አዲስ ቁጥር ከ 1 እስከ 75 ማመንጨት
             if not hasattr(app, 'last_call_time') or now - app.last_call_time >= 3:
                 app.last_call_time = now
                 all_nums = list(range(1, 76))
@@ -71,10 +70,9 @@ def get_state():
     elif game_state["status"] == "playing":
         timer_val = max(0, int(game_state["playing_end"] - now))
 
-    # --- አዲስ የተጨመሩ Live Stats እና Prize Pool ስሌቶች ---
-    active_players = len(set(taken_cards.values()))  # ልዩ ተጫዋቾች ብዛት
-    total_cards_count = len(taken_cards)             # አጠቃላይ የተያዙ ካርዶች
-    prize_pool = total_cards_count * STAKE_PRICE     # ጠቅላላ የሽልማት ገቢ
+    active_players = len(set(taken_cards.values()))
+    total_cards_count = len(taken_cards)
+    prize_pool = total_cards_count * STAKE_PRICE
 
     return jsonify({
         "status": game_state["status"],
@@ -107,29 +105,27 @@ def lock_card():
     if user_id not in user_balances:
         user_balances[user_id] = 100
 
-    # ጨዋታው በመጫወት ላይ (playing) ከሆነ አዲስ ካርድ መያዝ አይቻልም
     if game_state["status"] == "playing":
         return jsonify({"success": False, "message": "ጨዋታው ተጀምሯል! አሁን ካርድ መያዝ አይቻልም።"}), 400
 
+    # ካርዱ በሌላ ተጫዋች የተያዘ መሆኑን ማረጋገጥ
     if card_id in taken_cards and taken_cards[card_id] != user_id:
         return jsonify({"success": False, "message": "ይህ ካርድ በሌላ ተጫዋች ተይዟል!"}), 400
 
-    existing_card = None
-    for cid, uid in list(taken_cards.items()):
-        if uid == user_id:
-            existing_card = cid
-            break
-    
-    if existing_card == card_id:
+    # ተጫዋቹ አስቀድሞ ይህንን ካርድ ይዞታል ወይ?
+    if card_id in taken_cards and taken_cards[card_id] == user_id:
         return jsonify({"success": True, "new_balance": user_balances[user_id]})
 
-    if existing_card:
-        del taken_cards[existing_card]
-    else:
-        if user_balances[user_id] < STAKE_PRICE:
-            return jsonify({"success": False, "message": "በቂ ሂሳብ የሎትም!"}), 400
-        user_balances[user_id] -= STAKE_PRICE
+    # ተጫዋቹ የያዛቸውን አጠቃላይ ካርዶች ብዛት መቁጠር
+    user_cards_count = sum(1 for uid in taken_cards.values() if uid == user_id)
+    if user_cards_count >= MAX_CARDS_PER_USER:
+        return jsonify({"success": False, "message": f"ከፍተኛው የካርድ ገደብ (እስከ {MAX_CARDS_PER_USER} ካርዶች) ደርሰዋል!"}), 400
 
+    if user_balances[user_id] < STAKE_PRICE:
+        return jsonify({"success": False, "message": "በቂ ሂሳብ የሎትም!"}), 400
+
+    # ሂሳብ መቀነስ እና ካርዱን መያዝ
+    user_balances[user_id] -= STAKE_PRICE
     taken_cards[card_id] = user_id
 
     if game_state["status"] == "waiting":

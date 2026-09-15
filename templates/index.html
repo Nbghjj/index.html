@@ -187,13 +187,12 @@
                         document.getElementById('boards-count').textContent = `Boards: ${mySelectedCard ? 1 : 0}/1`;
                     }
 
-                    // ሰዓቱን በቀጥታ ከሰርቨር ማሳየት
+                    // የሰዓት ቆጣሪውን እሴት ከሰርቨር ተቀብሎ ማሳየት
                     let timerEl = document.getElementById('timer-val');
                     if (timerEl) {
                         timerEl.textContent = gameState.timer;
                     }
 
-                    // ስቴቱን ማረጋገጥ
                     if (gameState.status === "playing") {
                         let hasCard = false;
                         let activeCard = mySelectedCard;

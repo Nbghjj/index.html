@@ -1,106 +1,303 @@
-import time
-import threading
-from flask import Flask, render_template, request, jsonify
-
-app = Flask(__name__)
-
-user_balances = {}
-taken_cards = {}
-STAKE_PRICE = 10
-
-game_state = {
-    "status": "waiting",  # waiting, countdown, playing
-    "timer": 45,
-    "taken_cards": taken_cards
-}
-
-# ሰዓቱን በየሰከንዱ የሚያስኬደው ሉፕ
-def game_timer_loop():
-    while True:
-        time.sleep(1)
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ayat Bingo</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #120c24; color: #fff; font-family: sans-serif; margin: 0; padding: 10px; }
+        .container { max-width: 480px; margin: 0 auto; display: none; }
+        .container.active-screen { display: block !important; }
         
-        if game_state["status"] == "countdown":
-            if len(taken_cards) == 0:
-                game_state["status"] = "waiting"
-                game_state["timer"] = 45
-            elif game_state["timer"] > 1:
-                game_state["timer"] -= 1
-            else:
-                game_state["timer"] = 0
-                game_state["status"] = "playing"
-
-        elif game_state["status"] == "playing":
-            time.sleep(15)
-            game_state["status"] = "waiting"
-            game_state["timer"] = 45
-            taken_cards.clear()
-
-threading.Thread(target=game_timer_loop, daemon=True).start()
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/api/get_state', methods=['GET'])
-def get_state():
-    return jsonify(game_state)
-
-@app.route('/api/get_balance', methods=['POST'])
-def get_balance():
-    data = request.json or {}
-    user_id = data.get('user_id')
-    if user_id not in user_balances:
-        user_balances[user_id] = 100
-    return jsonify({"success": True, "balance": user_balances[user_id]})
-
-@app.route('/api/lock_card', methods=['POST'])
-def lock_card():
-    global game_state
-    data = request.json or {}
-    card_id = str(data.get('card_id'))
-    user_id = data.get('user_id')
-    
-    if user_id not in user_balances:
-        user_balances[user_id] = 100
-
-    if game_state["status"] == "playing":
-        return jsonify({"success": False, "message": "ጨዋታው ተጀምሯል!"}), 400
-
-    if card_id in taken_cards and taken_cards[card_id] != user_id:
-        return jsonify({"success": False, "message": "ይህ ካርድ በሌላ ተጫዋች ተይዟል!"}), 400
-
-    if user_balances[user_id] < STAKE_PRICE:
-        return jsonify({"success": False, "message": "በቂሂሳብ የሎትም!"}), 400
-
-    if card_id not in taken_cards:
-        taken_cards[card_id] = user_id
-        user_balances[user_id] -= STAKE_PRICE
-
-    # 💡 ዋናው ማስተካከያ: ቆጠራው እንዳይዘገይ ካርዱ ሲያዝ ወዲያውኑ ትዕዛዙን እንሰጣለን
-    if len(taken_cards) > 0 and game_state["status"] == "waiting":
-        game_state["status"] = "countdown"
-        game_state["timer"] = 45
-
-    return jsonify({"success": True, "new_balance": user_balances[user_id]})
-
-@app.route('/api/unlock_card', methods=['POST'])
-def unlock_card():
-    global game_state
-    data = request.json or {}
-    card_id = str(data.get('card_id'))
-    user_id = data.get('user_id')
-
-    if card_id in taken_cards and taken_cards[card_id] == user_id:
-        del taken_cards[card_id]
-        user_balances[user_id] += STAKE_PRICE
+        .card-banner { background: linear-gradient(135deg, #2c1b4d, #1f143a); padding: 20px; border-radius: 14px; text-align: center; border: 1px solid #3c2a6d; margin-bottom: 15px; }
+        .wallet-box { background: #1f143a; padding: 15px; border-radius: 14px; margin-bottom: 15px; border: 1px solid #3c2a6d; }
+        .wallet-row { display: flex; justify-content: space-between; align-items: center; }
         
-        if len(taken_cards) == 0 and game_state["status"] == "countdown":
-            game_state["status"] = "waiting"
-            game_state["timer"] = 45
+        .game-top-bar { display: flex; justify-content: space-between; align-items: center; background: #1f143a; padding: 10px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #3c2a6d; }
+        .leave-btn { background: #7928ca; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        
+        .stats-box { display: flex; gap: 6px; align-items: center; }
+        .stats-box span { background: #2c1b4d; padding: 4px 8px; border-radius: 6px; font-size: 11px; color: #f1c40f; border: 1px solid #3c2a6d; }
 
-        return jsonify({"success": True, "new_balance": user_balances[user_id]})
+        .cards-grid-container { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; max-height: 320px; overflow-y: auto; background: #1f143a; padding: 10px; border-radius: 10px; border: 1px solid #3c2a6d; }
+        
+        .card-box {
+            background: #3c2a6d; color: #fff; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; border: 1px solid #523a8a; transition: all 0.2s;
+        }
 
-    return jsonify({"success": False, "message": "አልተያዘም"}), 400
+        .card-box.selected { background: #f39c12 !important; color: #000 !important; border-color: #fff !important; box-shadow: 0 0 8px #f39c12; }
+        .card-box.taken { background: #e74c3c !important; color: #fff !important; cursor: not-allowed !important; opacity: 0.7; }
+        
+        .join-btn { background: linear-gradient(135deg, #f39c12, #f1c40f); border: none; width: 100%; padding: 16px; border-radius: 8px; color: #000; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        
+        .timer-badge { background: #e74c3c !important; color: #fff !important; font-weight: bold; display: inline-block !important; padding: 4px 10px; border-radius: 6px; }
+        
+        .gameplay-box { background: #1f143a; padding: 20px; border-radius: 14px; text-align: center; border: 1px solid #3c2a6d; margin-top: 15px; }
+        .bingo-ball { font-size: 55px; font-weight: bold; color: #2ecc71; margin: 15px 0; background: #2c1b4d; display: inline-block; padding: 15px 30px; border-radius: 50%; border: 2px solid #f39c12; box-shadow: 0 0 15px rgba(243, 156, 18, 0.4); }
+    </style>
+</head>
+<body>
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, threaded=True, debug=False)
+    <!-- 1. HOME SCREEN -->
+    <div id="home-screen" class="container active-screen">
+        <div class="card-banner">
+            <h3 style="color: #f39c12; margin: 0 0 5px 0;">AYAT BINGO</h3>
+            <span style="background: #3c2a6d; padding: 4px 10px; border-radius: 20px; font-size: 11px; color: #f1c40f;">🎁 WELCOME BONUS: 100 BIRR</span>
+        </div>
+        
+        <div class="wallet-box">
+            <div class="wallet-row">
+                <span style="font-size: 14px; color: #a08cc4;">የኪስ ቦርሳ (Wallet):</span>
+                <span style="font-size: 18px; font-weight: bold; color: #2ecc71;"><b id="home-wallet-val">--</b> Birr</span>
+            </div>
+        </div>
+
+        <button id="joinRoomBtn" class="join-btn" type="button">JOIN ROOM →</button>
+    </div>
+
+    <!-- 2. SELECTION SCREEN -->
+    <div id="selection-screen" class="container">
+        <div class="game-top-bar">
+            <button id="leaveBtn" class="leave-btn" type="button">← Leave</button>
+            <h3 style="margin: 0; font-size: 14px; color: #f39c12;">ካርድ ይምረጡ</h3>
+            <div class="stats-box">
+                <span id="timer-box" class="timer-badge">⏱️ <b id="timer-val">45</b>s</span>
+                <span>W: <b id="wallet-val">--</b> Br</span>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; color: #a08cc4; margin-bottom: 8px; font-size: 13px;">
+            <span id="boards-count">Boards: 0/1</span>
+            <span style="color: #2ecc71; font-weight: bold;">● LIVE REALTIME</span>
+        </div>
+
+        <div class="cards-grid-container" id="cardsGrid"></div>
+    </div>
+
+    <!-- 3. GAMEPLAY SCREEN -->
+    <div id="gameplay-screen" class="container">
+        <div class="game-top-bar">
+            <h3 style="margin: 0; font-size: 14px; color: #2ecc71;">🎮 ጨዋታው ተጀምሯል!</h3>
+            <span style="color: #f39c12; font-size: 12px;">ካርድ #<b id="active-card-num">--</b></span>
+        </div>
+
+        <div class="gameplay-box">
+            <h2 style="color: #f39c12; margin-top: 0;">ቁጥሮች እየተጠሩ ነው...</h2>
+            <p style="color: #a08cc4; font-size: 13px;">ሁሉም ተጫዋቾች ገብተዋል! B-I-N-G-O ቁጥሮች እየወጡ ነው።</p>
+            <div class="bingo-ball" id="called-number-display">--</div>
+            <div id="bingo-letter-label" style="font-size: 16px; color: #f39c12; font-weight: bold; margin-bottom: 10px;">ሰሌዳ እየተጠበቀ ነው...</div>
+        </div>
+
+        <button class="join-btn" style="background: #e74c3c; color: #fff; margin-top: 15px;" onclick="location.reload()">ውጣ (Exit)</button>
+    </div>
+
+    <script>
+        function switchScreen(screenId) {
+            document.querySelectorAll('.container').forEach(s => s.classList.remove('active-screen'));
+            document.getElementById(screenId).classList.add('active-screen');
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            let tg = window.Telegram ? window.Telegram.WebApp : null;
+            let telegramUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id.toString() : "user_" + Math.floor(Math.random()*10000);
+            
+            let mySelectedCard = null;
+            let takenCardsMap = {};
+            let currentWallet = 0;
+            let numberCallerInterval = null;
+
+            const totalBoards = 300;
+            const gridContainer = document.getElementById('cardsGrid');
+
+            for (let i = 1; i <= totalBoards; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'card-box';
+                btn.textContent = i;
+                btn.dataset.id = i;
+                btn.onclick = () => handleCardClick(i);
+                gridContainer.appendChild(btn);
+            }
+
+            async function fetchBalance() {
+                try {
+                    let res = await fetch('/api/get_balance', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ user_id: telegramUser })
+                    });
+                    let data = await res.json();
+                    currentWallet = data.balance;
+                    updateWalletUI();
+                } catch (e) {
+                    console.error("Balance Fetch Error", e);
+                }
+            }
+
+            function updateWalletUI() {
+                document.getElementById('home-wallet-val').textContent = currentWallet;
+                document.getElementById('wallet-val').textContent = currentWallet;
+            }
+
+            function startCallingNumbers() {
+                if (numberCallerInterval) return;
+                
+                let availableNumbers = Array.from({length: 75}, (_, i) => i + 1);
+                availableNumbers.sort(() => Math.random() - 0.5);
+
+                let index = 0;
+                numberCallerInterval = setInterval(() => {
+                    if (index < availableNumbers.length) {
+                        let num = availableNumbers[index];
+                        let letter = '';
+                        
+                        if (num >= 1 && num <= 15) letter = 'B';
+                        else if (num >= 16 && num <= 30) letter = 'I';
+                        else if (num >= 31 && num <= 45) letter = 'N';
+                        else if (num >= 46 && num <= 60) letter = 'G';
+                        else if (num >= 61 && num <= 75) letter = 'O';
+
+                        document.getElementById('called-number-display').textContent = `${letter}-${num}`;
+                        document.getElementById('bingo-letter-label').textContent = `አሁን የተጠራው ቁጥር: ${letter} ቤተሰብ (${num})`;
+                        index++;
+                    } else {
+                        clearInterval(numberCallerInterval);
+                        numberCallerInterval = null;
+                    }
+                }, 1500);
+            }
+
+            async function pollGameState() {
+                try {
+                    let res = await fetch('/api/get_state');
+                    let gameState = await res.json();
+                    
+                    if (gameState.taken_cards) {
+                        takenCardsMap = gameState.taken_cards;
+                        mySelectedCard = null;
+                        
+                        for (let cardId in takenCardsMap) {
+                            if (takenCardsMap[cardId] === telegramUser) {
+                                mySelectedCard = cardId;
+                                break;
+                            }
+                        }
+                        updateCardsUI();
+                        document.getElementById('boards-count').textContent = `Boards: ${mySelectedCard ? 1 : 0}/1`;
+                    }
+
+                    // የሰዓት ቆጣሪውን እሴት ከሰርቨር ተቀብሎ ማሳየት
+                    let timerEl = document.getElementById('timer-val');
+                    if (timerEl) {
+                        timerEl.textContent = gameState.timer;
+                    }
+
+                    if (gameState.status === "playing") {
+                        let hasCard = false;
+                        let activeCard = mySelectedCard;
+                        
+                        for (let cardId in takenCardsMap) {
+                            if (takenCardsMap[cardId] === telegramUser) {
+                                hasCard = true;
+                                activeCard = cardId;
+                                break;
+                            }
+                        }
+
+                        if (hasCard && activeCard) {
+                            document.getElementById('active-card-num').textContent = activeCard;
+                            switchScreen('gameplay-screen');
+                            startCallingNumbers();
+                        } else {
+                            switchScreen('home-screen');
+                        }
+                    } else {
+                        let hasCard = false;
+                        for (let cardId in takenCardsMap) {
+                            if (takenCardsMap[cardId] === telegramUser) {
+                                hasCard = true;
+                                break;
+                            }
+                        }
+                        if (hasCard) {
+                            let currentActive = document.querySelector('.container.active-screen').id;
+                            if (currentActive === 'home-screen') {
+                                switchScreen('selection-screen');
+                            }
+                        }
+                    }
+
+                } catch(e) {
+                    console.error("Polling Error", e);
+                }
+            }
+
+            setInterval(pollGameState, 1000);
+
+            function updateCardsUI() {
+                document.querySelectorAll('.card-box').forEach(btn => {
+                    let cardId = btn.dataset.id;
+                    btn.classList.remove('taken', 'selected');
+
+                    if (mySelectedCard == cardId) {
+                        btn.classList.add('selected');
+                    } else if (takenCardsMap[cardId] && takenCardsMap[cardId] !== telegramUser) {
+                        btn.classList.add('taken');
+                    }
+                });
+            }
+
+            async function handleCardClick(cardId) {
+                if (mySelectedCard == cardId) {
+                    await unlockCurrentCard();
+                } else {
+                    let res = await fetch('/api/lock_card', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ card_id: cardId, user_id: telegramUser })
+                    });
+                    
+                    let result = await res.json();
+                    if (res.ok && result.success) {
+                        mySelectedCard = cardId;
+                        currentWallet = result.new_balance;
+                        updateWalletUI();
+                    } else {
+                        alert(result.message || "ይህ ካርድ መያዝ አልተቻለም!");
+                    }
+                }
+                document.getElementById('boards-count').textContent = `Boards: ${mySelectedCard ? 1 : 0}/1`;
+                updateCardsUI();
+            }
+
+            async function unlockCurrentCard() {
+                if (!mySelectedCard) return;
+                let res = await fetch('/api/unlock_card', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ card_id: mySelectedCard, user_id: telegramUser })
+                });
+                let data = await res.json();
+                if (data.success) {
+                    currentWallet = data.new_balance;
+                    updateWalletUI();
+                }
+                mySelectedCard = null;
+                document.getElementById('boards-count').textContent = `Boards: 0/1`;
+                updateCardsUI();
+            }
+
+            fetchBalance();
+
+            document.getElementById('joinRoomBtn').onclick = () => switchScreen('selection-screen');
+            document.getElementById('leaveBtn').onclick = async () => {
+                if (mySelectedCard) {
+                    await unlockCurrentCard();
+                }
+                switchScreen('home-screen');
+            };
+        });
+    </script>
+</body>
+</html>

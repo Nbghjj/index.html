@@ -3,572 +3,159 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ayat Bingo - Shared Card Sync</title>
+    <title>Ayat Bingo - Server Card Sync</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        body {
-            background-color: #120c24;
-            color: #fff;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 10px;
-            user-select: none;
-        }
-
-        .container {
-            max-width: 480px;
-            margin: 0 auto;
-            display: none;
-        }
-
-        .container.active-screen {
-            display: block !important;
-        }
-
-        .card-banner {
-            background: linear-gradient(135deg, #2c1b4d, #1f143a);
-            padding: 20px;
-            border-radius: 14px;
-            text-align: center;
-            border: 1px solid #3c2a6d;
-            margin-bottom: 15px;
-        }
-
-        .card-banner h3 {
-            color: #f39c12;
-            margin: 0 0 5px 0;
-            font-size: 22px;
-        }
-
-        .card-banner p {
-            color: #a08cc4;
-            font-size: 13px;
-            margin: 0 0 10px 0;
-        }
-
-        .card-banner span {
-            background: #3c2a6d;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 11px;
-            color: #f1c40f;
-        }
-
-        .wallet-box {
-            background: #1f143a;
-            padding: 15px;
-            border-radius: 14px;
-            margin-bottom: 15px;
-            border: 1px solid #3c2a6d;
-        }
-
-        .wallet-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        .wallet-actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        .wallet-btn {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 14px;
-            transition: transform 0.1s ease;
-        }
-
-        .wallet-btn:active {
-            transform: scale(0.96);
-        }
-
-        .deposit-btn { background: #2ecc71; color: #fff; }
-        .withdraw-btn { background: #e74c3c; color: #fff; }
-
-        .room-box {
-            background: #1f143a;
-            padding: 15px;
-            border-radius: 14px;
-            border: 1px solid #3c2a6d;
-        }
-
-        .room-info h4 { margin: 5px 0; font-size: 16px; }
-
-        .stake-badge {
-            background: #f39c12;
-            color: #000;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: bold;
-        }
-
-        .join-btn, .bingo-claim-btn {
-            background: linear-gradient(135deg, #f39c12, #f1c40f);
-            border: none;
-            width: 100%;
-            padding: 16px;
-            border-radius: 8px;
-            color: #000;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 15px;
-            font-size: 16px;
-            transition: transform 0.1s ease;
-        }
-
-        .join-btn:active, .bingo-claim-btn:active {
-            transform: scale(0.98);
-        }
-
-        .bingo-claim-btn {
-            background: linear-gradient(135deg, #2ecc71, #27ae60);
-            color: white;
-        }
-
-        .error-banner {
-            background: rgba(231, 76, 60, 0.2);
-            border: 1px solid #e74c3c;
-            color: #e74c3c;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 13px;
-            text-align: center;
-            margin-bottom: 12px;
-            display: none;
-        }
-
-        .game-top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #1f143a;
-            padding: 10px;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #3c2a6d;
-        }
-
-        .leave-btn {
-            background: #7928ca;
-            color: white;
-            border: none;
-            padding: 8px 14px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .stats-box { display: flex; gap: 6px; }
-
-        .stats-box span {
-            background: #2c1b4d;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 11px;
-            color: #f1c40f;
-            border: 1px solid #3c2a6d;
-        }
-
-        .selection-info {
-            display: flex;
-            justify-content: space-between;
-            font-size: 13px;
-            color: #a08cc4;
-            margin-bottom: 8px;
-            padding: 0 5px;
-        }
-
-        .cards-grid-container {
-            display: grid;
-            grid-template-columns: repeat(10, 1fr);
-            gap: 5px;
-            max-height: 280px;
-            overflow-y: auto;
-            background: #1f143a;
-            padding: 10px;
-            border-radius: 10px;
-            border: 1px solid #3c2a6d;
-        }
-
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #120c24; color: #fff; font-family: sans-serif; margin: 0; padding: 10px; }
+        .container { max-width: 480px; margin: 0 auto; display: none; }
+        .container.active-screen { display: block !important; }
+        
+        .game-top-bar { display: flex; justify-content: space-between; align-items: center; background: #1f143a; padding: 10px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #3c2a6d; }
+        .leave-btn { background: #7928ca; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        
+        .cards-grid-container { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; max-height: 320px; overflow-y: auto; background: #1f143a; padding: 10px; border-radius: 10px; border: 1px solid #3c2a6d; }
+        
         .card-box {
-            background: #3c2a6d;
-            color: #fff;
-            aspect-ratio: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: bold;
-            border-radius: 4px;
-            cursor: pointer;
-            border: 1px solid #523a8a;
-            transition: all 0.2s ease;
+            background: #3c2a6d; color: #fff; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; border: 1px solid #523a8a; transition: all 0.2s;
         }
 
         /* የእርሶ የተያዘ ካርድ (ብጫ) */
-        .card-box.selected {
-            background: #f39c12 !important;
-            color: #000 !important;
-            border-color: #fff !important;
-            box-shadow: 0 0 8px #f39c12;
-        }
+        .card-box.selected { background: #f39c12 !important; color: #000 !important; border-color: #fff !important; }
 
         /* በሌላ ተጫዋች የተያዘ ካርድ (ቀይ) */
-        .card-box.taken {
-            background: #e74c3c !important;
-            color: #fff !important;
-            cursor: not-allowed !important;
-            opacity: 0.8;
-            border-color: #c0392b !important;
-        }
-
-        .live-game-layout {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .called-number-display {
-            background: #1f143a;
-            border: 2px solid #f39c12;
-            border-radius: 14px;
-            text-align: center;
-            padding: 12px;
-        }
-
-        .current-ball {
-            font-size: 36px;
-            font-weight: bold;
-            color: #f39c12;
-            margin: 4px 0;
-        }
-
-        .rendered-bingo-card {
-            background: #ffffff;
-            color: #000;
-            border-radius: 10px;
-            padding: 10px;
-            border: 3px solid #ff69b4;
-            max-width: 340px;
-            margin: 0 auto;
-            width: 100%;
-        }
-
-        .bingo-header-row {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            background: #ff69b4;
-            border-radius: 6px;
-            padding: 6px 0;
-            text-align: center;
-            font-weight: bold;
-            color: #fff;
-            font-size: 18px;
-            margin-bottom: 8px;
-        }
-
-        .bingo-grid-matrix {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 5px;
-        }
-
-        .bingo-cell {
-            background: #fff;
-            border: 2px solid #000;
-            aspect-ratio: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 15px;
-            font-weight: bold;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .bingo-cell.free-cell { background: #ff69b4; color: #fff; }
-
-        .bingo-cell.marked {
-            background: #f39c12 !important;
-            color: #000;
-            text-decoration: line-through;
-        }
-
-        .card-footer-banner {
-            margin-top: 8px;
-            border-top: 2px solid #000;
-            padding-top: 5px;
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        .result-card {
-            background: #1f143a;
-            border: 2px solid #f39c12;
-            border-radius: 14px;
-            text-align: center;
-            padding: 25px;
-            margin-top: 20px;
-        }
+        .card-box.taken { background: #e74c3c !important; color: #fff !important; cursor: not-allowed !important; opacity: 0.7; }
+        
+        .join-btn { background: linear-gradient(135deg, #f39c12, #f1c40f); border: none; width: 100%; padding: 16px; border-radius: 8px; color: #000; font-weight: bold; cursor: pointer; margin-top: 15px; }
     </style>
 </head>
 <body>
 
     <!-- 1. HOME SCREEN -->
     <div id="home-screen" class="container active-screen">
-        <div class="card-banner">
-            <h3>AYAT BINGO</h3>
-            <p>Admin: @Kiramk123</p>
-            <span>🎁 WELCOME BONUS: 100 BIRR</span>
-        </div>
-        
-        <div class="wallet-box">
-            <div class="wallet-row">
-                <span style="font-size: 14px; color: #a08cc4;">የኪስ ቦርሳ (Wallet):</span>
-                <span style="font-size: 18px; font-weight: bold; color: #2ecc71;"><b id="home-wallet-val">100</b> Birr</span>
-            </div>
-        </div>
-
-        <div class="room-box">
-            <div class="room-info">
-                <span class="stake-badge">10 BIRR</span>
-                <h4>Ayat Bingo Room</h4>
-                <p style="color: #a08cc4; font-size: 12px; margin: 2px 0;">• REAL-TIME SHARED CARD LOCKING</p>
-            </div>
-            <div id="errorBanner" class="error-banner">⚠️ በቂ ገንዘብ የለም! እባክዎ መጀመሪያ ሂሳብዎን ይሙሉ</div>
-            <button id="joinRoomBtn" class="join-btn" type="button">JOIN ROOM →</button>
-        </div>
+        <h2 style="color: #f39c12; text-align: center;">AYAT BINGO</h2>
+        <button id="joinRoomBtn" class="join-btn" type="button">JOIN ROOM →</button>
     </div>
 
     <!-- 2. SELECTION SCREEN -->
     <div id="selection-screen" class="container">
         <div class="game-top-bar">
             <button id="leaveBtn" class="leave-btn" type="button">← Leave</button>
-            <h3 style="margin: 0; font-size: 14px; color: #f39c12;">Ayat Bingo</h3>
-            <div class="stats-box">
-                <span>W: <b id="wallet-val">100</b> Br</span>
-                <span>S: <b id="stake-val">10</b> Br</span>
-            </div>
+            <h3 style="margin: 0; color: #f39c12;">Ayat Bingo</h3>
         </div>
-
-        <div class="selection-info">
+        <div style="display: flex; justify-content: space-between; color: #a08cc4; margin-bottom: 8px;">
             <span id="boards-count">Boards: 0/1</span>
-            <span id="timer-display" style="color: #f1c40f; font-weight: bold;">የሚቀጥለው ጨዋታ: --s</span>
+            <span id="timer-display" style="color: #f1c40f; font-weight: bold;">ጀምር በ: --s</span>
         </div>
 
         <div class="cards-grid-container" id="cardsGrid"></div>
     </div>
 
-    <!-- 3. LIVE GAME SCREEN -->
-    <div id="live-game-screen" class="container">
-        <div class="game-top-bar">
-            <h3 style="margin: 0; font-size: 14px; color: #f39c12;">Ayat Bingo - Live</h3>
-            <button id="exitGameBtn" class="leave-btn" type="button">Exit</button>
-        </div>
-
-        <div class="live-game-layout">
-            <div class="called-number-display">
-                <p style="margin: 0; color: #a08cc4; font-size: 12px;">የተጠራው ቁጥር (Current Ball)</p>
-                <div id="currentBall" class="current-ball">--</div>
-                <p id="ballTimer" style="margin: 0; font-size: 12px; color: #f1c40f;">የሚቀጥለው ኳስ በ: 4s</p>
-            </div>
-
-            <div class="rendered-bingo-card">
-                <div class="bingo-header-row">
-                    <span>B</span><span>I</span><span>N</span><span>G</span><span>O</span>
-                </div>
-                <div id="bingoMatrixGrid" class="bingo-grid-matrix"></div>
-                <div class="card-footer-banner">
-                    <span style="color: #e74c3c;">AYAT BINGO</span>
-                    <span id="cardNumLabel">የካርቴል ቁጥር --</span>
-                </div>
-            </div>
-
-            <button id="bingoClaimBtn" class="bingo-claim-btn" type="button">BINGO!</button>
-        </div>
-    </div>
-
-    <!-- 4. RESULT SCREEN -->
-    <div id="result-screen" class="container">
-        <div class="result-card">
-            <h2 id="resultTitle">የዙሩ ውጤት</h2>
-            <p id="resultDesc" style="color: #a08cc4; font-size: 14px;"></p>
-            <button id="restartBtn" class="join-btn" type="button" style="margin-top: 15px;">ወደ ዋና ገጽ ተመለስ</button>
-        </div>
-    </div>
-
     <script>
         function switchScreen(screenId) {
-            document.querySelectorAll('.container').forEach(screen => {
-                screen.classList.remove('active-screen');
-            });
-            const target = document.getElementById(screenId);
-            if (target) target.classList.add('active-screen');
+            document.querySelectorAll('.container').forEach(s => s.classList.remove('active-screen'));
+            document.getElementById(screenId).classList.add('active-screen');
         }
 
         document.addEventListener("DOMContentLoaded", function() {
             let tg = window.Telegram ? window.Telegram.WebApp : null;
-            if (tg) { try { tg.expand(); tg.ready(); } catch (e) {} }
-
             let telegramUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id.toString() : "user_" + Math.floor(Math.random()*10000);
-            let walletKey = `ayat_wallet_${telegramUser}`;
             
-            let storedBalance = localStorage.getItem(walletKey);
-            let walletBalance = (storedBalance === null || isNaN(parseFloat(storedBalance))) ? 100 : parseFloat(storedBalance);
-
-            const totalBoards = 300;
             let mySelectedCard = null;
-            let globalSyncTimer = null;
-            
-            const stakeAmount = 10;
-            const GAME_CYCLE_SEC = 30;
-
-            const joinRoomBtn = document.getElementById('joinRoomBtn');
-            const leaveBtn = document.getElementById('leaveBtn');
+            const totalBoards = 300;
             const gridContainer = document.getElementById('cardsGrid');
-            const timerDisplay = document.getElementById('timer-display');
-            const boardsCountText = document.getElementById('boards-count');
 
-            function updateWallets() {
-                document.getElementById('home-wallet-val').textContent = walletBalance;
-                document.getElementById('wallet-val').textContent = walletBalance;
-                document.getElementById('stake-val').textContent = stakeAmount;
-                localStorage.setItem(walletKey, walletBalance);
-            }
-            updateWallets();
-
-            function getGlobalRoundId() {
-                return Math.floor(Date.now() / 1000 / GAME_CYCLE_SEC);
+            // ካርዶቹን መጀመሪያ መፍጠር
+            for (let i = 1; i <= totalBoards; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'card-box';
+                btn.textContent = i;
+                btn.dataset.id = i;
+                btn.onclick = () => handleCardClick(i);
+                gridContainer.appendChild(btn);
             }
 
-            // የትኞቹ ካርዶች በማን እንደተያዙ በጋራ ማከማቻ (Storage) ማየት
-            function getTakenCardsMap() {
-                let roundId = getGlobalRoundId();
-                let data = localStorage.getItem(`ayat_taken_cards_r${roundId}`);
-                return data ? JSON.parse(data) : {};
-            }
+            // ከ Server የተያዙ ካርዶችን መቀበልና UI ማደስ
+            async function fetchTakenCards() {
+                try {
+                    let res = await fetch('/api/get_taken_cards');
+                    let data = await res.json();
+                    let takenMap = data.taken_cards;
 
-            // ካርድ መቆለፍ (Locking)
-            function lockCardGlobally(cardId) {
-                let roundId = getGlobalRoundId();
-                let taken = getTakenCardsMap();
-                taken[cardId] = telegramUser;
-                localStorage.setItem(`ayat_taken_cards_r${roundId}`, JSON.stringify(taken));
-            }
+                    document.querySelectorAll('.card-box').forEach(btn => {
+                        let cardId = btn.dataset.id;
+                        btn.classList.remove('taken', 'selected');
 
-            // ካርድ መልቀቅ (Unlocking)
-            function unlockCardGlobally(cardId) {
-                let roundId = getGlobalRoundId();
-                let taken = getTakenCardsMap();
-                if (taken[cardId] === telegramUser) {
-                    delete taken[cardId];
-                    localStorage.setItem(`ayat_taken_cards_r${roundId}`, JSON.stringify(taken));
+                        if (mySelectedCard == cardId) {
+                            btn.classList.add('selected');
+                        } else if (takenMap[cardId] && takenMap[cardId] !== telegramUser) {
+                            btn.classList.add('taken');
+                        }
+                    });
+                } catch (err) {
+                    console.error("Sync Error:", err);
                 }
             }
 
-            // ካርዶችን ለሁሉም በየሰከንዱ ማደስና ማሳየት (Real-time Sync Function)
-            function refreshGridCardsUI() {
-                let takenMap = getTakenCardsMap();
-                document.querySelectorAll('.card-box').forEach(btn => {
-                    let cardId = parseInt(btn.dataset.id);
-                    btn.classList.remove('taken', 'selected');
-
-                    if (mySelectedCard === cardId) {
-                        btn.classList.add('selected'); // የራሳችን ካርድ (ብጫ)
-                    } else if (takenMap[cardId] && takenMap[cardId] !== telegramUser) {
-                        btn.classList.add('taken'); // የሌላ ተጫዋች ካርድ (ቀይ)
-                    }
-                });
-            }
-
-            // በየሰከንዱ ዳታውን ከሌሎች ተጫዋቾች ጋር እኩል ማزامድ
-            function startGlobalSyncTimer() {
-                if (globalSyncTimer) clearInterval(globalSyncTimer);
-                
-                globalSyncTimer = setInterval(() => {
-                    let now = Math.floor(Date.now() / 1000);
-                    let secondsLeft = GAME_CYCLE_SEC - (now % GAME_CYCLE_SEC);
-
-                    if (timerDisplay) {
-                        timerDisplay.textContent = `ጀምር በ: ${secondsLeft}s`;
-                    }
-
-                    // የካርድ መምረጫ ገጽ ላይ ከሆንን UI-ውን በየሰከንዱ ማደስ
-                    if (document.getElementById('selection-screen').classList.contains('active-screen')) {
-                        refreshGridCardsUI();
-                    }
-                }, 1000);
-            }
-            startGlobalSyncTimer();
-
-            function initCardsGrid() {
-                if (!gridContainer) return;
-                gridContainer.innerHTML = '';
-                for (let i = 1; i <= totalBoards; i++) {
-                    const cardBtn = document.createElement('button');
-                    cardBtn.type = 'button';
-                    cardBtn.className = 'card-box';
-                    cardBtn.textContent = i;
-                    cardBtn.dataset.id = i;
-
-                    cardBtn.onclick = function() {
-                        const cardId = parseInt(this.dataset.id);
-                        let takenMap = getTakenCardsMap();
-
-                        // ሌላ ሰው የያዘውን ካርድ ለመንካት ሲሞከር ማገድ
-                        if (takenMap[cardId] && takenMap[cardId] !== telegramUser) {
-                            alert("⚠️ ይሄ ካርድ በሌላ ተጫዋች ተይዟል! እባክዎ ሌላ ነፃ ካርድ ይምረጡ።");
-                            return;
-                        }
-
-                        if (mySelectedCard === cardId) {
-                            unlockCardGlobally(cardId);
-                            mySelectedCard = null;
-                        } else {
-                            if (mySelectedCard !== null) unlockCardGlobally(mySelectedCard);
-                            mySelectedCard = cardId;
-                            lockCardGlobally(cardId);
-                        }
-                        
-                        refreshGridCardsUI();
-                        if(boardsCountText) boardsCountText.textContent = `Boards: ${mySelectedCard ? 1 : 0}/1`;
-                    };
-                    gridContainer.appendChild(cardBtn);
-                }
-            }
-            initCardsGrid();
-
-            if (joinRoomBtn) {
-                joinRoomBtn.onclick = function() {
-                    switchScreen('selection-screen');
-                    refreshGridCardsUI();
-                };
-            }
-
-            if (leaveBtn) {
-                leaveBtn.onclick = function() {
-                    if (mySelectedCard !== null) unlockCardGlobally(mySelectedCard);
+            // ካርድ የመምረጥና የመቆለፍ ሂደት
+            async function handleCardClick(cardId) {
+                if (mySelectedCard == cardId) {
+                    // ካርዱን መልቀቅ
+                    await fetch('/api/unlock_card', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ card_id: cardId, user_id: telegramUser })
+                    });
                     mySelectedCard = null;
-                    if(boardsCountText) boardsCountText.textContent = `Boards: 0/1`;
-                    refreshGridCardsUI();
-                    switchScreen('home-screen');
-                };
+                } else {
+                    // አዲስ ካርድ መቆለፍ
+                    let res = await fetch('/api/lock_card', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ card_id: cardId, user_id: telegramUser })
+                    });
+                    
+                    let data = await res.json();
+                    if (res.ok && data.success) {
+                        if (mySelectedCard) {
+                            await fetch('/api/unlock_card', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({ card_id: mySelectedCard, user_id: telegramUser })
+                            });
+                        }
+                        mySelectedCard = cardId;
+                    } else {
+                        alert(data.message || "ይህ ካርድ ተይዟል!");
+                    }
+                }
+                document.getElementById('boards-count').textContent = `Boards: ${mySelectedCard ? 1 : 0}/1`;
+                fetchTakenCards();
             }
+
+            // በየ 1 ሰከንዱ ዳታውን ከ Server ጋር ማመሳሰል
+            setInterval(() => {
+                if (document.getElementById('selection-screen').classList.contains('active-screen')) {
+                    fetchTakenCards();
+                }
+            }, 1000);
+
+            document.getElementById('joinRoomBtn').onclick = () => {
+                switchScreen('selection-screen');
+                fetchTakenCards();
+            };
+
+            document.getElementById('leaveBtn').onclick = async () => {
+                if (mySelectedCard) {
+                    await fetch('/api/unlock_card', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ card_id: mySelectedCard, user_id: telegramUser })
+                    });
+                    mySelectedCard = null;
+                }
+                switchScreen('home-screen');
+            };
         });
     </script>
 </body>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ayat Bingo - 24/7 Live Telegram System</title>
+    <title>Ayat Bingo - 24/7 Live System</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * {
@@ -28,38 +28,6 @@
 
         .container.active-screen {
             display: block !important;
-        }
-
-        .access-denied {
-            display: none;
-            text-align: center;
-            padding: 40px 20px;
-            background: #1f143a;
-            border-radius: 14px;
-            border: 1px solid #e74c3c;
-            margin: 50px auto 0 auto;
-            max-width: 480px;
-        }
-
-        .access-denied h2 {
-            color: #e74c3c;
-            margin-bottom: 10px;
-        }
-
-        .access-denied p {
-            color: #a08cc4;
-            font-size: 14px;
-            margin-bottom: 20px;
-        }
-
-        .tg-btn {
-            display: inline-block;
-            background: #2481cc;
-            color: #fff;
-            text-decoration: none;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-weight: bold;
         }
 
         .card-banner {
@@ -119,6 +87,11 @@
             font-weight: bold;
             cursor: pointer;
             font-size: 14px;
+            transition: transform 0.1s ease;
+        }
+
+        .wallet-btn:active {
+            transform: scale(0.96);
         }
 
         .deposit-btn {
@@ -163,6 +136,11 @@
             cursor: pointer;
             margin-top: 15px;
             font-size: 16px;
+            transition: transform 0.1s ease;
+        }
+
+        .join-btn:active, .bingo-claim-btn:active {
+            transform: scale(0.98);
         }
 
         .bingo-claim-btn {
@@ -273,10 +251,17 @@
         }
 
         .current-ball {
-            font-size: 32px;
+            font-size: 36px;
             font-weight: bold;
             color: #f39c12;
             margin: 4px 0;
+            animation: pulse 0.3s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.8); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
         }
 
         .rendered-bingo-card {
@@ -287,6 +272,7 @@
             border: 3px solid #ff69b4;
             max-width: 340px;
             margin: 0 auto;
+            width: 100%;
         }
 
         .bingo-header-row {
@@ -404,25 +390,18 @@
 </head>
 <body>
 
-    <!-- ACCESS DENIED SCREEN FOR EXTERNAL BROWSERS -->
-    <div id="access-denied-screen" class="access-denied">
-        <h2>⚠️ ይቅርታ! መግባት አይችሉም</h2>
-        <p>ይህንን Web App ለመጠቀም በቅድሚያ በTelegram Bot በኩል መግባት አለብዎት።</p>
-        <a href="https://t.me/Kiramk123" class="tg-btn">ወደ Telegram Bot ሂድ</a>
-    </div>
-
     <!-- 1. HOME SCREEN -->
     <div id="home-screen" class="container active-screen">
         <div class="card-banner">
             <h3>AYAT BINGO</h3>
             <p>Admin: @Kiramk123</p>
-            <span>24/7 LIVE TELEGRAM BINGO SYSTEM</span>
+            <span>24/7 LIVE SYSTEM</span>
         </div>
         
         <div class="wallet-box">
             <div class="wallet-row">
                 <span style="font-size: 14px; color: #a08cc4;">የኪስ ቦርሳ (Wallet):</span>
-                <span style="font-size: 18px; font-weight: bold; color: #2ecc71;"><b id="home-wallet-val">0</b> Birr</span>
+                <span style="font-size: 18px; font-weight: bold; color: #2ecc71;"><b id="home-wallet-val">100</b> Birr</span>
             </div>
             <div class="wallet-actions">
                 <button id="depositBtn" class="wallet-btn deposit-btn" type="button">+ Deposit</button>
@@ -448,7 +427,7 @@
             <button id="leaveBtn" class="leave-btn" type="button">← Leave</button>
             <h3 style="margin: 0; font-size: 14px; color: #f39c12;">Ayat Bingo</h3>
             <div class="stats-box">
-                <span>W: <b id="wallet-val">0</b> Br</span>
+                <span>W: <b id="wallet-val">100</b> Br</span>
                 <span>S: <b id="stake-val">20</b> Br</span>
                 <span>WIN: <b id="win-val">6000</b> Br</span>
             </div>
@@ -496,7 +475,7 @@
         <div class="result-card">
             <h2 id="resultTitle">የዙሩ ውጤት</h2>
             <p id="resultDesc" style="color: #a08cc4; font-size: 14px;"></p>
-            <p style="color: #f1c40f; font-size: 12px; margin-top: 15px;">ቀጣዩ ዙር በቅርቡ ይጀምራል...</p>
+            <button id="restartBtn" class="join-btn" type="button" style="margin-top: 15px;">ወደ ዋና ገጽ ተመለስ</button>
         </div>
     </div>
 
@@ -566,26 +545,19 @@
         document.addEventListener("DOMContentLoaded", function() {
             let tg = window.Telegram ? window.Telegram.WebApp : null;
 
-            // Check if valid Telegram Web App session
-            const isValidTelegramUser = tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id;
-
-            if (!isValidTelegramUser) {
-                document.querySelectorAll('.container').forEach(screen => screen.style.display = 'none');
-                document.getElementById('access-denied-screen').style.display = 'block';
-                return;
+            if (tg) {
+                try {
+                    tg.expand();
+                    tg.ready();
+                } catch (e) {}
             }
 
-            try {
-                tg.expand();
-                tg.ready();
-            } catch (e) {}
-
-            let telegramUser = tg.initDataUnsafe.user.id.toString();
-            let telegramUsername = tg.initDataUnsafe.user.username ? "@" + tg.initDataUnsafe.user.username : (tg.initDataUnsafe.user.first_name || "User");
+            let telegramUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id.toString() : "guest_user";
+            let telegramUsername = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.username) ? "@" + tg.initDataUnsafe.user.username : "Guest Player";
 
             let walletKey = `ayat_wallet_${telegramUser}`;
             let storedBalance = localStorage.getItem(walletKey);
-            let walletBalance = (storedBalance !== null && !isNaN(parseFloat(storedBalance))) ? parseFloat(storedBalance) : 0;
+            let walletBalance = (storedBalance !== null && !isNaN(parseFloat(storedBalance))) ? parseFloat(storedBalance) : 100;
 
             const totalBoards = 300;
             const maxSelection = 1;
@@ -597,7 +569,6 @@
             let calledNumbersSet = new Set();
             const stakeAmount = 20;
             let timerStarted = false;
-            let chosenCardId = null;
 
             const playerCountEl = document.getElementById('player-count');
             if (playerCountEl) {
@@ -619,6 +590,7 @@
             const depositBtn = document.getElementById('depositBtn');
             const withdrawBtn = document.getElementById('withdrawBtn');
             const errorBanner = document.getElementById('errorBanner');
+            const restartBtn = document.getElementById('restartBtn');
             
             const depositModal = document.getElementById('depositModal');
             const closeDepositModal = document.getElementById('closeDepositModal');
@@ -637,7 +609,6 @@
             const homeWalletVal = document.getElementById('home-wallet-val');
             const walletVal = document.getElementById('wallet-val');
             const currentBall = document.getElementById('currentBall');
-            const callStatus = document.getElementById('callStatus');
             const bingoMatrixGrid = document.getElementById('bingoMatrixGrid');
             const cardNumLabel = document.getElementById('cardNumLabel');
             const resultTitle = document.getElementById('resultTitle');
@@ -704,35 +675,19 @@
                                   `💰 የብር መጠን: *${amt} Br*\n` +
                                   `🧾 የግብይት ቁጥር (TxID): \`${txId}\``;
 
-                    let telegramApiUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-                    
-                    fetch(telegramApiUrl, {
+                    fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             chat_id: ADMIN_CHAT_ID,
                             text: message,
-                            parse_mode: 'Markdown',
-                            reply_markup: {
-                                inline_keyboard: [
-                                    [
-                                        { text: "✅ አጽድቅ (Approve)", callback_data: `approve_${telegramUser}_${amt}` },
-                                        { text: "❌ ውድቅ አድርግ (Reject)", callback_data: `reject_${telegramUser}_${amt}` }
-                                    ]
-                                ]
-                            }
+                            parse_mode: 'Markdown'
                         })
                     }).then(res => {
-                        if(res.ok) {
-                            alert("የዲፖዚት ጥያቄዎ ለአድሚን ተልኳል። አድሚኑ ሲያረጋግጠው ሂሳብዎ ይገባል!");
-                            depositModal.style.display = 'none';
-                            document.getElementById('depositAmountInput').value = '';
-                            document.getElementById('depositTxIdInput').value = '';
-                        } else {
-                            alert("ጥያቄውን መላክ አልተቻለም። እባክዎ እንደገና ይሞክሩ።");
-                        }
+                        alert("የዲፖዚት ጥያቄዎ ተልኳል።");
+                        depositModal.style.display = 'none';
                     }).catch(err => {
-                        alert("የኔትወርክ ስህተት አጋጥሟል።");
+                        alert("ጥያቄውን መላክ አልተቻለም።");
                     });
                 };
             }
@@ -764,9 +719,7 @@
                                   `🔢 አካውንት ቁጥር: \`${accNum}\`\n` +
                                   `👤 ስም: *${accName}*`;
 
-                    let telegramApiUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-                    
-                    fetch(telegramApiUrl, {
+                    fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -775,17 +728,8 @@
                             parse_mode: 'Markdown'
                         })
                     }).then(res => {
-                        if(res.ok) {
-                            alert("የዊዝድሮዋል ጥያቄዎ በተሳካ ሁኔታ ተልኳል!");
-                            withdrawModal.style.display = 'none';
-                            document.getElementById('withdrawAmountInput').value = '';
-                            document.getElementById('withdrawAccountInput').value = '';
-                            document.getElementById('withdrawNameInput').value = '';
-                        } else {
-                            alert("ጥያቄውን መላክ አልተቻለም።");
-                        }
-                    }).catch(err => {
-                        alert("የኔትወርክ ስህተት አጋጥሟል።");
+                        alert("የዊዝድሮዋል ጥያቄዎ ተልኳል!");
+                        withdrawModal.style.display = 'none';
                     });
                 };
             }
@@ -830,29 +774,18 @@
                     cardBtn.dataset.id = i;
 
                     cardBtn.onclick = function() {
-                        if (localStorage.getItem('ayat_game_ended') === 'true') {
-                            alert("የቀድሞው ዙር አብቅቷል! ቀጣዩ ዙር ሊጀመር ነው ትንሽ ይጠብቁ።");
-                            return;
-                        }
-
                         const cardId = parseInt(this.dataset.id);
                         if (selectedCards.includes(cardId)) {
                             selectedCards = selectedCards.filter(id => id !== cardId);
                             this.classList.remove('selected');
-                            
-                            if (selectedCards.length === 0) {
-                                stopCardCountdown();
-                            }
+                            if (selectedCards.length === 0) stopCardCountdown();
                         } else {
                             if (selectedCards.length < maxSelection) {
                                 selectedCards.push(cardId);
                                 this.classList.add('selected');
-
-                                if (!timerStarted) {
-                                    startSyncedCountdown();
-                                }
+                                if (!timerStarted) startSyncedCountdown();
                             } else {
-                                alert(`እባክዎ ከኮታው በላይ ካርድ መምረጥ አይችሉም!`);
+                                alert(`ከኮታው በላይ መምረጥ አይችሉም!`);
                             }
                         }
                         boardsCountText.textContent = `Boards: ${selectedCards.length}/${maxSelection}`;
@@ -865,19 +798,18 @@
             function stopCardCountdown() {
                 timerStarted = false;
                 clearInterval(cardCountdownInterval);
-                if (timerDisplay) {
-                    timerDisplay.textContent = "ካርድ ይምረጡ...";
-                }
+                if (timerDisplay) timerDisplay.textContent = "ካርድ ይምረጡ...";
             }
 
             function startSyncedCountdown() {
                 timerStarted = true;
                 let timeLeft = 10;
-                if (timerDisplay) timerDisplay.textContent = `ጨዋታው በ ${timeLeft}s ይጀምራል...`;
+                if (timerDisplay) timerDisplay.textContent = `ጀምር: ${timeLeft}s`;
 
                 cardCountdownInterval = setInterval(() => {
                     timeLeft--;
-                    if (timerDisplay) timerDisplay.textContent = `ጨዋታው በ ${timeLeft}s ይጀምራል...`;
+                    if (timerDisplay) timerDisplay.textContent = `ጀምር: ${timeLeft}s`;
+
                     if (timeLeft <= 0) {
                         clearInterval(cardCountdownInterval);
                         if (selectedCards.length > 0) {
@@ -904,15 +836,15 @@
                 leaveBtn.onclick = function() {
                     stopCardCountdown();
                     selectedCards = [];
-                    document.querySelectorAll('.card-box.selected').forEach(el => el.classList.remove('selected'));
                     boardsCountText.textContent = `Boards: 0/${maxSelection}`;
+                    document.querySelectorAll('.card-box').forEach(c => c.classList.remove('selected'));
                     switchScreen('home-screen');
                 };
             }
 
             if (exitGameBtn) {
                 exitGameBtn.onclick = function() {
-                    if (confirm("ከጨዋታው መውጣት ይፈልጋሉ? የተጫወቱበት ብር አይመለስም።")) {
+                    if(confirm("ከጨዋታው መውጣት ይፈልጋሉ?")) {
                         clearInterval(gameInterval);
                         switchScreen('home-screen');
                     }
@@ -920,92 +852,73 @@
             }
 
             function startLiveGame() {
-                if (walletBalance < stakeAmount) {
-                    alert("በቂ ገንዘብ የለዎትም!");
-                    switchScreen('home-screen');
-                    return;
-                }
-
                 walletBalance -= stakeAmount;
                 updateWallets();
 
-                chosenCardId = selectedCards[0];
-                currentCardData = generateCardData(chosenCardId);
-                cardNumLabel.textContent = `የካርቴል ቁጥር #${chosenCardId}`;
-                renderBingoMatrix(currentCardData);
+                let cardId = selectedCards[0];
+                currentCardData = generateCardData(cardId);
+                cardNumLabel.textContent = `የካርቴል ቁጥር #${cardId}`;
 
-                calledNumbersSet.clear();
-                currentBall.textContent = "--";
-                callStatus.textContent = "ጨዋታው በሂደት ላይ ነው...";
+                renderBingoMatrix(currentCardData);
                 switchScreen('live-game-screen');
 
-                let totalBalls = Array.from({length: 75}, (_, i) => i + 1);
-                for (let i = totalBalls.length - 1; i > 0; i--) {
-                    let j = Math.floor(Math.random() * (i + 1));
-                    [totalBalls[i], totalBalls[j]] = [totalBalls[j], totalBalls[i]];
-                }
+                calledNumbersSet.clear();
+                let availableNumbers = Array.from({length: 75}, (_, i) => i + 1);
 
-                let ballIndex = 0;
                 gameInterval = setInterval(() => {
-                    if (ballIndex >= totalBalls.length) {
+                    if (availableNumbers.length === 0) {
                         clearInterval(gameInterval);
-                        showResult(false, "ሁሉም ቁጥሮች ተጠርተው አብቅተዋል። ማንም አላሸነፈም።");
+                        showResult(false, "ሁሉም ቁጥሮች ተጠርተዋል! ማንም አላሸነፈም።");
                         return;
                     }
 
-                    let nextNum = totalBalls[ballIndex++];
-                    calledNumbersSet.add(nextNum);
+                    let randIdx = Math.floor(Math.random() * availableNumbers.length);
+                    let calledNum = availableNumbers.splice(randIdx, 1)[0];
+                    calledNumbersSet.add(calledNum);
 
-                    let letter = 'B';
-                    if (nextNum >= 16 && nextNum <= 30) letter = 'I';
-                    else if (nextNum >= 31 && nextNum <= 45) letter = 'N';
-                    else if (nextNum >= 46 && nextNum <= 60) letter = 'G';
-                    else if (nextNum >= 61 && nextNum <= 75) letter = 'O';
+                    let letter = calledNum <= 15 ? 'B' : calledNum <= 30 ? 'I' : calledNum <= 45 ? 'N' : calledNum <= 60 ? 'G' : 'O';
+                    currentBall.textContent = `${letter}-${calledNum}`;
 
-                    currentBall.textContent = `${letter}-${nextNum}`;
-                    autoMarkCell(nextNum);
+                    markMatchingCell(calledNum);
+
                 }, 3000);
             }
 
             function renderBingoMatrix(card) {
                 bingoMatrixGrid.innerHTML = '';
-                for (let row = 0; row < 5; row++) {
-                    for (let col = 0; col < 5; col++) {
-                        const cell = document.createElement('div');
-                        cell.className = 'bingo-cell';
+                let matrix = [
+                    [card.B[0], card.I[0], card.N[0], card.G[0], card.O[0]],
+                    [card.B[1], card.I[1], card.N[1], card.G[1], card.O[1]],
+                    [card.B[2], card.I[2], 'FREE', card.G[2], card.O[2]],
+                    [card.B[3], card.I[3], card.N[2], card.G[3], card.O[3]],
+                    [card.B[4], card.I[4], card.N[3], card.G[4], card.O[4]]
+                ];
 
-                        if (col === 2 && row === 2) {
+                matrix.forEach((row) => {
+                    row.forEach((val) => {
+                        let cell = document.createElement('div');
+                        cell.className = 'bingo-cell';
+                        if (val === 'FREE') {
                             cell.classList.add('free-cell', 'marked');
                             cell.textContent = 'FREE';
-                            cell.dataset.num = 'FREE';
                         } else {
-                            let val;
-                            if (col === 0) val = card.B[row];
-                            else if (col === 1) val = card.I[row];
-                            else if (col === 2) val = card.N[row > 2 ? row - 1 : row];
-                            else if (col === 3) val = card.G[row];
-                            else if (col === 4) val = card.O[row];
-
                             cell.textContent = val;
-                            cell.dataset.num = val;
-
-                            cell.onclick = function() {
-                                if (calledNumbersSet.has(val)) {
-                                    this.classList.toggle('marked');
-                                } else {
-                                    alert("ይህ ቁጥር እስካሁን አልተጠራም!");
-                                }
-                            };
+                            cell.dataset.val = val;
                         }
+
+                        cell.onclick = function() {
+                            if (val !== 'FREE') {
+                                this.classList.toggle('marked');
+                            }
+                        };
                         bingoMatrixGrid.appendChild(cell);
-                    }
-                }
+                    });
+                });
             }
 
-            function autoMarkCell(num) {
-                const cells = bingoMatrixGrid.querySelectorAll('.bingo-cell');
-                cells.forEach(cell => {
-                    if (parseInt(cell.dataset.num) === num) {
+            function markMatchingCell(num) {
+                document.querySelectorAll('.bingo-cell').forEach(cell => {
+                    if (parseInt(cell.dataset.val) === num) {
                         cell.classList.add('marked');
                     }
                 });
@@ -1013,56 +926,52 @@
 
             if (bingoClaimBtn) {
                 bingoClaimBtn.onclick = function() {
-                    let isWin = checkBingoWin();
+                    let isWinner = checkBingoWin();
                     clearInterval(gameInterval);
-
-                    if (isWin) {
-                        let winAmount = 6000;
-                        walletBalance += winAmount;
+                    if (isWinner) {
+                        let winAmt = 6000;
+                        walletBalance += winAmt;
                         updateWallets();
-                        showResult(true, `እንኳን ደስ አለዎት! <b>${winAmount} Birr</b> አሸንፈዋል! 🎉`);
+                        showResult(true, `እንኳን ደስ አለዎት! ${winAmt} Birr አሸንፈዋል።`);
                     } else {
-                        showResult(false, "የተሳሳተ ጥሪ (False Claim)! በካርድዎ ላይ ቢንጎ አልሰራም።");
+                        showResult(false, "ያልተሟላ BINGO! አሸናፊ መስመር የለም።");
                     }
                 };
             }
 
             function checkBingoWin() {
-                const cells = Array.from(bingoMatrixGrid.querySelectorAll('.bingo-cell'));
+                let cells = Array.from(document.querySelectorAll('.bingo-cell'));
                 let grid = [];
-                for (let i = 0; i < 5; i++) {
-                    grid.push(cells.slice(i * 5, (i + 1) * 5));
+                for(let i=0; i<5; i++) {
+                    grid.push(cells.slice(i*5, i*5+5));
                 }
 
-                for (let r = 0; r < 5; r++) {
-                    if (grid[r].every(c => c.classList.contains('marked'))) return true;
+                for(let r=0; r<5; r++) {
+                    if(grid[r].every(c => c.classList.contains('marked'))) return true;
                 }
-
-                for (let c = 0; c < 5; c++) {
-                    if (grid.map(row => row[c]).every(cell => cell.classList.contains('marked'))) return true;
+                for(let c=0; c<5; c++) {
+                    if([0,1,2,3,4].every(r => grid[r][c].classList.contains('marked'))) return true;
                 }
-
-                let diag1 = [grid[0][0], grid[1][1], grid[2][2], grid[3][3], grid[4][4]];
-                if (diag1.every(c => c.classList.contains('marked'))) return true;
-
-                let diag2 = [grid[0][4], grid[1][3], grid[2][2], grid[3][1], grid[4][0]];
-                if (diag2.every(c => c.classList.contains('marked'))) return true;
+                if([0,1,2,3,4].every(i => grid[i][i].classList.contains('marked'))) return true;
+                if([0,1,2,3,4].every(i => grid[i][4-i].classList.contains('marked'))) return true;
 
                 return false;
             }
 
-            function showResult(won, msg) {
-                resultTitle.textContent = won ? "🎉 አሸንፈዋል!" : "❌ አልተሳካም";
-                resultTitle.style.color = won ? "#2ecc71" : "#e74c3c";
-                resultDesc.innerHTML = msg;
+            function showResult(win, msg) {
+                resultTitle.textContent = win ? "🎉 BINGO WINNER!" : "❌ GAME OVER";
+                resultTitle.style.color = win ? "#2ecc71" : "#e74c3c";
+                resultDesc.textContent = msg;
                 switchScreen('result-screen');
+            }
 
-                setTimeout(() => {
+            if (restartBtn) {
+                restartBtn.onclick = function() {
                     selectedCards = [];
-                    stopCardCountdown();
-                    initCardsGrid();
+                    boardsCountText.textContent = `Boards: 0/${maxSelection}`;
+                    document.querySelectorAll('.card-box').forEach(c => c.classList.remove('selected'));
                     switchScreen('home-screen');
-                }, 5000);
+                };
             }
         });
     </script>

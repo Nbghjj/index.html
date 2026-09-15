@@ -9,17 +9,16 @@ taken_cards = {}
 STAKE_PRICE = 10
 
 game_state = {
-    "status": "waiting",  # waiting, countdown, playing
+    "status": "waiting",
     "timer": 45,
     "taken_cards": taken_cards
 }
 
-# ሰዓቱን በየሰከንዱ የሚያስኬደው የተስተካከለ ሉፕ
+# ቆጠራውን የሚያስኬደው ዋና ሉፕ
 def game_timer_loop():
     while True:
         time.sleep(1)
         
-        # 1. ቆጠራ (Countdown) ስቴት ላይ ከሆንን ሰዓቱን እንቀንሳለን
         if game_state["status"] == "countdown":
             if len(taken_cards) == 0:
                 game_state["status"] = "waiting"
@@ -30,14 +29,12 @@ def game_timer_loop():
                 game_state["timer"] = 0
                 game_state["status"] = "playing"
 
-        # 2. ጨዋታው (Playing) ላይ ከሆንን ለ 15 ሰከንድ ቆይተን ወደ waiting እንመልሳለን
         elif game_state["status"] == "playing":
             time.sleep(15)
             game_state["status"] = "waiting"
             game_state["timer"] = 45
             taken_cards.clear()
 
-# ሰርቨሩ ሲጀምር ሰዓት ቆጣሪውን በጀርባ (Background) እናስነሳዋለን
 threading.Thread(target=game_timer_loop, daemon=True).start()
 
 @app.route('/')
@@ -58,7 +55,6 @@ def get_balance():
 
 @app.route('/api/lock_card', methods=['POST'])
 def lock_card():
-    global game_state
     data = request.json or {}
     card_id = str(data.get('card_id'))
     user_id = data.get('user_id')
@@ -67,19 +63,19 @@ def lock_card():
         user_balances[user_id] = 100
 
     if game_state["status"] == "playing":
-        return jsonify({"success": False, "message": "ጨዋታው ተጀምሯል! እባክዎ ቀጣዩን ዙር ይጠብቁ።"}), 400
+        return jsonify({"success": False, "message": "ጨዋታው ተጀምሯል!"}), 400
 
     if card_id in taken_cards and taken_cards[card_id] != user_id:
-        return jsonify({"success": False, "message": "ይህ ካርድ በሌላ ተጫዋች ተይዟል!"}), 400
+        return jsonify({"success": False, "message": "ይህ ካርድ ተይዟል!"}), 400
 
     if user_balances[user_id] < STAKE_PRICE:
-        return jsonify({"success": False, "message": "በቂ የኪስ ቦርሳ ሂሳብ የሎትም!"}), 400
+        return jsonify({"success": False, "message": "በቂሂሳብ የሎትም!"}), 400
 
     if card_id not in taken_cards:
         taken_cards[card_id] = user_id
         user_balances[user_id] -= STAKE_PRICE
         
-        # 💡 ዋናው ለውጥ: ካርዱ ሲያዝ ቆጠራው ወዲያውኑ ከ 45 ይጀምራል
+        # ካርዱ ሲያዝ ወዲያውኑ ቆጠራ ይጀምራል
         if game_state["status"] == "waiting":
             game_state["status"] = "countdown"
             game_state["timer"] = 45
@@ -88,7 +84,6 @@ def lock_card():
 
 @app.route('/api/unlock_card', methods=['POST'])
 def unlock_card():
-    global game_state
     data = request.json or {}
     card_id = str(data.get('card_id'))
     user_id = data.get('user_id')
@@ -103,7 +98,7 @@ def unlock_card():
 
         return jsonify({"success": True, "new_balance": user_balances[user_id]})
 
-    return jsonify({"success": False, "message": "ካርዱ አልተያዘም"}), 400
+    return jsonify({"success": False, "message": "አልተያዘም"}), 400
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, threaded=True, debug=False)

@@ -1,5 +1,4 @@
 import time
-import threading
 from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
@@ -8,43 +7,13 @@ user_balances = {}
 taken_cards = {}
 STAKE_PRICE = 10
 
+# በሬንደር ላይ አስተማማኝ እንዲሆን በሰዓት ማመሳከሪያ (Timestamp) የተዋቀረ
 game_state = {
     "status": "waiting",  # waiting, countdown, playing
-    "timer": 45,
-    "target_time": 0,     # ሰዓቱ በትክክል እንዲሄድ የሚያስችል ማመሳከሪያ
+    "countdown_end": 0,
+    "playing_end": 0,
     "taken_cards": taken_cards
 }
-
-# ሰዓቱን እና የጨዋታ ሁኔታውን በጀርባ (Background) የሚያስተካክለው ሉፕ
-def game_timer_loop():
-    while True:
-        time.sleep(0.5)
-        
-        if len(taken_cards) > 0:
-            if game_state["status"] == "waiting":
-                game_state["status"] = "countdown"
-                game_state["target_time"] = time.time() + 45
-                game_state["timer"] = 45
-            elif game_state["status"] == "countdown":
-                remaining = int(game_state["target_time"] - time.time())
-                if remaining > 0:
-                    game_state["timer"] = remaining
-                else:
-                    game_state["timer"] = 0
-                    game_state["status"] = "playing"
-                    game_state["target_time"] = time.time() + 15  # የጨዋታው ቆይታ (15 ሰከንድ)
-        else:
-            game_state["status"] = "waiting"
-            game_state["timer"] = 45
-
-        if game_state["status"] == "playing":
-            remaining = int(game_state["target_time"] - time.time())
-            if remaining <= 0:
-                game_state["status"] = "waiting"
-                game_state["timer"] = 45
-                taken_cards.clear()
-
-threading.Thread(target=game_timer_loop, daemon=True).start()
 
 @app.route('/')
 def index():
@@ -52,7 +21,41 @@ def index():
 
 @app.route('/api/get_state', methods=['GET'])
 def get_state():
-    return jsonify(game_state)
+    global game_state
+    now = time.time()
+    
+    # በየሰከንዱ የሚመጣውን ሪኩዌስት መሰረት በማድረግ ሰዓቱንና ሁኔታውን እናመሳስላለን
+    if len(taken_cards) > 0:
+        if game_state["status"] == "waiting":
+            game_state["status"] = "countdown"
+            game_state["countdown_end"] = now + 45
+        elif game_state["status"] == "countdown":
+            if now >= game_state["countdown_end"]:
+                game_state["status"] = "playing"
+                game_state["playing_end"] = now + 15
+    else:
+        game_state["status"] = "waiting"
+        game_state["countdown_end"] = 0
+
+    if game_state["status"] == "playing":
+        if now >= game_state["playing_end"]:
+            game_state["status"] = "waiting"
+            game_state["countdown_end"] = 0
+            taken_cards.clear()
+
+    # የቀረውን ሰዓት በሂሳብ እናሰላዋለን
+    timer_val = 45
+    if game_state["status"] == "countdown":
+        timer_val = max(0, int(game_state["countdown_end"] - now))
+    elif game_state["status"] == "playing":
+        timer_val = max(0, int(game_state["playing_end"] - now))
+
+    response_data = {
+        "status": game_state["status"],
+        "timer": timer_val,
+        "taken_cards": taken_cards
+    }
+    return jsonify(response_data)
 
 @app.route('/api/get_balance', methods=['POST'])
 def get_balance():
@@ -65,6 +68,7 @@ def get_balance():
 @app.route('/api/lock_card', methods=['POST'])
 def lock_card():
     global game_state
+    now = time.time()
     data = request.json or {}
     card_id = str(data.get('card_id'))
     user_id = data.get('user_id')
@@ -87,8 +91,7 @@ def lock_card():
 
     if game_state["status"] == "waiting":
         game_state["status"] = "countdown"
-        game_state["target_time"] = time.time() + 45
-        game_state["timer"] = 45
+        game_state["countdown_end"] = now + 45
 
     return jsonify({"success": True, "new_balance": user_balances[user_id]})
 
@@ -105,7 +108,7 @@ def unlock_card():
         
         if len(taken_cards) == 0:
             game_state["status"] = "waiting"
-            game_state["timer"] = 45
+            game_state["countdown_end"] = 0
 
         return jsonify({"success": True, "new_balance": user_balances[user_id]})
 

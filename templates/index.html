@@ -21,6 +21,10 @@
         .stats-box { display: flex; gap: 6px; align-items: center; }
         .stats-box span { background: #2c1b4d; padding: 4px 8px; border-radius: 6px; font-size: 11px; color: #f1c40f; border: 1px solid #3c2a6d; }
 
+        /* Live Game Stats Header */
+        .live-stats-banner { background: #1f143a; border: 1px solid #3c2a6d; padding: 10px 15px; border-radius: 10px; display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 12px; }
+        .live-stats-banner b { color: #2ecc71; }
+
         .cards-grid-container { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; max-height: 320px; overflow-y: auto; background: #1f143a; padding: 10px; border-radius: 10px; border: 1px solid #3c2a6d; }
         
         .card-box {
@@ -62,7 +66,7 @@
     <div id="home-screen" class="container active-screen">
         <div class="card-banner">
             <h3 style="color: #f39c12; margin: 0 0 5px 0;">AYAT BINGO</h3>
-            <span style="background: #3c2a6d; padding: 4px 10px; border-radius: 20px; font-size: 11px; color: #f1c40f;">🎁 WELCOME BONUS: 100 BIRR</span>
+            <span style="background: #3c2a6d; padding: 4px 10px; border-radius: 20px; font-size: 11px; color: #f1c40f;">🎁 24/7 LIVE BINGO SYSTEM</span>
         </div>
         
         <div class="wallet-box">
@@ -86,9 +90,16 @@
             </div>
         </div>
 
+        <!-- Live Stats Banner for Players and Prize Pool -->
+        <div class="live-stats-banner">
+            <span>👥 ተጫዋቾች: <b id="active-players-count">0</b></span>
+            <span>🃏 የተያዙ ካርዶች: <b id="total-cards-count">0</b></span>
+            <span>🎁 ሽልማት: <b id="prize-pool-display">0 Birr</b></span>
+        </div>
+
         <div style="display: flex; justify-content: space-between; color: #a08cc4; margin-bottom: 8px; font-size: 13px;">
             <span id="boards-count">Boards: 0/4</span>
-            <span style="color: #2ecc71; font-weight: bold;">● 4 CARDS & AUTO-MARK LIVE</span>
+            <span style="color: #2ecc71; font-weight: bold;">● AUTO-MARK LIVE</span>
         </div>
 
         <div class="cards-grid-container" id="cardsGrid"></div>
@@ -107,7 +118,6 @@
             <div class="game-status-text" id="game-status-label">Auto-marking Active...</div>
         </div>
 
-        <!-- የተመረጡት እስከ 4 የሚደርሱ ካርዶች እዚህ ይታያሉ -->
         <div id="gameplayCardsContainer"></div>
 
         <button class="bingo-action-btn" onclick="checkBingoWin()">BINGO! (ማንኛውንም ካርድ ያረጋግጡ)</button>
@@ -227,6 +237,17 @@
                 let gameState = await res.json();
 
                 currentGameStateStatus = gameState.status;
+
+                // Update Live Counts and Prize Pool from Backend
+                if (gameState.active_players_count !== undefined) {
+                    document.getElementById('active-players-count').textContent = gameState.active_players_count;
+                }
+                if (gameState.total_cards_count !== undefined) {
+                    document.getElementById('total-cards-count').textContent = gameState.total_cards_count;
+                }
+                if (gameState.prize_pool !== undefined) {
+                    document.getElementById('prize-pool-display').textContent = gameState.prize_pool + " Birr";
+                }
 
                 if (gameState.winner && gameState.winner !== lastWinnerNotified) {
                     lastWinnerNotified = gameState.winner;

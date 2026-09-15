@@ -16,6 +16,7 @@ game_state = {
 }
 
 clients = []
+timer_running = False
 
 def broadcast_state():
     data = f"data: {json.dumps(game_state)}\n\n"
@@ -25,37 +26,40 @@ def broadcast_state():
         except:
             clients.remove(client_queue)
 
-# ሰርቨሩ ራሱ የአንድ ጊዜ ሰዓት እየቆጠረ ለሁሉም በጋራ እንዲልክ የሚያደርግ ሎጂክ
+# ሰዓቱ እንዳይጠፋ እና አንድን ቆጠራ ጨርሶ እስኪያልቅ ድረስ በደህንነት የሚሰራ ሎጂክ
 def global_timer_worker():
-    global game_state
+    global game_state, timer_running
     while True:
-        if len(taken_cards) > 0 and game_state["status"] == "waiting":
+        if len(taken_cards) > 0 and game_state["status"] == "waiting" and not timer_running:
+            timer_running = True
             game_state["status"] = "countdown"
             game_state["timer"] = 45
             broadcast_state()
 
-            for i in range(45, 0, -1):
+            # 45 ሰከንድ እስከ 0 መቁጠር
+            while game_state["timer"] > 0:
                 time.sleep(1)
-                # ካርዶቹ ሁሉም ከተለቀቁ ቆጠራውን እናቆማለን
+                # ካርዶች ሙሉ በሙሉ ከጠፉ ብቻ ቆጠራውን እናቆማለን
                 if len(taken_cards) == 0:
                     break
-                game_state["timer"] = i - 1
+                game_state["timer"] -= 1
                 broadcast_state()
 
             if len(taken_cards) == 0:
                 game_state["status"] = "waiting"
                 game_state["timer"] = 45
-                broadcast_state()
             else:
                 game_state["status"] = "playing"
                 broadcast_state()
-                time.sleep(15) # ጨዋታው ላይ ቆይቶ ወደ መጀመሪያው ይመለሳል
+                time.sleep(15)  # ጨዋታው ላይ ቆይቶ ወደ መጀመሪያው ይመለሳል
                 game_state["status"] = "waiting"
                 game_state["timer"] = 45
                 taken_cards.clear()
-                broadcast_state()
+            
+            timer_running = False
+            broadcast_state()
         else:
-            time.sleep(1)
+            time.sleep(0.5)
 
 threading.Thread(target=global_timer_worker, daemon=True).start()
 
@@ -134,9 +138,12 @@ def unlock_card():
         del taken_cards[card_id]
         user_balances[user_id] += STAKE_PRICE
         
-        if len(taken_cards) == 0:
+        # ተጫዋቾቹ ካርዳቸውን ሲለቁ ካርዶች ከጠፉ ብቻ ቆጠራው ይሰረዛል
+        if len(taken_cards) == 0 and game_state["status"] == "countdown":
             game_state["status"] = "waiting"
             game_state["timer"] = 45
+            global timer_running
+            timer_running = False
 
         broadcast_state()
         return jsonify({"success": True, "new_balance": user_balances[user_id]})

@@ -1,4 +1,5 @@
 import time
+import random
 from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
@@ -12,7 +13,10 @@ game_state = {
     "countdown_end": 0,
     "playing_end": 0,
     "taken_cards": taken_cards,
-    "winner": None
+    "winner": None,
+    "winning_card": None,
+    "current_called_number": None,
+    "called_numbers_history": []
 }
 
 @app.route('/')
@@ -27,23 +31,39 @@ def get_state():
     if len(taken_cards) > 0:
         if game_state["status"] == "waiting":
             game_state["status"] = "countdown"
-            game_state["countdown_end"] = now + 45  # የቆጠራ ሰዓት (45 ሰከንድ)
+            game_state["countdown_end"] = now + 45  # 45 ሰከንድ ቆጠራ
+            game_state["winner"] = None
+            game_state["winning_card"] = None
         elif game_state["status"] == "countdown":
             if now >= game_state["countdown_end"]:
                 game_state["status"] = "playing"
-                game_state["playing_end"] = now + 180  # የጨዋታ ሰዓት (3 ደቂቃ)
+                game_state["playing_end"] = now + 180  # 3 ደቂቃ ጨዋታ
+                game_state["called_numbers_history"] = []
+                game_state["current_called_number"] = None
     else:
         game_state["status"] = "waiting"
         game_state["countdown_end"] = 0
         game_state["winner"] = None
+        game_state["winning_card"] = None
 
     if game_state["status"] == "playing":
         if now >= game_state["playing_end"]:
-            # ሰዓቱ ካለቀ ጨዋታው ራሱ ሪሴት ይደረጋል
+            # ሰዓቱ ካለቀ ጨዋታው ሪሴት ይደረጋል
             game_state["status"] = "waiting"
             game_state["countdown_end"] = 0
             game_state["winner"] = None
+            game_state["winning_card"] = None
             taken_cards.clear()
+        else:
+            # በየጥቂት ሰኮንድ ውስጥ አዲስ ቁጥር ከ 1 እስከ 75 ማመንጨት
+            if not hasattr(app, 'last_call_time') or now - app.last_call_time >= 3:
+                app.last_call_time = now
+                all_nums = list(range(1, 76))
+                remaining = [n for n in all_nums if n not in game_state["called_numbers_history"]]
+                if remaining:
+                    called = random.choice(remaining)
+                    game_state["called_numbers_history"].append(called)
+                    game_state["current_called_number"] = called
 
     timer_val = 45
     if game_state["status"] == "countdown":
@@ -55,14 +75,15 @@ def get_state():
         "status": game_state["status"],
         "timer": timer_val,
         "taken_cards": taken_cards,
-        "winner": game_state.get("winner")
+        "winner": game_state.get("winner"),
+        "winning_card": game_state.get("winning_card"),
+        "current_called_number": game_state.get("current_called_number")
     })
 
 @app.route('/api/get_balance', methods=['POST'])
 def get_balance():
     data = request.json or {}
     user_id = str(data.get('user_id') or "default_user")
-    
     if user_id not in user_balances:
         user_balances[user_id] = 100
     return jsonify({"success": True, "balance": user_balances[user_id]})
@@ -127,32 +148,32 @@ def unlock_card():
 
     return jsonify({"success": False, "message": "አልተያዘም"}), 400
 
-# ተጫዋቹ ቢንጎ ብሎ ሲያሸንፍ የሚጠራ API
 @app.route('/api/bingo_win', methods=['POST'])
 def bingo_win():
     global game_state
     data = request.json or {}
     user_id = str(data.get('user_id') or "default_user")
+    winning_card = str(data.get('card_id') or "1")
     
-    # አሸናፊውን ሽልማት እንሰላለን (ለምሳሌ የጠቅላላ stake ድምር ወይም ቋሚ ሽልማት)
     total_pool = len(taken_cards) * STAKE_PRICE
-    prize = int(total_pool * 0.9)  # 10% ለሰርቨሩ ትቶ 90% ለድል አድራጊው
+    prize = int(total_pool * 0.9)
     if prize < STAKE_PRICE:
-        prize = STAKE_PRICE * 2  # አነስተኛ ሽልማት ዋስትና
+        prize = STAKE_PRICE * 2
         
     if user_id not in user_balances:
         user_balances[user_id] = 100
     user_balances[user_id] += prize
     
-    # ጨዋታውን ሙሉ በሙሉ እናቆማለን (Reset to Waiting)
+    # ጨዋታውን በማቆም አሸናፊውን እና የካርድ ቁጥሩን ለሁሉም እናሳውቃለን
     game_state["status"] = "waiting"
     game_state["countdown_end"] = 0
     game_state["winner"] = user_id
-    taken_cards.clear()  # የነበሩትን ካርዶች በሙሉ እናጸዳለን (ሁሉም አዲስ ካርድ እንዲመርጡ)
+    game_state["winning_card"] = winning_card
+    taken_cards.clear()
     
     return jsonify({
         "success": True, 
-        "message": f"እንኳን ደስ አለዎት! አሸንፈዋል {prize} ብር ተሸልመዋል!",
+        "message": f"እንኳን ደስ አለዎት! በካርድ ቁጥር {winning_card} አሸንፈዋል! {prize} ብር ተሸልመዋል!",
         "new_balance": user_balances[user_id]
     })
 

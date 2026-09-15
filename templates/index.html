@@ -124,9 +124,13 @@
             // 3. SSE Connection (Real-time Sync)
             const eventSource = new EventSource('/events');
             eventSource.onmessage = function(event) {
-                const data = JSON.parse(event.data);
-                takenCardsMap = data.taken_cards;
-                updateCardsUI();
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.taken_cards) {
+                        takenCardsMap = data.taken_cards;
+                        updateCardsUI();
+                    }
+                } catch(e) {}
             };
 
             function updateCardsUI() {

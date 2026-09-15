@@ -34,8 +34,6 @@
         .timer-badge { background: #e74c3c !important; color: #fff !important; font-weight: bold; display: none; }
         
         .gameplay-box { background: #1f143a; padding: 20px; border-radius: 14px; text-align: center; border: 1px solid #3c2a6d; margin-top: 15px; }
-        
-        /* BINGO ቁጥሮች የሚጠሩበት ግዙፍ ዲዛይን */
         .bingo-ball { font-size: 55px; font-weight: bold; color: #2ecc71; margin: 15px 0; background: #2c1b4d; display: inline-block; padding: 15px 30px; border-radius: 50%; border: 2px solid #f39c12; box-shadow: 0 0 15px rgba(243, 156, 18, 0.4); }
     </style>
 </head>
@@ -87,8 +85,6 @@
         <div class="gameplay-box">
             <h2 style="color: #f39c12; margin-top: 0;">ቁጥሮች እየተጠሩ ነው...</h2>
             <p style="color: #a08cc4; font-size: 13px;">ሁሉም ተጫዋቾች ገብተዋል! B-I-N-G-O ቁጥሮች እየወጡ ነው።</p>
-            
-            <!-- ከ 1 - 75 የሚወጣበት ቦታ -->
             <div class="bingo-ball" id="called-number-display">--</div>
             <div id="bingo-letter-label" style="font-size: 16px; color: #f39c12; font-weight: bold; margin-bottom: 10px;">ሰሌዳ እየተጠበቀ ነው...</div>
         </div>
@@ -109,7 +105,6 @@
             let mySelectedCard = null;
             let takenCardsMap = {};
             let currentWallet = 0;
-            
             let numberCallerInterval = null;
 
             const totalBoards = 300;
@@ -144,12 +139,11 @@
                 document.getElementById('wallet-val').textContent = currentWallet;
             }
 
-            // BINGO 1-75 ቁጥሮችን በየሰከንዱ በጋራ መጥሪያ ሎጂክ
+            // BINGO 1-75 ቁጥሮችን በጋራ በየሰከንድ ማውጣት
             function startCallingNumbers() {
-                if (numberCallerInterval) return; // አስቀድሞ እየጠራ ከሆነ አደግግሞ አይጀምር
+                if (numberCallerInterval) return;
                 
                 let availableNumbers = Array.from({length: 75}, (_, i) => i + 1);
-                // ቁጥሮቹን መቀላቀል (Shuffle)
                 availableNumbers.sort(() => Math.random() - 0.5);
 
                 let index = 0;
@@ -158,7 +152,6 @@
                         let num = availableNumbers[index];
                         let letter = '';
                         
-                        // የ B-I-N-G-O ክልል መለያ
                         if (num >= 1 && num <= 15) letter = 'B';
                         else if (num >= 16 && num <= 30) letter = 'I';
                         else if (num >= 31 && num <= 45) letter = 'N';
@@ -172,10 +165,10 @@
                         clearInterval(numberCallerInterval);
                         numberCallerInterval = null;
                     }
-                }, 1500); // በየ 1.5 ሰከንድ አንድ ቁጥር ይጠራል
+                }, 1500);
             }
 
-            // Real-time SSE Connection from Server
+            // Real-time SSE Connection (ከሰርቨር የሚመጣውን ሰዓት እና ሁኔታ በቀጥታ መቀበል)
             const eventSource = new EventSource('/events');
             eventSource.onmessage = function(event) {
                 try {
@@ -192,7 +185,7 @@
                         updateCardsUI();
                     }
 
-                    // ሰርቨሩ የላከውን የሰዓት ቆጠራ (Countdown) በሁሉም ስክሪን ላይ እኩል ማሳየት
+                    // ⏱️ ሰርቨሩ የላከውን ትክክለኛ ሰዓት (timer) በቀጥታ በሁሉም ስክሪን ላይ እኩል ማሳየት
                     if (gameState.status === "countdown") {
                         document.getElementById('timer-val').textContent = gameState.timer;
                         document.getElementById('timer-box').style.display = 'inline-block';
@@ -200,7 +193,7 @@
                         document.getElementById('timer-box').style.display = 'none';
                     }
 
-                    // ጨዋታው ሲጀመር (status: playing) - ሁሉም ካርድ የያዙ ወደ ጨዋታው ገጽ ይገባሉ ቁጥሮችም መጥራት ይጀምራሉ
+                    // 🎮 ጨዋታው ሲጀመር (status: playing)
                     if (gameState.status === "playing") {
                         let hasCard = false;
                         let activeCard = mySelectedCard;
@@ -215,7 +208,7 @@
                         if (hasCard && activeCard) {
                             document.getElementById('active-card-num').textContent = activeCard;
                             switchScreen('gameplay-screen');
-                            startCallingNumbers(); // 1-75 BINGO ቁጥሮች መጥራት ይጀምራሉ
+                            startCallingNumbers();
                         } else {
                             switchScreen('home-screen');
                         }

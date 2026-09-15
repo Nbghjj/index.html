@@ -41,7 +41,7 @@ def get_state():
                 game_state["called_numbers_history"] = []
                 game_state["current_called_number"] = None
     else:
-        game_state["status"] = "waiting"
+        game_state["status"] == "waiting"
         game_state["countdown_end"] = 0
         game_state["winner"] = None
         game_state["winning_card"] = None
@@ -99,9 +99,9 @@ def lock_card():
     if user_id not in user_balances:
         user_balances[user_id] = 100
 
-    # ጨዋታው ከተጀመረ (playing ከሆነ) አዲስ ካርድ መያዝ/መቀላቀል በጥብቅ ይከለከላል!
+    # ጨዋታው በመጫወት ላይ (playing) ከሆነ አዲስ ካርድ መያዝ አይቻልም
     if game_state["status"] == "playing":
-        return jsonify({"success": False, "message": "ጨዋታው ተጀምሯል! አሁን አዲስ ካርድ መያዝ አይቻልም።"}), 400
+        return jsonify({"success": False, "message": "ጨዋታው ተጀምሯል! አሁን ካርድ መያዝ አይቻልም።"}), 400
 
     if card_id in taken_cards and taken_cards[card_id] != user_id:
         return jsonify({"success": False, "message": "ይህ ካርድ በሌላ ተጫዋች ተይዟል!"}), 400
@@ -137,18 +137,21 @@ def unlock_card():
     card_id = str(data.get('card_id'))
     user_id = str(data.get('user_id') or "default_user")
 
+    # ጨዋታው ከተጀመረ (playing ከሆነ) ተጫዋቹ Exit ቢልም ሰርቨር ላይ ካርዱ እንዳይሰረዝ 
+    # (በጨዋታው ውስጥ ተይዞ እንዲቀጥል) በክፍለ ጊዜው (playing) ማጥፊያውን እንከለክላለን።
+    if game_state["status"] == "playing":
+        return jsonify({"success": False, "message": "ጨዋታው በሂደት ላይ ስለሆነ ካርዱ ሊለቀቅ አይችልም፤ ነገር ግን ወደ መነሻ መመለስ ይችላሉ።"}), 400
+
     if card_id in taken_cards and taken_cards[card_id] == user_id:
-        # ካርዱን ከ taken_cards እንሰርዘዋለን (ተጫዋቹ መውጣት/ማቋረጥ ይችላል)
         del taken_cards[card_id]
-        
-        # ማስታወሻ: ጨዋታው ውስጥም ሆነ ቆጠራ ላይ ሳለ ሲወጣ ገንዘቡ ተመላሽ እንዳይሆን 
-        # (user_balances[user_id] += STAKE_PRICE) የሚለው ኮድ entionally ጠፍቷል።
+        # በቆጠራ ሰዓት (countdown) ላይ ከሆነ ብቻ ገንዘቡ ተመላሽ ይደረጋል
+        user_balances[user_id] += STAKE_PRICE
         
         if len(taken_cards) == 0:
             game_state["status"] = "waiting"
             game_state["countdown_end"] = 0
 
-        return jsonify({"success": True, "new_balance": user_balances.get(user_id, 100)})
+        return jsonify({"success": True, "new_balance": user_balances[user_id]})
 
     return jsonify({"success": False, "message": "አልተያዘም"}), 400
 

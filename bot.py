@@ -10,9 +10,9 @@ taken_cards = {}
 STAKE_PRICE = 10
 
 game_state = {
-    "status": "waiting",
-    "taken_cards": taken_cards,
-    "start_countdown": False
+    "status": "waiting",  # waiting, countdown, playing
+    "timer": 45,
+    "taken_cards": taken_cards
 }
 
 clients = []
@@ -24,6 +24,37 @@ def broadcast_state():
             client_queue.put(data)
         except:
             clients.remove(client_queue)
+
+# ሰርቨሩ ራሱ 45 ሰከንድ የሚቆጥርበት እና ሁኔታዎችን ለሁሉም የሚያዳርስበት ሎጂክ
+def global_timer_worker():
+    global game_state
+    while True:
+        if len(taken_cards) > 0 and game_state["status"] == "waiting":
+            game_state["status"] = "countdown"
+            game_state["timer"] = 45
+            broadcast_state()
+
+            for i in range(45, 0, -1):
+                time.sleep(1)
+                if len(taken_cards) == 0:
+                    break
+                game_state["timer"] = i - 1
+                broadcast_state()
+
+            if len(taken_cards) == 0:
+                game_state["status"] = "waiting"
+                broadcast_state()
+            else:
+                game_state["status"] = "playing"
+                broadcast_state()
+                time.sleep(15) # ጨዋታው ላይ ቆይቶ ወደ መጀመሪያው ይመለሳል
+                game_state["status"] = "waiting"
+                taken_cards.clear()
+                broadcast_state()
+        else:
+            time.sleep(1)
+
+threading.Thread(target=global_timer_worker, daemon=True).start()
 
 @app.route('/')
 def index():
@@ -86,9 +117,6 @@ def lock_card():
     if card_id not in taken_cards:
         taken_cards[card_id] = user_id
         user_balances[user_id] -= STAKE_PRICE
-        
-        # ቢያንስ 1 ካርድ ሲያዝ የ45 ሰከንድ ቆጠራ እንዲጀምር ምልክት ይላካል
-        game_state["start_countdown"] = True
         broadcast_state()
 
     return jsonify({"success": True, "new_balance": user_balances[user_id]})
@@ -103,9 +131,7 @@ def unlock_card():
         del taken_cards[card_id]
         user_balances[user_id] += STAKE_PRICE
         
-        # ሁሉም ካርዶች ከተለቀቁ ቆጠራው ይሰረዛል
         if len(taken_cards) == 0:
-            game_state["start_countdown"] = False
             game_state["status"] = "waiting"
 
         broadcast_state()

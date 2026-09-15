@@ -21,12 +21,9 @@
         .stats-box { display: flex; gap: 6px; align-items: center; }
         .stats-box span { background: #2c1b4d; padding: 4px 8px; border-radius: 6px; font-size: 11px; color: #f1c40f; border: 1px solid #3c2a6d; }
 
-        /* Game ID, Players, Bet, Derash, Called - ስታይል በምስሉ እንዳለው */
-        .game-status-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; background: #1e1b2e; padding: 10px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #3c2a6d; text-align: center; }
-        .status-card { background: #2b2640; border-radius: 8px; padding: 8px 4px; border: 1px solid #3c2a6d; }
-        .status-title { color: #b0aec4; font-size: 10px; font-weight: bold; margin-bottom: 2px; text-transform: uppercase; }
-        .status-value { color: #ffffff; font-size: 13px; font-weight: bold; }
-        .status-value.derash { color: #ff9800; font-size: 14px; }
+        /* Live Game Stats Header */
+        .live-stats-banner { background: #1f143a; border: 1px solid #3c2a6d; padding: 10px 15px; border-radius: 10px; display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 12px; }
+        .live-stats-banner b { color: #2ecc71; }
 
         .cards-grid-container { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; max-height: 320px; overflow-y: auto; background: #1f143a; padding: 10px; border-radius: 10px; border: 1px solid #3c2a6d; }
         
@@ -61,10 +58,6 @@
         .card-footer-label { text-align: center; color: #d63031; font-size: 12px; font-weight: bold; margin-top: 10px; }
         
         .bingo-action-btn { background: linear-gradient(135deg, #e74c3c, #c0392b); border: none; width: 100%; padding: 16px; border-radius: 12px; color: #fff; font-weight: bold; font-size: 18px; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4); }
-
-        /* የድል ማሳያ ፖፕ-አፕ (Win Modal) - የደርሽ መጠን ከላይ እንዲታይ የተደረገበት */
-        #win-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; }
-        .win-modal-content { background: #1a1a1a; padding: 25px; border-radius: 15px; text-align: center; border: 2px solid #ff9800; max-width: 380px; width: 90%; }
     </style>
 </head>
 <body>
@@ -90,35 +83,18 @@
     <div id="selection-screen" class="container">
         <div class="game-top-bar">
             <button id="leaveBtn" class="leave-btn" type="button">← Leave</button>
-            <h3 style="margin: 0; font-size: 13px; color: #f39c12;">እስከ 4 ካርዶች ይምረጡ</h3>
+            <h3 style="margin: 0; font-size: 14px; color: #f39c12;">እስከ 4 ካርዶች ይምረጡ</h3>
             <div class="stats-box">
                 <span id="timer-box" class="timer-badge">⏱️ <b id="timer-val">45</b>s</span>
                 <span>W: <b id="wallet-val">--</b> Br</span>
             </div>
         </div>
 
-        <!-- እንደ ምስሉ የተዘጋጀው Game ID, Players, Bet, Derash, Called አቀማመጥ -->
-        <div class="game-status-grid">
-            <div class="status-card">
-                <div class="status-title">Game ID</div>
-                <div id="game-id-display" class="status-value">AYAT01</div>
-            </div>
-            <div class="status-card">
-                <div class="status-title">Players</div>
-                <div id="active-players-count" class="status-value">0</div>
-            </div>
-            <div class="status-card">
-                <div class="status-title">Bet</div>
-                <div id="bet-display" class="status-value">10</div>
-            </div>
-            <div class="status-card">
-                <div class="status-title">Derash</div>
-                <div id="prize-pool-display" class="status-value derash">0</div>
-            </div>
-            <div class="status-card">
-                <div class="status-title">Called</div>
-                <div id="called-count-display" class="status-value">0</div>
-            </div>
+        <!-- Live Stats Banner for Players and Prize Pool -->
+        <div class="live-stats-banner">
+            <span>👥 ተጫዋቾች: <b id="active-players-count">0</b></span>
+            <span>🃏 የተያዙ ካርዶች: <b id="total-cards-count">0</b></span>
+            <span>🎁 ሽልማት: <b id="prize-pool-display">0 Birr</b></span>
         </div>
 
         <div style="display: flex; justify-content: space-between; color: #a08cc4; margin-bottom: 8px; font-size: 13px;">
@@ -145,23 +121,6 @@
         <div id="gameplayCardsContainer"></div>
 
         <button class="bingo-action-btn" onclick="checkBingoWin()">BINGO! (ማንኛውንም ካርድ ያረጋግጡ)</button>
-    </div>
-
-    <!-- 4. WIN MODAL (ደርሹ ከላይ በታላቅ ጽሑፍ እንዲታይ የተደረገበት ፖፕ-አፕ) -->
-    <div id="win-modal">
-        <div class="win-modal-content">
-            <h1 style="color: #4CAF50; font-size: 28px; margin-bottom: 5px;">🎉 BINGO! 🎉</h1>
-            
-            <!-- ያሸነፈው የብር መጠን (ደርሽ) ከላይ በግልጽ እና በትልቅ እንዲታይ -->
-            <div style="background: #222; padding: 15px; border-radius: 10px; margin: 12px 0; border: 2px dashed #ff9800;">
-                <p style="color: #aaa; font-size: 12px; margin: 0 0 4px 0; text-transform: uppercase;">ያሸነፉት የገንዘብ መጠን (ደርሽ)</p>
-                <h2 id="win-prize-amount" style="color: #ff9800; font-size: 34px; margin: 0; font-weight: bold;">0 ብር</h2>
-            </div>
-
-            <p id="win-message" style="color: #fff; font-size: 15px; margin-bottom: 20px;">እንኳን ደስ አለዎት! አሸንፈዋል!</p>
-            
-            <button onclick="closeWinModal()" style="background: #ff9800; color: white; border: none; padding: 12px 20px; font-size: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%;">እሺ (OK)</button>
-        </div>
     </div>
 
     <script>
@@ -263,7 +222,7 @@
 
                 let footer = document.createElement('div');
                 footer.className = 'card-footer-label';
-                footer.textContent = `አያት ቢንጎ የካርድ ቁጥር ${cardId}`;
+                footer.textContent = `ሲ.ቲ ቢንጎ የካርድ ቁጥር ${cardId}`;
 
                 wrapper.innerHTML = headersHtml;
                 wrapper.appendChild(gridDiv);
@@ -279,6 +238,7 @@
 
                 currentGameStateStatus = gameState.status;
 
+                // Update Live Counts and Prize Pool from Backend
                 if (gameState.active_players_count !== undefined) {
                     document.getElementById('active-players-count').textContent = gameState.active_players_count;
                 }
@@ -286,29 +246,16 @@
                     document.getElementById('total-cards-count').textContent = gameState.total_cards_count;
                 }
                 if (gameState.prize_pool !== undefined) {
-                    document.getElementById('prize-pool-display').textContent = gameState.prize_pool;
-                }
-                if (gameState.game_id !== undefined) {
-                    document.getElementById('game-id-display').textContent = gameState.game_id;
-                }
-                
-                // የተጠሩ ቁጥሮች ብዛት (Called count) ማሳየት
-                let calledCountEl = document.getElementById('called-count-display');
-                if (calledCountEl) {
-                    calledCountEl.textContent = calledNumbersSet.size;
+                    document.getElementById('prize-pool-display').textContent = gameState.prize_pool + " Birr";
                 }
 
                 if (gameState.winner && gameState.winner !== lastWinnerNotified) {
                     lastWinnerNotified = gameState.winner;
                     userManuallyExited = false;
-                    
-                    // ድል ሲመጣ ፖፕ-አፑን ማሳየት (ደርሽ ከላይ እንዲታይ)
-                    document.getElementById('win-prize-amount').innerText = (gameState.prize || gameState.prize_pool || 0) + " ብር";
-                    document.getElementById('win-message').innerText = `አሸናፊው ተጫዋች በካርድ ቁጥር ${gameState.winning_card || '--'} አሸንፏል!`;
-                    document.getElementById('win-modal').style.display = 'flex';
-
+                    alert(`ጨዋታው አልቋል! አሸናፊው ተጫዋች በካርድ ቁጥር ${gameState.winning_card || '--'} አሸንፏል!`);
                     mySelectedCards = [];
                     calledNumbersSet.clear();
+                    switchScreen('selection-screen');
                     updateCardsUI();
                     fetchBalance();
                     return;
@@ -384,11 +331,6 @@
             }
         }
 
-        function closeWinModal() {
-            document.getElementById('win-modal').style.display = 'none';
-            switchScreen('selection-screen');
-        }
-
         function updateCardsUI() {
             document.querySelectorAll('.card-box').forEach(btn => {
                 let cardId = btn.dataset.id;
@@ -455,13 +397,10 @@
                 });
                 let result = await res.json();
                 if (result.success) {
-                    // የደርሽ መጠን ከላይ በፖፕ-አፕ እንዲታይ ማድረግ
-                    document.getElementById('win-prize-amount').innerText = (result.prize || 0) + " ብር";
-                    document.getElementById('win-message').innerText = result.message;
-                    document.getElementById('win-modal').style.display = 'flex';
-
+                    alert(result.message);
                     mySelectedCards = [];
                     calledNumbersSet.clear();
+                    switchScreen('selection-screen');
                     updateCardsUI();
                     fetchBalance();
                 } else {

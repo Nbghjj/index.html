@@ -1,178 +1,192 @@
 import time
-import threading
 import random
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, render_template, request, jsonify
 
-app = Flask(__name__, static_folder='.', static_url_path='')
+app = Flask(__name__)
 
-# Game Configuration & State
-CARD_PRICE = 10 
-game_status = "waiting"  # waiting, countdown, playing, ended
-timer_countdown = 45     # countdown seconds
-current_called_number = None
-current_winner = None
-winning_card_id = None
+user_balances = {}
+taken_cards = {}
+STAKE_PRICE = 10
 
-# Mappings & Storage
-taken_cards_map = {}  # {card_id: user_id}
-user_balances = {}    # {user_id: balance}
-called_numbers_pool = []
-
-# Lock for thread safety
-game_lock = threading.Lock()
-
-def reset_game():
-    global game_status, timer_countdown, current_called_number, current_winner, winning_card_id, taken_cards_map, called_numbers_pool
-    with game_lock:
-        game_status = "waiting"
-        timer_countdown = 45
-        current_called_number = None
-        current_winner = None
-        winning_card_id = None
-        taken_cards_map.clear()
-        called_numbers_pool = list(range(1, 76))
-        random.shuffle(called_numbers_pool)
-
-# Initialize game pool on startup
-called_numbers_pool = list(range(1, 76))
-random.shuffle(called_numbers_pool)
-
-def background_game_loop():
-    global game_status, timer_countdown, current_called_number, current_winner, called_numbers_pool
-    
-    while True:
-        time.sleep(1)
-        with game_lock:
-            if game_status == "waiting":
-                if len(taken_cards_map) > 0:
-                    game_status = "countdown"
-                    timer_countdown = 15
-            elif game_status == "countdown":
-                timer_countdown -= 1
-                if timer_countdown <= 0 or len(taken_cards_map) == 0:
-                    if len(taken_cards_map) > 0:
-                        game_status = "playing"
-                        timer_countdown = 0
-                    else:
-                        game_status = "waiting"
-                        timer_countdown = 45
-            elif game_status == "playing":
-                # Numbers calling simulation during gameplay
-                if called_numbers_pool and not current_winner:
-                    if timer_countdown <= 0:
-                        current_called_number = called_numbers_pool.pop(0)
-                        timer_countdown = 5 # Call every 5 seconds
-                    else:
-                        timer_countdown -= 1
-
-# Start background loop thread
-threading.Thread(target=background_game_loop, daemon=True).start()
+game_state = {
+    "status": "waiting",  # waiting, countdown, playing
+    "countdown_end": 0,
+    "playing_end": 0,
+    "taken_cards": taken_cards,
+    "winner": None,
+    "winning_card": None,
+    "current_called_number": None,
+    "called_numbers_history": []
+}
 
 @app.route('/')
 def index():
-    return send_from_directory('.', 'index.html')
-
-@app.route('/api/get_balance', methods=['POST'])
-def get_balance():
-    data = request.json or {}
-    user_id = str(data.get('user_id', 'default_user'))
-    if user_id not in user_balances:
-        user_balances[user_id] = 500.0  # ለፈተና የሚሆን የመጀመሪያ ቀሪ ሂሳብ (Bonus Balance)
-    return jsonify({"balance": user_balances[user_id]})
-
-@app.route('/api/lock_card', methods=['POST'])
-def lock_card():
-    global taken_cards_map, user_balances
-    data = request.json or {}
-    card_id = str(data.get('card_id'))
-    user_id = str(data.get('user_id'))
-
-    with game_lock:
-        if card_id in taken_cards_map:
-            return jsonify({"success": False, "message": "ይህ ካርድ በሌላ ተጫዋች ተይዟል!"}), 400
-
-        if user_id not in user_balances:
-            user_balances[user_id] = 500.0
-
-        if user_balances[user_id] < CARD_PRICE:
-            return jsonify({"success": False, "message": "የኪስ ቦርሳዎ በቂ ሂሳብ የለውም!"}), 400
-
-        # Deduct price and lock card
-        user_balances[user_id] -= CARD_PRICE
-        taken_cards_map[card_id] = user_id
-
-        return jsonify({"success": True, "new_balance": user_balances[user_id]})
-
-@app.route('/api/unlock_card', methods=['POST'])
-def unlock_card():
-    global taken_cards_map, user_balances
-    data = request.json or {}
-    card_id = str(data.get('card_id'))
-    user_id = str(data.get('user_id'))
-
-    with game_lock:
-        if card_id in taken_cards_map and str(taken_cards_map[card_id]) == str(user_id):
-            del taken_cards_map[card_id]
-            # Refund card price
-            if user_id in user_balances:
-                user_balances[user_id] += CARD_PRICE
-            else:
-                user_balances[user_id] = CARD_PRICE + 500.0
-
-        return jsonify({"success": True, "new_balance": user_balances.get(user_id, 500.0)})
+    return render_template('index.html')
 
 @app.route('/api/get_state', methods=['GET'])
 def get_state():
-    global taken_cards_map, game_status, timer_countdown, current_called_number, current_winner, winning_card_id
+    global game_state
+    now = time.time()
     
-    # 1. ንቁ ተጫዋቾች ብዛት (Active Players Count)
-    active_players = len(set(taken_cards_map.values()))
-    
-    # 2. አጠቃላይ የተያዙ ካርዶች ብዛት (Total Cards)
-    total_cards_count = len(taken_cards_map)
-    
-    # 3. የሽልማት መጠን (Prize Pool)
-    prize_pool = total_cards_count * CARD_PRICE
+    if len(taken_cards) > 0:
+        if game_state["status"] == "waiting":
+            game_state["status"] = "countdown"
+            game_state["countdown_end"] = now + 45  # 45 ሰከንድ ቆጠራ
+            game_state["winner"] = None
+            game_state["winning_card"] = None
+        elif game_state["status"] == "countdown":
+            if now >= game_state["countdown_end"]:
+                game_state["status"] = "playing"
+                game_state["playing_end"] = now + 180  # 3 ደቂቃ ጨዋታ
+                game_state["called_numbers_history"] = []
+                game_state["current_called_number"] = None
+    else:
+        game_state["status"] = "waiting"
+        game_state["countdown_end"] = 0
+        game_state["winner"] = None
+        game_state["winning_card"] = None
+
+    if game_state["status"] == "playing":
+        if now >= game_state["playing_end"]:
+            # ሰዓቱ ካለቀ ጨዋታው ሪሴት ይደረጋል
+            game_state["status"] = "waiting"
+            game_state["countdown_end"] = 0
+            game_state["winner"] = None
+            game_state["winning_card"] = None
+            taken_cards.clear()
+        else:
+            # በየጥቂት ሰኮንድ ውስጥ አዲስ ቁጥር ከ 1 እስከ 75 ማመንጨት
+            if not hasattr(app, 'last_call_time') or now - app.last_call_time >= 3:
+                app.last_call_time = now
+                all_nums = list(range(1, 76))
+                remaining = [n for n in all_nums if n not in game_state["called_numbers_history"]]
+                if remaining:
+                    called = random.choice(remaining)
+                    game_state["called_numbers_history"].append(called)
+                    game_state["current_called_number"] = called
+
+    timer_val = 45
+    if game_state["status"] == "countdown":
+        timer_val = max(0, int(game_state["countdown_end"] - now))
+    elif game_state["status"] == "playing":
+        timer_val = max(0, int(game_state["playing_end"] - now))
+
+    # --- አዲስ የተጨመሩ Live Stats እና Prize Pool ስሌቶች ---
+    active_players = len(set(taken_cards.values()))  # ልዩ ተጫዋቾች ብዛት
+    total_cards_count = len(taken_cards)             # አጠቃላይ የተያዙ ካርዶች
+    prize_pool = total_cards_count * STAKE_PRICE     # ጠቅላላ የሽልማት ገቢ
 
     return jsonify({
-        "status": game_status,
-        "timer": timer_countdown,
-        "taken_cards": taken_cards_map,
-        "current_called_number": current_called_number,
-        "winner": current_winner,
-        "winning_card": winning_card_id,
+        "status": game_state["status"],
+        "timer": timer_val,
+        "taken_cards": taken_cards,
+        "winner": game_state.get("winner"),
+        "winning_card": game_state.get("winning_card"),
+        "current_called_number": game_state.get("current_called_number"),
         "active_players_count": active_players,
         "total_cards_count": total_cards_count,
         "prize_pool": prize_pool
     })
 
+@app.route('/api/get_balance', methods=['POST'])
+def get_balance():
+    data = request.json or {}
+    user_id = str(data.get('user_id') or "default_user")
+    if user_id not in user_balances:
+        user_balances[user_id] = 100
+    return jsonify({"success": True, "balance": user_balances[user_id]})
+
+@app.route('/api/lock_card', methods=['POST'])
+def lock_card():
+    global game_state
+    now = time.time()
+    data = request.json or {}
+    card_id = str(data.get('card_id'))
+    user_id = str(data.get('user_id') or "default_user")
+
+    if user_id not in user_balances:
+        user_balances[user_id] = 100
+
+    # ጨዋታው በመጫወት ላይ (playing) ከሆነ አዲስ ካርድ መያዝ አይቻልም
+    if game_state["status"] == "playing":
+        return jsonify({"success": False, "message": "ጨዋታው ተጀምሯል! አሁን ካርድ መያዝ አይቻልም።"}), 400
+
+    if card_id in taken_cards and taken_cards[card_id] != user_id:
+        return jsonify({"success": False, "message": "ይህ ካርድ በሌላ ተጫዋች ተይዟል!"}), 400
+
+    existing_card = None
+    for cid, uid in list(taken_cards.items()):
+        if uid == user_id:
+            existing_card = cid
+            break
+    
+    if existing_card == card_id:
+        return jsonify({"success": True, "new_balance": user_balances[user_id]})
+
+    if existing_card:
+        del taken_cards[existing_card]
+    else:
+        if user_balances[user_id] < STAKE_PRICE:
+            return jsonify({"success": False, "message": "በቂ ሂሳብ የሎትም!"}), 400
+        user_balances[user_id] -= STAKE_PRICE
+
+    taken_cards[card_id] = user_id
+
+    if game_state["status"] == "waiting":
+        game_state["status"] = "countdown"
+        game_state["countdown_end"] = now + 45
+
+    return jsonify({"success": True, "new_balance": user_balances[user_id]})
+
+@app.route('/api/unlock_card', methods=['POST'])
+def unlock_card():
+    global game_state
+    data = request.json or {}
+    card_id = str(data.get('card_id'))
+    user_id = str(data.get('user_id') or "default_user")
+
+    if game_state["status"] == "playing":
+        return jsonify({"success": False, "message": "ጨዋታው በሂደት ላይ ስለሆነ ካርዱ ሊለቀቅ አይችልም፤ ነገር ግን ወደ መነሻ መመለስ ይችላሉ።"}), 400
+
+    if card_id in taken_cards and taken_cards[card_id] == user_id:
+        del taken_cards[card_id]
+        user_balances[user_id] += STAKE_PRICE
+        
+        if len(taken_cards) == 0:
+            game_state["status"] = "waiting"
+            game_state["countdown_end"] = 0
+
+        return jsonify({"success": True, "new_balance": user_balances[user_id]})
+
+    return jsonify({"success": False, "message": "አልተያዘም"}), 400
+
 @app.route('/api/bingo_win', methods=['POST'])
 def bingo_win():
-    global current_winner, winning_card_id, game_status, user_balances, taken_cards_map
+    global game_state
     data = request.json or {}
-    user_id = str(data.get('user_id'))
-    card_id = str(data.get('card_id'))
-
-    with game_lock:
-        if current_winner:
-            return jsonify({"success": False, "message": "ጨዋታው አልቋል አሸናፊ ተገኝቷል!"}), 400
-
-        total_cards_count = len(taken_cards_map)
-        prize_pool = total_cards_count * CARD_PRICE
-
-        current_winner = user_id
-        winning_card_id = card_id
-        game_status = "ended"
-
-        # Award prize pool to winner's balance
-        if user_id not in user_balances:
-            user_balances[user_id] = 500.0
-        user_balances[user_id] += prize_pool
-
-        return jsonify({
-            "success": True,
-            "message": f"እንኳን ደስ አለዎት! 🏆 {prize_pool} ብር አሸንፈዋል!"
-        })
+    user_id = str(data.get('user_id') or "default_user")
+    winning_card = str(data.get('card_id') or "1")
+    
+    total_pool = len(taken_cards) * STAKE_PRICE
+    prize = int(total_pool * 0.9)
+    if prize < STAKE_PRICE:
+        prize = STAKE_PRICE * 2
+        
+    if user_id not in user_balances:
+        user_balances[user_id] = 100
+    user_balances[user_id] += prize
+    
+    game_state["status"] = "waiting"
+    game_state["countdown_end"] = 0
+    game_state["winner"] = user_id
+    game_state["winning_card"] = winning_card
+    taken_cards.clear()
+    
+    return jsonify({
+        "success": True, 
+        "message": f"እንኳን ደስ አለዎት! በካርድ ቁጥር {winning_card} አሸንፈዋል! {prize} ብር ተሸልመዋል!",
+        "new_balance": user_balances[user_id]
+    })
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, threaded=True, debug=False)

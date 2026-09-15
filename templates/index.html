@@ -18,7 +18,7 @@
         .game-top-bar { display: flex; justify-content: space-between; align-items: center; background: #1f143a; padding: 10px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #3c2a6d; }
         .leave-btn { background: #7928ca; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         
-        .stats-box { display: flex; gap: 6px; }
+        .stats-box { display: flex; gap: 6px; align-items: center; }
         .stats-box span { background: #2c1b4d; padding: 4px 8px; border-radius: 6px; font-size: 11px; color: #f1c40f; border: 1px solid #3c2a6d; }
 
         .cards-grid-container { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; max-height: 320px; overflow-y: auto; background: #1f143a; padding: 10px; border-radius: 10px; border: 1px solid #3c2a6d; }
@@ -27,13 +27,14 @@
             background: #3c2a6d; color: #fff; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; border: 1px solid #523a8a; transition: all 0.2s;
         }
 
-        /* የእርሶ የተያዘ ካርድ (ብጫ) */
         .card-box.selected { background: #f39c12 !important; color: #000 !important; border-color: #fff !important; box-shadow: 0 0 8px #f39c12; }
-
-        /* በሌላ ተጫዋች የተያዘ ካርድ (ቀይ) */
         .card-box.taken { background: #e74c3c !important; color: #fff !important; cursor: not-allowed !important; opacity: 0.7; }
         
         .join-btn { background: linear-gradient(135deg, #f39c12, #f1c40f); border: none; width: 100%; padding: 16px; border-radius: 8px; color: #000; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        .timer-badge { background: #e74c3c !important; color: #fff !important; font-weight: bold; }
+        
+        /* ጨዋታው የሚካሄድበት ማያ ገጽ */
+        .gameplay-box { background: #1f143a; padding: 20px; border-radius: 14px; text-align: center; border: 1px solid #3c2a6d; margin-top: 15px; }
     </style>
 </head>
 <body>
@@ -59,10 +60,10 @@
     <div id="selection-screen" class="container">
         <div class="game-top-bar">
             <button id="leaveBtn" class="leave-btn" type="button">← Leave</button>
-            <h3 style="margin: 0; font-size: 14px; color: #f39c12;">Ayat Bingo</h3>
+            <h3 style="margin: 0; font-size: 14px; color: #f39c12;">ካርድ ይምረጡ</h3>
             <div class="stats-box">
+                <span id="timer-box" class="timer-badge" style="display:none;">⏱️ <b id="timer-val">45</b>s</span>
                 <span>W: <b id="wallet-val">--</b> Br</span>
-                <span>S: <b>10</b> Br</span>
             </div>
         </div>
 
@@ -72,6 +73,22 @@
         </div>
 
         <div class="cards-grid-container" id="cardsGrid"></div>
+    </div>
+
+    <!-- 3. GAMEPLAY SCREEN (ጨዋታው የሚጀምርበት) -->
+    <div id="gameplay-screen" class="container">
+        <div class="game-top-bar">
+            <h3 style="margin: 0; font-size: 14px; color: #2ecc71;">🎮 ጨዋታው ተጀምሯል!</h3>
+            <span style="color: #f39c12; font-size: 12px;">ካርድ #<b id="active-card-num">--</b></span>
+        </div>
+
+        <div class="gameplay-box">
+            <h2 style="color: #f39c12; margin-top: 0;">ቁጥሮች እየተጠሩ ነው...</h2>
+            <p style="color: #a08cc4; font-size: 14px;">የመረጡት ካርድ ተቆልፏል። የድል ጥሪዎችን ይጠብቁ!</p>
+            <div style="font-size: 40px; margin: 20px 0; color: #2ecc71;" id="called-number-display">🍀</div>
+        </div>
+
+        <button class="join-btn" style="background: #e74c3c; color: #fff;" onclick="location.reload()">ውጣ (Exit)</button>
     </div>
 
     <script>
@@ -87,10 +104,12 @@
             let mySelectedCard = null;
             let takenCardsMap = {};
             let currentWallet = 0;
+            let countdownInterval = null;
+            let timeLeft = 45;
+
             const totalBoards = 300;
             const gridContainer = document.getElementById('cardsGrid');
 
-            // 1. 300 ካርዶችን መፍጠር
             for (let i = 1; i <= totalBoards; i++) {
                 const btn = document.createElement('button');
                 btn.className = 'card-box';
@@ -100,7 +119,33 @@
                 gridContainer.appendChild(btn);
             }
 
-            // 2. የሂሳብ መጠን ከ Server ማምጣት
+            function startCountdown() {
+                stopCountdown();
+                timeLeft = 45;
+                document.getElementById('timer-val').textContent = timeLeft;
+                document.getElementById('timer-box').style.display = 'inline-block';
+
+                countdownInterval = setInterval(() => {
+                    timeLeft--;
+                    document.getElementById('timer-val').textContent = timeLeft;
+
+                    if (timeLeft <= 0) {
+                        stopCountdown();
+                        // 45 ሰከንድ ሲያልቅ ወደ 3ኛው የጨዋታ ገጽ ያስገባል
+                        document.getElementById('active-card-num').textContent = mySelectedCard;
+                        switchScreen('gameplay-screen');
+                    }
+                }, 1000);
+            }
+
+            function stopCountdown() {
+                if (countdownInterval) {
+                    clearInterval(countdownInterval);
+                    countdownInterval = null;
+                }
+                document.getElementById('timer-box').style.display = 'none';
+            }
+
             async function fetchBalance() {
                 try {
                     let res = await fetch('/api/get_balance', {
@@ -121,7 +166,6 @@
                 document.getElementById('wallet-val').textContent = currentWallet;
             }
 
-            // 3. SSE Connection (Real-time Sync)
             const eventSource = new EventSource('/events');
             eventSource.onmessage = function(event) {
                 try {
@@ -139,30 +183,18 @@
                     btn.classList.remove('taken', 'selected');
 
                     if (mySelectedCard == cardId) {
-                        btn.classList.add('selected'); // የራሳችን ካርድ (ብጫ)
+                        btn.classList.add('selected');
                     } else if (takenCardsMap[cardId] && takenCardsMap[cardId] !== telegramUser) {
-                        btn.classList.add('taken'); // የሌላ ሰው ካርድ (ቀይ)
+                        btn.classList.add('taken');
                     }
                 });
             }
 
-            // 4. ካርድ የመምረጥና የመቀነስ ሂደት
             async function handleCardClick(cardId) {
                 if (mySelectedCard == cardId) {
-                    // ካርዱን ሲመልስ
-                    let res = await fetch('/api/unlock_card', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ card_id: cardId, user_id: telegramUser })
-                    });
-                    let data = await res.json();
-                    if (data.success) {
-                        mySelectedCard = null;
-                        currentWallet = data.new_balance;
-                        updateWalletUI();
-                    }
+                    await unlockCurrentCard();
+                    stopCountdown();
                 } else {
-                    // አዲስ ካርድ ሲይዝ
                     let res = await fetch('/api/lock_card', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
@@ -172,15 +204,12 @@
                     let result = await res.json();
                     if (res.ok && result.success) {
                         if (mySelectedCard) {
-                            await fetch('/api/unlock_card', {
-                                method: 'POST',
-                                headers: {'Content-Type': 'application/json'},
-                                body: JSON.stringify({ card_id: mySelectedCard, user_id: telegramUser })
-                            });
+                            await unlockCurrentCard();
                         }
                         mySelectedCard = cardId;
                         currentWallet = result.new_balance;
                         updateWalletUI();
+                        startCountdown(); // 45 ሰከንድ መቁጠር ይጀምራል
                     } else {
                         alert(result.message || "ይህ ካርድ መያዝ አልተቻለም!");
                     }
@@ -189,24 +218,29 @@
                 updateCardsUI();
             }
 
+            async function unlockCurrentCard() {
+                if (!mySelectedCard) return;
+                let res = await fetch('/api/unlock_card', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ card_id: mySelectedCard, user_id: telegramUser })
+                });
+                let data = await res.json();
+                if (data.success) {
+                    currentWallet = data.new_balance;
+                    updateWalletUI();
+                }
+                mySelectedCard = null;
+            }
+
             fetchBalance();
 
             document.getElementById('joinRoomBtn').onclick = () => switchScreen('selection-screen');
-
             document.getElementById('leaveBtn').onclick = async () => {
                 if (mySelectedCard) {
-                    let res = await fetch('/api/unlock_card', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ card_id: mySelectedCard, user_id: telegramUser })
-                    });
-                    let data = await res.json();
-                    if(data.success) {
-                        currentWallet = data.new_balance;
-                        updateWalletUI();
-                    }
-                    mySelectedCard = null;
+                    await unlockCurrentCard();
                 }
+                stopCountdown();
                 switchScreen('home-screen');
             };
         });

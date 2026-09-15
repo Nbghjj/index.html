@@ -2,7 +2,8 @@ import time
 import random
 import threading
 import os
-from flask import Flask, render_template, request, jsonify, send_from_directory
+import asyncio
+from flask import Flask, render_template, request, jsonify
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -13,9 +14,9 @@ taken_cards = {}   # {card_id: user_id}
 STAKE_PRICE = 10
 MAX_CARDS_PER_USER = 4   # አንዱ ተጫዋች መያዝ የሚችለው ከፍተኛ የካርድ ብዛት
 
-# የቴሌግራም ቦት ቶከን እና የሰርቨር ማገናኛ ሊንክ (እዚህ ጋር የራስዎን ያስገቡ)
-BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN" 
-WEB_APP_URL = "https://your-domain.com/" # የ Render ሊንክዎ ወይም የሰርቨር አድራሻዎ
+# ያስገቡት ትክክለኛ የቦት ቶከን
+BOT_TOKEN = "8909328591:AAEay418mvQF9dRBqjtSKgPDM_T-WpWWJ84" 
+WEB_APP_URL = "https://your-domain.com/" # የ Render ሊንክዎ (ለምሳሌ: https://ayat-bingo.onrender.com/)
 
 game_state = {
     "status": "waiting",  # waiting, countdown, playing
@@ -72,9 +73,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def contact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     contact = update.message.contact
     user_id = str(update.effective_user.id)
-    phone_number = contact.phone_number
     
-    # ተጠቃሚው ሲመዘገብ መነሻ 100 ብር ቦነስ እንሰጠዋለን
     if user_id not in user_balances:
         user_balances[user_id] = 100
     
@@ -101,7 +100,6 @@ def auth_user():
 
 @app.route('/api/get_cards', methods=['GET'])
 def get_cards():
-    """ተጫዋቾች 300ኙን ልዩ ካርዶች እንዲያገኙ የሚያስችል API"""
     return jsonify({"success": True, "cards": BINGO_CARDS})
 
 @app.route('/api/get_state', methods=['GET'])
@@ -112,13 +110,13 @@ def get_state():
     if len(taken_cards) > 0:
         if game_state["status"] == "waiting":
             game_state["status"] = "countdown"
-            game_state["countdown_end"] = now + 45  # 45 ሰከንድ ቆጠራ
+            game_state["countdown_end"] = now + 45
             game_state["winner"] = None
             game_state["winning_card"] = None
         elif game_state["status"] == "countdown":
             if now >= game_state["countdown_end"]:
                 game_state["status"] = "playing"
-                game_state["playing_end"] = now + 180  # 3 ደቂቃ ጨዋታ
+                game_state["playing_end"] = now + 180
                 game_state["called_numbers_history"] = []
                 game_state["current_called_number"] = None
     else:
@@ -196,7 +194,7 @@ def lock_card():
 
     user_cards_count = sum(1 for uid in taken_cards.values() if uid == user_id)
     if user_cards_count >= MAX_CARDS_PER_USER:
-        return jsonify({"success": False, "message": f"ከፍተኛው የካርድ ገደብ (እስከ {MAX_CARDS_PER_USER} ካርዶች) ደርሰዋል!"}), 400
+        return jsonify({"success": False, "message": f"ከፍተኛው የካርድ ገደብ ደርሰዋል!"}), 400
 
     if user_balances[user_id] < STAKE_PRICE:
         return jsonify({"success": False, "message": "በቂ ሂሳብ የሎትም!"}), 400
@@ -218,7 +216,7 @@ def unlock_card():
     user_id = str(data.get('user_id') or "default_user")
 
     if game_state["status"] == "playing":
-        return jsonify({"success": False, "message": "ጨዋታው በሂደት ላይ ስለሆነ ካርዱ ሊለቀቅ አይችልም፤ ነገር ግን ወደ መነሻ መመለስ ይችላሉ።"}), 400
+        return jsonify({"success": False, "message": "ጨዋታው በሂደት ላይ ስለሆነ ካርዱ ሊለቀቅ አይችልም።"}), 400
 
     if card_id in taken_cards and taken_cards[card_id] == user_id:
         del taken_cards[card_id]
@@ -256,18 +254,22 @@ def bingo_win():
     
     return jsonify({
         "success": True, 
-        "message": f"እንኳን ደስ አለዎት! በካርድ ቁጥር {winning_card} አሸንፈዋል! {prize} ብር ተሸልመዋል!",
+        "message": f"እንኳን ደስ አለዎት! አሸንፈዋል!",
         "new_balance": user_balances[user_id]
     })
 
 def run_telegram_bot():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
     app_bot = ApplicationBuilder().token(BOT_TOKEN).build()
     app_bot.add_handler(CommandHandler("start", start))
     app_bot.add_handler(MessageHandler(filters.CONTACT, contact_handler))
-    app_bot.run_polling()
+    
+    print("Telegram Bot polling started successfully...")
+    app_bot.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
-    # ቴሌግራም ቦቱን ከ Flask ጋር በ Background Thread ማስኬድ
     bot_thread = threading.Thread(target=run_telegram_bot)
     bot_thread.daemon = True
     bot_thread.start()

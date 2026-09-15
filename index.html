@@ -385,7 +385,7 @@
         <div class="card-banner">
             <h3>AYAT BINGO</h3>
             <p>Admin: @Kiramk123</p>
-            <span>24/7 LIVE SYSTEM</span>
+            <span>🎁 WELCOME BONUS: 100 BIRR</span>
         </div>
         
         <div class="wallet-box">
@@ -403,7 +403,7 @@
             <div class="room-info">
                 <span class="stake-badge">10 BIRR</span>
                 <h4>Ayat Bingo Room</h4>
-                <p style="color: #a08cc4; font-size: 12px; margin: 2px 0;">• 24/7 LIVE ROOM</p>
+                <p style="color: #a08cc4; font-size: 12px; margin: 2px 0;">• AUTO-WIN DETECTION ACTIVE</p>
             </div>
             <div id="errorBanner" class="error-banner">⚠️ በቂ ገንዘብ የለም! እባክዎ መጀመሪያ ሂሳብዎን ይሙሉ</div>
             <p style="font-size: 13px; color: #a08cc4;">Active Players: <span id="player-count">64</span> / 300</p>
@@ -442,7 +442,7 @@
             <div class="called-number-display">
                 <p style="margin: 0; color: #a08cc4; font-size: 12px;">የተጠራው ቁጥር (Current Ball)</p>
                 <div id="currentBall" class="current-ball">--</div>
-                <p id="callStatus" style="margin: 0; font-size: 11px; color: #f1c40f;">ጨዋታው በሂደት ላይ ነው...</p>
+                <p id="callStatus" style="margin: 0; font-size: 11px; color: #f1c40f;">ሲስተሙ በራሱ አሸናፊውን ይቆጣጠራል...</p>
             </div>
 
             <div class="rendered-bingo-card">
@@ -456,7 +456,7 @@
                 </div>
             </div>
 
-            <button id="bingoClaimBtn" class="bingo-claim-btn" type="button">BINGO! (አሸነፍኩ)</button>
+            <button id="bingoClaimBtn" class="bingo-claim-btn" type="button">BINGO! (በራሱ ያረጋግጣል)</button>
         </div>
     </div>
 
@@ -515,11 +515,6 @@
         const BOT_TOKEN = "8909328591:AAEay418mvQF9dRBqjtSKgPDM_T-WpWWJ84";
         const ADMIN_CHAT_ID = "6496982318";
 
-        const bankAccounts = {
-            "Telebirr": "0940483108",
-            "CBE": "0940483108"
-        };
-
         function switchScreen(screenId) {
             document.querySelectorAll('.container').forEach(screen => {
                 screen.classList.remove('active-screen');
@@ -537,11 +532,18 @@
             }
 
             let telegramUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id.toString() : "guest_user";
-            let telegramUsername = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.username) ? "@" + tg.initDataUnsafe.user.username : "Guest Player";
-
             let walletKey = `ayat_wallet_${telegramUser}`;
+            
+            // 🎁 አዲስ ተጫዋች ሲገባ 100 Birr Bonus መስጫ
             let storedBalance = localStorage.getItem(walletKey);
-            let walletBalance = (storedBalance !== null && !isNaN(parseFloat(storedBalance))) ? parseFloat(storedBalance) : 100;
+            let walletBalance;
+
+            if (storedBalance === null || isNaN(parseFloat(storedBalance))) {
+                walletBalance = 100; // ለመጀመሪያ ጊዜ ተጫዋች የ100 ብር ቦነስ ይሰጣል
+                localStorage.setItem(walletKey, walletBalance);
+            } else {
+                walletBalance = parseFloat(storedBalance);
+            }
 
             const totalBoards = 300;
             const maxSelection = 1;
@@ -552,7 +554,6 @@
             let currentCardData = null;
             let calledNumbersSet = new Set();
             
-            // የጨዋታው መግቢያ ክፍያ ወደ 10 BIRR ተቀይሯል
             const stakeAmount = 10; 
             let timerStarted = false;
 
@@ -571,7 +572,6 @@
             const homeWalletVal = document.getElementById('home-wallet-val');
             const walletVal = document.getElementById('wallet-val');
             const stakeVal = document.getElementById('stake-val');
-            const winVal = document.getElementById('win-val');
             const currentBall = document.getElementById('currentBall');
             const bingoMatrixGrid = document.getElementById('bingoMatrixGrid');
             const cardNumLabel = document.getElementById('cardNumLabel');
@@ -586,7 +586,6 @@
             }
             updateWallets();
 
-            // Direct Join Room Action
             if (joinRoomBtn) {
                 joinRoomBtn.addEventListener('click', function(e) {
                     e.preventDefault();
@@ -602,25 +601,17 @@
             }
 
             if (depositBtn) {
-                depositBtn.onclick = function() {
-                    document.getElementById('depositModal').style.display = 'flex';
-                };
+                depositBtn.onclick = function() { document.getElementById('depositModal').style.display = 'flex'; };
             }
             if (document.getElementById('closeDepositModal')) {
-                document.getElementById('closeDepositModal').onclick = function() {
-                    document.getElementById('depositModal').style.display = 'none';
-                };
+                document.getElementById('closeDepositModal').onclick = function() { document.getElementById('depositModal').style.display = 'none'; };
             }
 
             if (withdrawBtn) {
-                withdrawBtn.onclick = function() {
-                    document.getElementById('withdrawModal').style.display = 'flex';
-                };
+                withdrawBtn.onclick = function() { document.getElementById('withdrawModal').style.display = 'flex'; };
             }
             if (document.getElementById('closeWithdrawModal')) {
-                document.getElementById('closeWithdrawModal').onclick = function() {
-                    document.getElementById('withdrawModal').style.display = 'none';
-                };
+                document.getElementById('closeWithdrawModal').onclick = function() { document.getElementById('withdrawModal').style.display = 'none'; };
             }
 
             function generateCardData(cardId) {
@@ -753,6 +744,16 @@
                     if(currentBall) currentBall.textContent = `${letter}-${calledNum}`;
 
                     markMatchingCell(calledNum);
+
+                    if (checkBingoWin()) {
+                        clearInterval(gameInterval);
+                        let winAmt = 3000;
+                        walletBalance += winAmt;
+                        updateWallets();
+                        setTimeout(() => {
+                            showResult(true, `🎉 BINGO! ስርዓቱ በራሱ አረጋግጧል! ${winAmt} Birr አሸንፈዋል።`);
+                        }, 500);
+                    }
                 }, 3000);
             }
 
@@ -799,15 +800,14 @@
 
             if (bingoClaimBtn) {
                 bingoClaimBtn.onclick = function() {
-                    let isWinner = checkBingoWin();
-                    clearInterval(gameInterval);
-                    if (isWinner) {
+                    if (checkBingoWin()) {
+                        clearInterval(gameInterval);
                         let winAmt = 3000;
                         walletBalance += winAmt;
                         updateWallets();
-                        showResult(true, `እንኳን ደስ አለዎት! ${winAmt} Birr አሸንፈዋል።`);
+                        showResult(true, `🎉 BINGO! ${winAmt} Birr አሸንፈዋል።`);
                     } else {
-                        showResult(false, "ያልተሟላ BINGO! አሸናፊ መስመር የለም።");
+                        alert("ገና BINGO አልሞላም! ቁጥሮችን ይከታተሉ።");
                     }
                 };
             }

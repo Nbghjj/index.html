@@ -96,7 +96,7 @@
     <div id="gameplay-screen" class="container">
         <div class="gameplay-header">
             <span style="color: #f39c12; font-weight: bold; font-size: 14px;">Ayat Bingo - Live</span>
-            <button class="leave-btn" style="background: #e74c3c;" onclick="location.reload()">Exit</button>
+            <button class="leave-btn" style="background: #e74c3c;" onclick="exitToSelection()">Exit</button>
         </div>
 
         <div class="called-number-box">
@@ -130,9 +130,8 @@
         let mySelectedCard = null;
         let takenCardsMap = {};
         let currentWallet = 0;
-        let numberCallerInterval = null;
+        let lastWinnerNotified = null;
         
-        // ዩዘር ਆይዲ በቋሚነት እንዲያዝ (በብሮውዘር ሪፍሬሽ ጊዜ እንዳይቀየር)
         let telegramUser = localStorage.getItem("bingo_user_id");
         if (!telegramUser) {
             telegramUser = "user_" + Math.floor(Math.random() * 100000);
@@ -198,8 +197,28 @@
             try {
                 let res = await fetch('/api/get_state');
                 let gameState = await res.json();
-                
-                // ጨዋታው እንደገና ወደ waiting/countdown ሲመለስ ካርዱን ማጽዳት
+
+                // ሌላ ተጫዋች አሸንፎ ከሆነ ማሳወቂያ ማሳየት እና ወደ ካርድ መምረጫ ስክሪን መመለስ
+                if (gameState.winner && gameState.winner !== lastWinnerNotified) {
+                    lastWinnerNotified = gameState.winner;
+                    alert(`ጨዋታው አልቋል! አሸናፊው ተጫዋች በካርድ ቁጥር ${gameState.winning_card || '--'} አሸንፏል!`);
+                    mySelectedCard = null;
+                    switchScreen('selection-screen');
+                    updateCardsUI();
+                    fetchBalance();
+                    return;
+                }
+
+                if (!gameState.winner) {
+                    lastWinnerNotified = null;
+                }
+
+                // ሰርቨሩ የሚጠራውን ቁጥር ማሳየት
+                if (gameState.current_called_number) {
+                    let numDisplay = document.getElementById('called-number-display');
+                    if (numDisplay) numDisplay.textContent = gameState.current_called_number;
+                }
+
                 if (gameState.status === "waiting" || gameState.status === "countdown") {
                     if (!gameState.taken_cards || Object.keys(gameState.taken_cards).length === 0) {
                         mySelectedCard = null;
@@ -242,18 +261,15 @@
                     }
 
                     if (hasCard && activeCard) {
-                        renderUserCardBoard(activeCard);
-                        switchScreen('gameplay-screen');
-                        startCallingNumbers();
+                        if (currentActive !== 'gameplay-screen') {
+                            renderUserCardBoard(activeCard);
+                            switchScreen('gameplay-screen');
+                        }
                     } else {
                         switchScreen('home-screen');
                     }
                 } else {
                     if (currentActive === 'gameplay-screen') {
-                        if (numberCallerInterval) {
-                            clearInterval(numberCallerInterval);
-                            numberCallerInterval = null;
-                        }
                         switchScreen('home-screen');
                     }
 
@@ -289,44 +305,57 @@
             });
         }
 
-        function startCallingNumbers() {
-            if (numberCallerInterval) return;
-            
-            let availableNumbers = Array.from({length: 75}, (_, i) => i + 1);
-            availableNumbers.sort(() => Math.random() - 0.5);
-
-            let index = 0;
-            numberCallerInterval = setInterval(() => {
-                let numDisplay = document.getElementById('called-number-display');
-                if (index < availableNumbers.length) {
-                    let num = availableNumbers[index];
-                    if(numDisplay) numDisplay.textContent = num;
-                    index++;
-                } else {
-                    clearInterval(numberCallerInterval);
-                    numberCallerInterval = null;
-                }
-            }, 2000);
-        }
-
-        // አሸናፊ ሆኖ ሲፒአይ (API) የሚጠራበት ትክክለኛ አሰራር
+        // BINGO ሲሉ ሰርቨሩን ማሳወቅ እና ወደ ካርድ መምረጫ ስክሪን መመለስ
         async function checkBingoWin() {
+            if (!mySelectedCard) {
+                alert("የመረጡት ካርድ የለም!");
+                return;
+            }
             try {
                 let res = await fetch('/api/bingo_win', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ user_id: telegramUser })
+                    body: JSON.stringify({ user_id: telegramUser, card_id: mySelectedCard })
                 });
                 let result = await res.json();
                 if (result.success) {
                     alert(result.message);
-                    window.location.reload(); // ጨዋታው ሲጠናቀቅ አዲስ ዙር እንዲጀምር ሪፍሬሽ ይደረጋል
+                    mySelectedCard = null;
+                    switchScreen('selection-screen');
+                    updateCardsUI();
+                    fetchBalance();
                 } else {
                     alert(result.message || "ቢንጎ ማረጋገጥ አልተቻለም!");
                 }
             } catch (e) {
                 alert("የኔትወርክ ችግር ተፈጥሯል!");
             }
+        }
+
+        async function fetchBalance() {
+            try {
+                let res = await fetch('/api/get_balance', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ user_id: telegramUser })
+                });
+                let data = await res.json();
+                currentWallet = data.balance;
+                updateWalletUI();
+            } catch (e) {
+                console.error("Balance Fetch Error", e);
+            }
+        }
+
+        function updateWalletUI() {
+            let hw = document.getElementById('home-wallet-val');
+            let ww = document.getElementById('wallet-val');
+            if(hw) hw.textContent = currentWallet;
+            if(ww) ww.textContent = currentWallet;
+        }
+
+        function exitToSelection() {
+            switchScreen('selection-screen');
         }
 
         document.addEventListener("DOMContentLoaded", function() {
@@ -342,28 +371,6 @@
                     btn.onclick = () => handleCardClick(i);
                     gridContainer.appendChild(btn);
                 }
-            }
-
-            async function fetchBalance() {
-                try {
-                    let res = await fetch('/api/get_balance', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ user_id: telegramUser })
-                    });
-                    let data = await res.json();
-                    currentWallet = data.balance;
-                    updateWalletUI();
-                } catch (e) {
-                    console.error("Balance Fetch Error", e);
-                }
-            }
-
-            function updateWalletUI() {
-                let hw = document.getElementById('home-wallet-val');
-                let ww = document.getElementById('wallet-val');
-                if(hw) hw.textContent = currentWallet;
-                if(ww) ww.textContent = currentWallet;
             }
 
             async function handleCardClick(cardId) {

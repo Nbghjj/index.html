@@ -99,8 +99,9 @@ def lock_card():
     if user_id not in user_balances:
         user_balances[user_id] = 100
 
+    # ጨዋታው ከተጀመረ (playing ከሆነ) አዲስ ካርድ መያዝ/መቀላቀል በጥብቅ ይከለከላል!
     if game_state["status"] == "playing":
-        return jsonify({"success": False, "message": "ጨዋታው ተጀምሯል!"}), 400
+        return jsonify({"success": False, "message": "ጨዋታው ተጀምሯል! አሁን አዲስ ካርድ መያዝ አይቻልም።"}), 400
 
     if card_id in taken_cards and taken_cards[card_id] != user_id:
         return jsonify({"success": False, "message": "ይህ ካርድ በሌላ ተጫዋች ተይዟል!"}), 400
@@ -137,15 +138,17 @@ def unlock_card():
     user_id = str(data.get('user_id') or "default_user")
 
     if card_id in taken_cards and taken_cards[card_id] == user_id:
+        # ካርዱን ከ taken_cards እንሰርዘዋለን (ተጫዋቹ መውጣት/ማቋረጥ ይችላል)
         del taken_cards[card_id]
-        # ተጫዋቹ ካርዱን ሲለቅ ገንዘቡ ተመላሽ እንዲሆን ተመልሷል!
-        user_balances[user_id] += STAKE_PRICE
+        
+        # ማስታወሻ: ጨዋታው ውስጥም ሆነ ቆጠራ ላይ ሳለ ሲወጣ ገንዘቡ ተመላሽ እንዳይሆን 
+        # (user_balances[user_id] += STAKE_PRICE) የሚለው ኮድ entionally ጠፍቷል።
         
         if len(taken_cards) == 0:
             game_state["status"] = "waiting"
             game_state["countdown_end"] = 0
 
-        return jsonify({"success": True, "new_balance": user_balances[user_id]})
+        return jsonify({"success": True, "new_balance": user_balances.get(user_id, 100)})
 
     return jsonify({"success": False, "message": "አልተያዘም"}), 400
 

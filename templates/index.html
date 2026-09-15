@@ -34,6 +34,9 @@
         .timer-badge { background: #e74c3c !important; color: #fff !important; font-weight: bold; display: none; }
         
         .gameplay-box { background: #1f143a; padding: 20px; border-radius: 14px; text-align: center; border: 1px solid #3c2a6d; margin-top: 15px; }
+        
+        /* BINGO ቁጥሮች የሚጠሩበት ግዙፍ ዲዛይን */
+        .bingo-ball { font-size: 55px; font-weight: bold; color: #2ecc71; margin: 15px 0; background: #2c1b4d; display: inline-block; padding: 15px 30px; border-radius: 50%; border: 2px solid #f39c12; box-shadow: 0 0 15px rgba(243, 156, 18, 0.4); }
     </style>
 </head>
 <body>
@@ -83,11 +86,14 @@
 
         <div class="gameplay-box">
             <h2 style="color: #f39c12; margin-top: 0;">ቁጥሮች እየተጠሩ ነው...</h2>
-            <p style="color: #a08cc4; font-size: 14px;">ሁሉም ተጫዋቾች ገብተዋል! የድል ጥሪዎችን ይጠብቁ።</p>
-            <div style="font-size: 40px; margin: 20px 0; color: #2ecc71;" id="called-number-display">🍀</div>
+            <p style="color: #a08cc4; font-size: 13px;">ሁሉም ተጫዋቾች ገብተዋል! B-I-N-G-O ቁጥሮች እየወጡ ነው።</p>
+            
+            <!-- ከ 1 - 75 የሚወጣበት ቦታ -->
+            <div class="bingo-ball" id="called-number-display">--</div>
+            <div id="bingo-letter-label" style="font-size: 16px; color: #f39c12; font-weight: bold; margin-bottom: 10px;">ሰሌዳ እየተጠበቀ ነው...</div>
         </div>
 
-        <button class="join-btn" style="background: #e74c3c; color: #fff;" onclick="location.reload()">ውጣ (Exit)</button>
+        <button class="join-btn" style="background: #e74c3c; color: #fff; margin-top: 15px;" onclick="location.reload()">ውጣ (Exit)</button>
     </div>
 
     <script>
@@ -104,10 +110,7 @@
             let takenCardsMap = {};
             let currentWallet = 0;
             
-            // Frontend Countdown Variables
-            let countdownTimer = null;
-            let timeLeft = 45;
-            let isCounting = false;
+            let numberCallerInterval = null;
 
             const totalBoards = 300;
             const gridContainer = document.getElementById('cardsGrid');
@@ -141,42 +144,38 @@
                 document.getElementById('wallet-val').textContent = currentWallet;
             }
 
-            // JavaScript ቆጠራ ማስጀመሪያ
-            function startFrontendCountdown() {
-                if (isCounting) return; // አስቀድሞ እየቆጠረ ከሆነ አደግግሞ አይጀምርም
-                isCounting = true;
-                timeLeft = 45;
-                document.getElementById('timer-val').textContent = timeLeft;
-                document.getElementById('timer-box').style.display = 'inline-block';
+            // BINGO 1-75 ቁጥሮችን በየሰከንዱ በጋራ መጥሪያ ሎጂክ
+            function startCallingNumbers() {
+                if (numberCallerInterval) return; // አስቀድሞ እየጠራ ከሆነ አደግግሞ አይጀምር
+                
+                let availableNumbers = Array.from({length: 75}, (_, i) => i + 1);
+                // ቁጥሮቹን መቀላቀል (Shuffle)
+                availableNumbers.sort(() => Math.random() - 0.5);
 
-                countdownTimer = setInterval(() => {
-                    timeLeft--;
-                    document.getElementById('timer-val').textContent = timeLeft;
+                let index = 0;
+                numberCallerInterval = setInterval(() => {
+                    if (index < availableNumbers.length) {
+                        let num = availableNumbers[index];
+                        let letter = '';
+                        
+                        // የ B-I-N-G-O ክልል መለያ
+                        if (num >= 1 && num <= 15) letter = 'B';
+                        else if (num >= 16 && num <= 30) letter = 'I';
+                        else if (num >= 31 && num <= 45) letter = 'N';
+                        else if (num >= 46 && num <= 60) letter = 'G';
+                        else if (num >= 61 && num <= 75) letter = 'O';
 
-                    if (timeLeft <= 0) {
-                        stopFrontendCountdown();
-                        // 45 ሰከንድ ሲያልቅ ካርድ የያዘ ወደ ጨዋታው ገጽ ይገባል
-                        if (mySelectedCard) {
-                            document.getElementById('active-card-num').textContent = mySelectedCard;
-                            switchScreen('gameplay-screen');
-                        } else {
-                            switchScreen('home-screen');
-                            alert("ጨዋታው ተጀምሯል!");
-                        }
+                        document.getElementById('called-number-display').textContent = `${letter}-${num}`;
+                        document.getElementById('bingo-letter-label').textContent = `አሁን የተጠራው ቁጥር: ${letter} ቤተሰብ (${num})`;
+                        index++;
+                    } else {
+                        clearInterval(numberCallerInterval);
+                        numberCallerInterval = null;
                     }
-                }, 1000);
+                }, 1500); // በየ 1.5 ሰከንድ አንድ ቁጥር ይጠራል
             }
 
-            function stopFrontendCountdown() {
-                if (countdownTimer) {
-                    clearInterval(countdownTimer);
-                    countdownTimer = null;
-                }
-                isCounting = false;
-                document.getElementById('timer-box').style.display = 'none';
-            }
-
-            // Real-time SSE Connection
+            // Real-time SSE Connection from Server
             const eventSource = new EventSource('/events');
             eventSource.onmessage = function(event) {
                 try {
@@ -184,8 +183,6 @@
                     
                     if (gameState.taken_cards) {
                         takenCardsMap = gameState.taken_cards;
-                        
-                        // የተጠቃሚውን ካርድ በራስሰር ከtaken_cards ማረጋገጥ
                         for (let cardId in takenCardsMap) {
                             if (takenCardsMap[cardId] === telegramUser) {
                                 mySelectedCard = cardId;
@@ -195,12 +192,38 @@
                         updateCardsUI();
                     }
 
-                    // ቢያንስ 1 ካርድ ከተያዘ ቆጠራው በ JavaScript በኩል ይጀምራል
-                    let takenCount = Object.keys(takenCardsMap).length;
-                    if (takenCount > 0) {
-                        startFrontendCountdown();
+                    // ሰርቨሩ የላከውን የሰዓት ቆጠራ (Countdown) በሁሉም ስክሪን ላይ እኩል ማሳየት
+                    if (gameState.status === "countdown") {
+                        document.getElementById('timer-val').textContent = gameState.timer;
+                        document.getElementById('timer-box').style.display = 'inline-block';
                     } else {
-                        stopFrontendCountdown();
+                        document.getElementById('timer-box').style.display = 'none';
+                    }
+
+                    // ጨዋታው ሲጀመር (status: playing) - ሁሉም ካርድ የያዙ ወደ ጨዋታው ገጽ ይገባሉ ቁጥሮችም መጥራት ይጀምራሉ
+                    if (gameState.status === "playing") {
+                        let hasCard = false;
+                        let activeCard = mySelectedCard;
+                        for (let cardId in takenCardsMap) {
+                            if (takenCardsMap[cardId] === telegramUser) {
+                                hasCard = true;
+                                activeCard = cardId;
+                                break;
+                            }
+                        }
+
+                        if (hasCard && activeCard) {
+                            document.getElementById('active-card-num').textContent = activeCard;
+                            switchScreen('gameplay-screen');
+                            startCallingNumbers(); // 1-75 BINGO ቁጥሮች መጥራት ይጀምራሉ
+                        } else {
+                            switchScreen('home-screen');
+                        }
+                    } else if (gameState.status === "waiting") {
+                        if (numberCallerInterval) {
+                            clearInterval(numberCallerInterval);
+                            numberCallerInterval = null;
+                        }
                     }
                 } catch(e) {}
             };

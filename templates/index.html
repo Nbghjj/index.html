@@ -88,7 +88,7 @@
 
         <div style="display: flex; justify-content: space-between; color: #a08cc4; margin-bottom: 8px; font-size: 13px;">
             <span id="boards-count">Boards: 0/4</span>
-            <span style="color: #2ecc71; font-weight: bold;">● AUTO-MARK & VOICE LIVE</span>
+            <span style="color: #2ecc71; font-weight: bold;">● 4 CARDS & AUTO-MARK LIVE</span>
         </div>
 
         <div class="cards-grid-container" id="cardsGrid"></div>
@@ -107,6 +107,7 @@
             <div class="game-status-text" id="game-status-label">Auto-marking & Audio Active...</div>
         </div>
 
+        <!-- የተመረጡት እስከ 4 የሚደርሱ ካርዶች እዚህ ይታያሉ -->
         <div id="gameplayCardsContainer"></div>
 
         <button class="bingo-action-btn" onclick="checkBingoWin()">BINGO! (ማንኛውንም ካርድ ያረጋግጡ)</button>
@@ -139,10 +140,9 @@
             telegramUser = tg.initDataUnsafe.user.id.toString();
         }
 
-        // የድምፅ ማስታወቂያ (SpeechSynthesis እና Web Audio Chime)
+        // ቁጥር ሲጠራ በድምፅ እና በቺም ዜማ ማስታወቂያ መስጫ
         function speakNumberAndBingo(number) {
             if ('speechSynthesis' in window) {
-                // ቋንቋውን እንግሊዝኛ በማድረግ ቁጥሩን በድምፅ እንዲጠራው እናደርጋለን
                 let utterance = new SpeechSynthesisUtterance(number.toString());
                 utterance.rate = 1.0; 
                 utterance.pitch = 1.1;
@@ -151,7 +151,6 @@
             playChimeSound();
         }
 
-        // አጭር የደወል/የቺም ዜማ በ Web Audio API ማጫወቻ
         function playChimeSound() {
             try {
                 let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -159,8 +158,8 @@
                 let gainNode = audioCtx.createGain();
 
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5 ዜማ
-                osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15); // A5
+                osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15);
 
                 gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
@@ -290,7 +289,6 @@
                     if (!calledNumbersSet.has(parsedNum)) {
                         calledNumbersSet.add(parsedNum);
                         
-                        // አዲስ ቁጥር ሲመጣ ብቻ በድምፅ እንዲጠራ እና ማርክ እንዲደረግ
                         if (lastSpokenNumber !== currentNum) {
                             lastSpokenNumber = currentNum;
                             speakNumberAndBingo(currentNum);

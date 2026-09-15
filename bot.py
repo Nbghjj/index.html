@@ -20,7 +20,7 @@ game_state = {
 def broadcast_state():
     q.put(json.dumps(game_state))
 
-# የተስተካከለው የሰዓት ቆጣሪ (Timer Worker)
+# የጋራ ቆጣሪ (Global Timer Worker)
 def global_timer_worker():
     global game_state
     while True:
@@ -37,7 +37,7 @@ def global_timer_worker():
                 game_state["timer"] = i - 1
                 broadcast_state()
 
-            # ካርዶቹ ሁሉም ከጠፉ ወደ waiting ይመለሳል፣ ካልተለቁ ወደ playing ይገባል
+            # ሰዓቱ ሲያልቅ
             if len(taken_cards) == 0:
                 game_state["status"] = "waiting"
                 broadcast_state()
@@ -121,7 +121,6 @@ def unlock_card():
         del taken_cards[card_id]
         user_balances[user_id] += STAKE_PRICE
         
-        # ካርዱ ሲለቀቅ እና ምንም ካርድ ሳይቀር ሲቀር Status-ውን ወደ waiting እንመልሰዋለን
         if len(taken_cards) == 0:
             game_state["status"] = "waiting"
 
@@ -131,4 +130,5 @@ def unlock_card():
     return jsonify({"success": False, "message": "ካርዱ አልተያዘም"}), 400
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    # threaded=True መጨመሩ የ Real-time ግንኙነቶች ሌላውን ስራ እንዳያቆሙ ይረዳል
+    app.run(host='0.0.0.0', port=5000, threaded=True)

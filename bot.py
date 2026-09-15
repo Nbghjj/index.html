@@ -14,22 +14,29 @@ game_state = {
     "taken_cards": taken_cards
 }
 
-# ሰዓቱን በየሰከንዱ የሚያስኬደው እና ቆጠራውን የሚያስተካክለው ሉፕ
+# 💡 የተስተካከለ የሰዓት ቆጠራ ሉፕ (Countdown & Timer Logic)
 def game_timer_loop():
     while True:
         time.sleep(1)
         
-        if game_state["status"] == "countdown":
-            if len(taken_cards) == 0:
-                game_state["status"] = "waiting"
+        # ማንኛውም ካርድ ከተያዘ (ካርዶቹ ከ 0 በላይ ከሆኑ) ሰዓቱ መቁጠር ይጀምራል
+        if len(taken_cards) > 0:
+            if game_state["status"] == "waiting":
+                game_state["status"] = "countdown"
                 game_state["timer"] = 45
-            elif game_state["timer"] > 1:
-                game_state["timer"] -= 1
-            else:
-                game_state["timer"] = 0
-                game_state["status"] = "playing"
+            elif game_state["status"] == "countdown":
+                if game_state["timer"] > 1:
+                    game_state["timer"] -= 1
+                else:
+                    game_state["timer"] = 0
+                    game_state["status"] = "playing"
+        else:
+            # ካርድ ካልተያዘ ወይም ሁሉም ከተለቀቁ ወደ waiting ይመለሳል
+            game_state["status"] = "waiting"
+            game_state["timer"] = 45
 
-        elif game_state["status"] == "playing":
+        # ጨዋታው playing ከሆነ ለ 15 ሰከንድ ቆይቶ እንደገና ወደ waiting ይመለሳል
+        if game_state["status"] == "playing":
             time.sleep(15)
             game_state["status"] = "waiting"
             game_state["timer"] = 45
@@ -76,10 +83,10 @@ def lock_card():
         taken_cards[card_id] = user_id
         user_balances[user_id] -= STAKE_PRICE
 
-    if len(taken_cards) > 0 and game_state["status"] != "playing":
+    # ካርዱ ሲያዝ የሰዓት ቆጠራው ወዲያውኑ እንዲጀምር ይደረጋል
+    if game_state["status"] == "waiting":
         game_state["status"] = "countdown"
-        if game_state["timer"] <= 0 or game_state["timer"] > 45:
-            game_state["timer"] = 45
+        game_state["timer"] = 45
 
     return jsonify({"success": True, "new_balance": user_balances[user_id]})
 
@@ -94,7 +101,7 @@ def unlock_card():
         del taken_cards[card_id]
         user_balances[user_id] += STAKE_PRICE
         
-        if len(taken_cards) == 0 and game_state["status"] == "countdown":
+        if len(taken_cards) == 0:
             game_state["status"] = "waiting"
             game_state["timer"] = 45
 

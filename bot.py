@@ -26,7 +26,6 @@ def broadcast_state():
         except:
             clients.remove(client_queue)
 
-# ሰዓቱ እንዳይጠፋ እና አንድን ቆጠራ ጨርሶ እስኪያልቅ ድረስ በደህንነት የሚሰራ ሎጂክ
 def global_timer_worker():
     global game_state, timer_running
     while True:
@@ -36,10 +35,8 @@ def global_timer_worker():
             game_state["timer"] = 45
             broadcast_state()
 
-            # 45 ሰከንድ እስከ 0 መቁጠር
             while game_state["timer"] > 0:
                 time.sleep(1)
-                # ካርዶች ሙሉ በሙሉ ከጠፉ ብቻ ቆጠራውን እናቆማለን
                 if len(taken_cards) == 0:
                     break
                 game_state["timer"] -= 1
@@ -61,6 +58,7 @@ def global_timer_worker():
         else:
             time.sleep(0.5)
 
+# አፕሊኬሽኑ ሲጀመር ቆጣሪውን ማስጀመር (Thread duplication እንዳይፈጠር)
 threading.Thread(target=global_timer_worker, daemon=True).start()
 
 @app.route('/')
@@ -138,7 +136,6 @@ def unlock_card():
         del taken_cards[card_id]
         user_balances[user_id] += STAKE_PRICE
         
-        # ተጫዋቾቹ ካርዳቸውን ሲለቁ ካርዶች ከጠፉ ብቻ ቆጠራው ይሰረዛል
         if len(taken_cards) == 0 and game_state["status"] == "countdown":
             game_state["status"] = "waiting"
             game_state["timer"] = 45
@@ -151,4 +148,4 @@ def unlock_card():
     return jsonify({"success": False, "message": "ካርዱ አልተያዘም"}), 400
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, threaded=True)
+    app.run(host='0.0.0.0', port=5000, threaded=True, debug=False)

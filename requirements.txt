@@ -1,4 +1,3 @@
 flask
-gunicorn
-gevent
-packaging
+python-telegram-bot
+requests

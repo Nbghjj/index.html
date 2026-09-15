@@ -29,7 +29,7 @@ def generate_unique_bingo_cards(total_cards=300):
     while card_id <= total_cards:
         b_col = tuple(sorted(random.sample(range(1, 16), 5)))
         i_col = tuple(sorted(random.sample(range(16, 31), 5)))
-        n_col = tuple(sorted(range(31, 46), 4))  # መሀል ላይ Free ስለሚኖር 4 ቁጥር
+        n_col = tuple(sorted(random.sample(range(31, 46), 4)))  # እዚህ ላይ ትክክለኛው random.sample ተስተካክሏል
         g_col = tuple(sorted(random.sample(range(46, 61), 5)))
         o_col = tuple(sorted(random.sample(range(61, 76), 5)))
         

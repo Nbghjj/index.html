@@ -31,8 +31,6 @@
         .card-box.taken { background: #e74c3c !important; color: #fff !important; cursor: not-allowed !important; opacity: 0.7; }
         
         .join-btn { background: linear-gradient(135deg, #f39c12, #f1c40f); border: none; width: 100%; padding: 16px; border-radius: 8px; color: #000; font-weight: bold; cursor: pointer; margin-top: 15px; }
-        
-        /* ቆጣሪው በነባሪ ተደብቆ እንዲቆይ እና ሲጀመር እንዲታይ */
         .timer-badge { background: #e74c3c !important; color: #fff !important; font-weight: bold; display: none; }
         
         .gameplay-box { background: #1f143a; padding: 20px; border-radius: 14px; text-align: center; border: 1px solid #3c2a6d; margin-top: 15px; }
@@ -105,6 +103,9 @@
             let mySelectedCard = null;
             let takenCardsMap = {};
             let currentWallet = 0;
+            let countdownTimer = null;
+            let timeLeft = 45;
+            let isCounting = false;
 
             const totalBoards = 300;
             const gridContainer = document.getElementById('cardsGrid');
@@ -138,7 +139,41 @@
                 document.getElementById('wallet-val').textContent = currentWallet;
             }
 
-            // SSE Connection (Realtime synchronization from server)
+            function startLocalCountdown() {
+                if (isCounting) return;
+                isCounting = true;
+                timeLeft = 45;
+                document.getElementById('timer-val').textContent = timeLeft;
+                document.getElementById('timer-box').style.display = 'inline-block';
+
+                countdownTimer = setInterval(() => {
+                    timeLeft--;
+                    document.getElementById('timer-val').textContent = timeLeft;
+
+                    if (timeLeft <= 0) {
+                        stopLocalCountdown();
+                        // 45 ሰከንድ ሲያልቅ ካርድ የያዘ ሁሉ ወደ ጨዋታው ገጽ ይገባል
+                        if (mySelectedCard) {
+                            document.getElementById('active-card-num').textContent = mySelectedCard;
+                            switchScreen('gameplay-screen');
+                        } else {
+                            switchScreen('home-screen');
+                            alert("ጨዋታው ተጀምሯል! ቀጣዩን ዙር ይጠብቁ።");
+                        }
+                    }
+                }, 1000);
+            }
+
+            function stopLocalCountdown() {
+                if (countdownTimer) {
+                    clearInterval(countdownTimer);
+                    countdownTimer = null;
+                }
+                isCounting = false;
+                document.getElementById('timer-box').style.display = 'none';
+            }
+
+            // Real-time SSE Connection
             const eventSource = new EventSource('/events');
             eventSource.onmessage = function(event) {
                 try {
@@ -149,23 +184,10 @@
                         updateCardsUI();
                     }
 
-                    // ሰርቨሩ status-ውን 'countdown' ሲለው ሰዓቱ በስክሪኑ ላይ እንዲታይ እና እንዲቀንስ ማድረግ
-                    if (gameState.status === "countdown") {
-                        document.getElementById('timer-val').textContent = gameState.timer;
-                        document.getElementById('timer-box').style.display = 'inline-block';
+                    if (gameState.start_countdown) {
+                        startLocalCountdown();
                     } else {
-                        document.getElementById('timer-box').style.display = 'none';
-                    }
-
-                    // ሰዓቱ 0 ሲደርስ (status 'playing' ሲሆን) ሁሉም ተጫዋቾች ወደ ጨዋታው ገጽ ይገባሉ
-                    if (gameState.status === "playing") {
-                        if (mySelectedCard) {
-                            document.getElementById('active-card-num').textContent = mySelectedCard;
-                            switchScreen('gameplay-screen');
-                        } else {
-                            switchScreen('home-screen');
-                            alert("ጨዋታው ተጀምሯል! ቀጣዩን ዙር ይጠብቁ።");
-                        }
+                        stopLocalCountdown();
                     }
                 } catch(e) {}
             };

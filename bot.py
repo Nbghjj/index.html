@@ -1,11 +1,9 @@
 import json
-import queue
 import time
 import threading
 from flask import Flask, render_template, Response, request, jsonify
 
 app = Flask(__name__)
-q = queue.Queue()
 
 user_balances = {}
 taken_cards = {}
@@ -17,8 +15,16 @@ game_state = {
     "taken_cards": taken_cards
 }
 
+# ሁሉንም የተገናኙ ተጠቃሚዎች SSE streams መያዣ (List)
+clients = []
+
 def broadcast_state():
-    q.put(json.dumps(game_state))
+    data = f"data: {json.dumps(game_state)}\n\n"
+    for client_queue in clients[:]:
+        try:
+            client_queue.put(data)
+        except:
+            clients.remove(client_queue)
 
 # የጋራ ቆጣሪ (Global Timer Worker)
 def global_timer_worker():
@@ -26,18 +32,16 @@ def global_timer_worker():
     while True:
         if len(taken_cards) > 0 and game_state["status"] == "waiting":
             game_state["status"] = "countdown"
-            game_state["timer"]  = 45
+            game_state["timer"] = 45
             broadcast_state()
 
             for i in range(45, 0, -1):
                 time.sleep(1)
-                # ተጫዋቾች ካርዳቸውን ለቀው ከወጡ ቆጠራው ይቋረጣል
                 if len(taken_cards) == 0:
                     break
                 game_state["timer"] = i - 1
                 broadcast_state()
 
-            # ሰዓቱ ሲያልቅ
             if len(taken_cards) == 0:
                 game_state["status"] = "waiting"
                 broadcast_state()
@@ -59,14 +63,22 @@ def index():
 
 @app.route('/events')
 def stream():
+    import queue
+    q = queue.Queue()
+    clients.append(q)
+
     def event_stream():
+        # ሲገናኝ ወዲያውኑ የአሁኑን ሁኔታ ይልክለታል
         yield f"data: {json.dumps(game_state)}\n\n"
-        while True:
-            try:
+        try:
+            while True:
                 data = q.get(timeout=20)
-                yield f"data: {data}\n\n"
-            except:
-                yield ": keep-alive\n\n"
+                yield data
+        except:
+            pass
+        finally:
+            if q in clients:
+                clients.remove(q)
 
     return Response(
         event_stream(),
@@ -130,5 +142,4 @@ def unlock_card():
     return jsonify({"success": False, "message": "ካርዱ አልተያዘም"}), 400
 
 if __name__ == '__main__':
-    # threaded=True መጨመሩ የ Real-time ግንኙነቶች ሌላውን ስራ እንዳያቆሙ ይረዳል
     app.run(host='0.0.0.0', port=5000, threaded=True)

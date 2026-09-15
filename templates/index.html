@@ -168,7 +168,6 @@
                 }, 1500);
             }
 
-            // Polling (በየሰከንዱ ከሰርቨር ስቴቱን መጠየቅ)
             async function pollGameState() {
                 try {
                     let res = await fetch('/api/get_state');
@@ -188,10 +187,13 @@
                         document.getElementById('boards-count').textContent = `Boards: ${mySelectedCard ? 1 : 0}/1`;
                     }
 
-                    // ሰዓቱን ማሳየት
-                    document.getElementById('timer-val').textContent = gameState.timer;
+                    // ሰዓቱን በቀጥታ ከሰርቨር ማሳየት
+                    let timerEl = document.getElementById('timer-val');
+                    if (timerEl) {
+                        timerEl.textContent = gameState.timer;
+                    }
 
-                    // ጨዋታው ሲጀመር
+                    // ስቴቱን ማረጋገጥ
                     if (gameState.status === "playing") {
                         let hasCard = false;
                         let activeCard = mySelectedCard;
@@ -232,7 +234,6 @@
                 }
             }
 
-            // በየ 1 ሰከንዱ ሰርቨሩን መጠየቅ
             setInterval(pollGameState, 1000);
 
             function updateCardsUI() {

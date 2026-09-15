@@ -1,6 +1,7 @@
 import json
 import time
 import threading
+import queue
 from flask import Flask, render_template, Response, request, jsonify
 
 app = Flask(__name__)
@@ -16,7 +17,6 @@ game_state = {
 }
 
 clients = []
-timer_running = False
 
 def broadcast_state():
     data = f"data: {json.dumps(game_state)}\n\n"
@@ -26,17 +26,19 @@ def broadcast_state():
         except:
             clients.remove(client_queue)
 
-def global_timer_worker():
-    global game_state, timer_running
+# የሰርቨር ቆጣሪ አስተካካይ ሎጂክ
+def game_timer_loop():
+    global game_state
     while True:
-        if len(taken_cards) > 0 and game_state["status"] == "waiting" and not timer_running:
-            timer_running = True
+        # ቢያንስ 1 ካርድ ከተያዘ እና ጨዋታው waiting ላይ ከሆነ ቆጠራ ይጀምራል
+        if len(taken_cards) > 0 and game_state["status"] == "waiting":
             game_state["status"] = "countdown"
             game_state["timer"] = 45
             broadcast_state()
 
             while game_state["timer"] > 0:
                 time.sleep(1)
+                # ሁሉም ካርዶች ከተለቀቁ ቆጠራው ይሰረዛል
                 if len(taken_cards) == 0:
                     break
                 game_state["timer"] -= 1
@@ -46,20 +48,24 @@ def global_timer_worker():
                 game_state["status"] = "waiting"
                 game_state["timer"] = 45
             else:
+                # ቆጠራው አልቆ ጨዋታው ሲጀመር
                 game_state["status"] = "playing"
                 broadcast_state()
-                time.sleep(15)  # ጨዋታው ላይ ቆይቶ ወደ መጀመሪያው ይመለሳል
+                
+                # ጨዋታው ላይ ቁጥሮች እየተጠሩ ለ 15 ሰከንድ ይቆያል
+                time.sleep(15)
+                
+                # ጨዋታው አልቆ ወደ መጀመሪያው waiting ይመለሳል
                 game_state["status"] = "waiting"
                 game_state["timer"] = 45
                 taken_cards.clear()
             
-            timer_running = False
             broadcast_state()
         else:
             time.sleep(0.5)
 
-# አፕሊኬሽኑ ሲጀመር ቆጣሪውን ማስጀመር (Thread duplication እንዳይፈጠር)
-threading.Thread(target=global_timer_worker, daemon=True).start()
+# አፕሊኬሽኑ ሲጀመር ቆጣሪውን ማስተላለፊያ  thread ማስጀመር
+threading.Thread(target=game_timer_loop, daemon=True).start()
 
 @app.route('/')
 def index():
@@ -67,7 +73,6 @@ def index():
 
 @app.route('/events')
 def stream():
-    import queue
     q = queue.Queue()
     clients.append(q)
 
@@ -111,7 +116,7 @@ def lock_card():
         user_balances[user_id] = 100
 
     if game_state["status"] == "playing":
-        return jsonify({"success": False, "message": "ጨዋታው ተጀምሯል!"}), 400
+        return jsonify({"success": False, "message": "ጨዋታው ተጀምሯል! እባክዎ ቀጣዩን ዙር ይጠብቁ።"}), 400
 
     if card_id in taken_cards and taken_cards[card_id] != user_id:
         return jsonify({"success": False, "message": "ይህ ካርድ በሌላ ተጫዋች ተይዟል!"}), 400
@@ -136,11 +141,10 @@ def unlock_card():
         del taken_cards[card_id]
         user_balances[user_id] += STAKE_PRICE
         
+        # ተጫዋቹ ካርዱን ሲለቅ ካርዶች ከጠፉ ቆጠራውን ወደ waiting መመለስ
         if len(taken_cards) == 0 and game_state["status"] == "countdown":
             game_state["status"] = "waiting"
             game_state["timer"] = 45
-            global timer_running
-            timer_running = False
 
         broadcast_state()
         return jsonify({"success": True, "new_balance": user_balances[user_id]})

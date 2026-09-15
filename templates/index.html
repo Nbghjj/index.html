@@ -189,10 +189,10 @@
                         document.getElementById('boards-count').textContent = `Boards: ${mySelectedCard ? 1 : 0}/1`;
                     }
 
-                    // ⏱️ ሰዓቱን እና ቆጠራውን በስክሪኑ ላይ በቀጥታ ማሳየት
+                    // ⏱️ የሰዓት ቆጣሪውን ዋጋ ከሰርቨር ተቀብሎ ማሳየት
                     document.getElementById('timer-val').textContent = gameState.timer;
 
-                    // 🎮 ጨዋታው ሲጀመር ወይም ሲጠብቅ ስክሪኑን መቀየር
+                    // 🎮 ጨዋታው ሲጀመር (playing) ወይም ሲጠብቅ (waiting/countdown)
                     if (gameState.status === "playing") {
                         let hasCard = false;
                         let activeCard = mySelectedCard;
@@ -205,17 +205,14 @@
                             }
                         }
 
-                        // ተጫዋቹ ካርድ ይዞ ከሆነ ወደ ጨዋታው ስክሪን ይገባል
                         if (hasCard && activeCard) {
                             document.getElementById('active-card-num').textContent = activeCard;
                             switchScreen('gameplay-screen');
                             startCallingNumbers();
                         } else {
-                            // ካርድ ሳይይዝ የቆየ ከሆነ ወደ ሆም ይመለሳል
                             switchScreen('home-screen');
                         }
                     } else {
-                        // በ waiting ወይም countdown ስቴት ጊዜ ተጫዋቹ ካርድ ከያዘ በ selection-screen ላይ መቆየት አለበት
                         let hasCard = false;
                         for (let cardId in takenCardsMap) {
                             if (takenCardsMap[cardId] === telegramUser) {
@@ -224,7 +221,6 @@
                             }
                         }
                         if (hasCard) {
-                            // ካርድ ከያዘ በ selection-screen ላይ እንዲቆይ ይደረጋል (ቆጠራውን እንዲያይ)
                             let currentActive = document.querySelector('.container.active-screen').id;
                             if (currentActive === 'home-screen') {
                                 switchScreen('selection-screen');

@@ -87,7 +87,7 @@ def lock_card():
         taken_cards[card_id] = user_id
         user_balances[user_id] -= STAKE_PRICE
         
-        # ቢያንስ 1 ካርድ ሲያዝ ቆጠራ እንዲጀምር ምልክት እናሳልፋለን
+        # ቢያንስ 1 ካርድ ሲያዝ የ45 ሰከንድ ቆጠራ እንዲጀምር ምልክት ይላካል
         game_state["start_countdown"] = True
         broadcast_state()
 
@@ -103,7 +103,7 @@ def unlock_card():
         del taken_cards[card_id]
         user_balances[user_id] += STAKE_PRICE
         
-        # ካርዶች ሙሉ በሙሉ ከጠፉ ቆጠራውን እናቆማለን
+        # ሁሉም ካርዶች ከተለቀቁ ቆጠራው ይሰረዛል
         if len(taken_cards) == 0:
             game_state["start_countdown"] = False
             game_state["status"] = "waiting"

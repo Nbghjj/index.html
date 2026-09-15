@@ -138,7 +138,7 @@ def unlock_card():
 
     if card_id in taken_cards and taken_cards[card_id] == user_id:
         del taken_cards[card_id]
-        user_balances[user_id] += STAKE_PRICE
+        # ገንዘቡ ተመላሽ እንዳይሆን (+= STAKE_PRICE) የሚለው ኮድ ተወግዷል!
         
         if len(taken_cards) == 0:
             game_state["status"] = "waiting"

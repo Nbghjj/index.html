@@ -27,49 +27,42 @@ def broadcast_state():
         except:
             clients.remove(client_queue)
 
-# የሰርቨር ቆጣሪ አስተካካይ ሎጂክ (በጣም አስተማማኝ በሆነ መልኩ የተሰራ)
 def game_timer_loop():
     global game_state
     while True:
         time.sleep(1)
         with timer_lock:
-            # ቢያንስ 1 ካርድ ከተያዘ እና ጨዋታው waiting ላይ ከሆነ ቆጠራ ይጀምራል
-            if len(taken_cards) > 0 and game_state["status"] == "waiting":
-                game_state["status"] = "countdown"
-                game_state["timer"] = 45
-                broadcast_state()
+            if game_state["status"] == "waiting":
+                if len(taken_cards) > 0:
+                    game_state["status"] = "countdown"
+                    game_state["timer"] = 45
+                    broadcast_state()
 
             elif game_state["status"] == "countdown":
-                # ሁሉም ካርዶች ከተለቀቁ ቆጠራው ተሰርዞ ወደ waiting ይመለሳል
                 if len(taken_cards) == 0:
                     game_state["status"] = "waiting"
                     game_state["timer"] = 45
                     broadcast_state()
-                elif game_state["timer"] > 0:
+                elif game_state["timer"] > 1:
                     game_state["timer"] -= 1
                     broadcast_state()
-                
-                # ቆጠራው 0 ሲደርስ ጨዋታው ይጀመራል
-                if game_state["timer"] <= 0 and len(taken_cards) > 0:
+                else:
+                    # ቆጠራው 0 ሲደርስ ጨዋታው ይጀመራል
                     game_state["status"] = "playing"
+                    game_state["timer"] = 15
                     broadcast_state()
-                    
-                    # ጨዋታው ላይ ቁጥሮች እየተጠሩ ለ 15 ሰከንድ ይቆያል
-                    # (ቲሬዱን እንዳይዘጋው ስሌቱን እዚህ ጋር በሰከንድ እናስኬዳለን)
-            
-            elif game_state["status"] == "playing":
-                # ጨዋታው ለ 15 ሰከንድ እንዲቆይ ማድረግ
-                # (በ 15 ሰከንድ ውስጥ በየሰከንዱ እየጠበቁ ቆጠራውን ማጠናቀቅ)
-                for _ in range(15):
-                    time.sleep(1)
-                
-                # ጨዋታው አልቆ ወደ መጀመሪያው waiting ይመለሳል
-                game_state["status"] = "waiting"
-                game_state["timer"] = 45
-                taken_cards.clear()
-                broadcast_state()
 
-# አፕሊኬሽኑ ሲጀመር ቆጣሪውን ማስተላለፊያ thread ማስጀመር
+            elif game_state["status"] == "playing":
+                if game_state["timer"] > 1:
+                    game_state["timer"] -= 1
+                    broadcast_state()
+                else:
+                    # ጨዋታው ሲያልቅ ወደ waiting ይመለሳል
+                    game_state["status"] = "waiting"
+                    game_state["timer"] = 45
+                    taken_cards.clear()
+                    broadcast_state()
+
 threading.Thread(target=game_timer_loop, daemon=True).start()
 
 @app.route('/')
@@ -135,7 +128,6 @@ def lock_card():
             taken_cards[card_id] = user_id
             user_balances[user_id] -= STAKE_PRICE
             
-            # የመጀመሪያው ካርድ ሲያዝ ቆጠራው ከሌለ ወዲያውኑ ወደ countdown ይለውጣል
             if game_state["status"] == "waiting":
                 game_state["status"] = "countdown"
                 game_state["timer"] = 45
@@ -156,7 +148,6 @@ def unlock_card():
             del taken_cards[card_id]
             user_balances[user_id] += STAKE_PRICE
             
-            # ተጫዋቹ ካርዱን ሲለቅ ካርዶች ከጠፉ ቆጠራውን ወደ waiting መመለስ
             if len(taken_cards) == 0 and game_state["status"] == "countdown":
                 game_state["status"] = "waiting"
                 game_state["timer"] = 45

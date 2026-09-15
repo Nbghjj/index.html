@@ -32,7 +32,6 @@
         
         .join-btn { background: linear-gradient(135deg, #f39c12, #f1c40f); border: none; width: 100%; padding: 16px; border-radius: 8px; color: #000; font-weight: bold; cursor: pointer; margin-top: 15px; }
         
-        /* የሰዓት ቆጣሪ ማሳያ ዲዛይን እና የማሳያ ሁኔታ */
         .timer-badge { background: #e74c3c !important; color: #fff !important; font-weight: bold; display: none; padding: 3px 8px; border-radius: 6px; }
         .timer-badge.show { display: inline-block !important; }
         
@@ -188,7 +187,6 @@
 
                     const timerBox = document.getElementById('timer-box');
                     
-                    // ⏱️ ቆጠራው ሲጀመር ሰዓቱ በትክክል እንዲታይ ማድረግ
                     if (gameState.status === "countdown") {
                         document.getElementById('timer-val').textContent = gameState.timer;
                         timerBox.classList.add('show');
@@ -261,7 +259,7 @@
 
             async function unlockCurrentCard() {
                 if (!mySelectedCard) return;
-                let res =- await fetch('/api/unlock_card', {
+                let res = await fetch('/api/unlock_card', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ card_id: mySelectedCard, user_id: telegramUser })

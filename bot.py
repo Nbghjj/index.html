@@ -11,11 +11,10 @@ STAKE_PRICE = 10
 
 game_state = {
     "status": "waiting",
-    "timer": 45,
-    "taken_cards": taken_cards
+    "taken_cards": taken_cards,
+    "start_countdown": False
 }
 
-# ሁሉንም የተገናኙ ተጠቃሚዎች SSE streams መያዣ (List)
 clients = []
 
 def broadcast_state():
@@ -25,37 +24,6 @@ def broadcast_state():
             client_queue.put(data)
         except:
             clients.remove(client_queue)
-
-# የጋራ ቆጣሪ (Global Timer Worker)
-def global_timer_worker():
-    global game_state
-    while True:
-        if len(taken_cards) > 0 and game_state["status"] == "waiting":
-            game_state["status"] = "countdown"
-            game_state["timer"] = 45
-            broadcast_state()
-
-            for i in range(45, 0, -1):
-                time.sleep(1)
-                if len(taken_cards) == 0:
-                    break
-                game_state["timer"] = i - 1
-                broadcast_state()
-
-            if len(taken_cards) == 0:
-                game_state["status"] = "waiting"
-                broadcast_state()
-            else:
-                game_state["status"] = "playing"
-                broadcast_state()
-                time.sleep(10) # ጨዋታው ላይ ቆይቶ ወደ መጀመሪያው ይመለሳል
-                game_state["status"] = "waiting"
-                taken_cards.clear()
-                broadcast_state()
-        else:
-            time.sleep(1)
-
-threading.Thread(target=global_timer_worker, daemon=True).start()
 
 @app.route('/')
 def index():
@@ -68,7 +36,6 @@ def stream():
     clients.append(q)
 
     def event_stream():
-        # ሲገናኝ ወዲያውኑ የአሁኑን ሁኔታ ይልክለታል
         yield f"data: {json.dumps(game_state)}\n\n"
         try:
             while True:
@@ -119,6 +86,9 @@ def lock_card():
     if card_id not in taken_cards:
         taken_cards[card_id] = user_id
         user_balances[user_id] -= STAKE_PRICE
+        
+        # ቢያንስ 1 ካርድ ሲያዝ ቆጠራ እንዲጀምር ምልክት እናሳልፋለን
+        game_state["start_countdown"] = True
         broadcast_state()
 
     return jsonify({"success": True, "new_balance": user_balances[user_id]})
@@ -133,7 +103,9 @@ def unlock_card():
         del taken_cards[card_id]
         user_balances[user_id] += STAKE_PRICE
         
+        # ካርዶች ሙሉ በሙሉ ከጠፉ ቆጠራውን እናቆማለን
         if len(taken_cards) == 0:
+            game_state["start_countdown"] = False
             game_state["status"] = "waiting"
 
         broadcast_state()

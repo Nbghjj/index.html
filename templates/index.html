@@ -33,8 +33,7 @@
         .join-btn { background: linear-gradient(135deg, #f39c12, #f1c40f); border: none; width: 100%; padding: 16px; border-radius: 8px; color: #000; font-weight: bold; cursor: pointer; margin-top: 15px; }
         
         /* የሰዓት ቆጣሪ ማሳያ ዲዛይን */
-        .timer-badge { background: #e74c3c !important; color: #fff !important; font-weight: bold; display: none; padding: 3px 8px; border-radius: 6px; }
-        .timer-badge.show { display: inline-block !important; }
+        .timer-badge { background: #e74c3c !important; color: #fff !important; font-weight: bold; display: inline-block !important; padding: 4px 10px; border-radius: 6px; }
         
         .gameplay-box { background: #1f143a; padding: 20px; border-radius: 14px; text-align: center; border: 1px solid #3c2a6d; margin-top: 15px; }
         .bingo-ball { font-size: 55px; font-weight: bold; color: #2ecc71; margin: 15px 0; background: #2c1b4d; display: inline-block; padding: 15px 30px; border-radius: 50%; border: 2px solid #f39c12; box-shadow: 0 0 15px rgba(243, 156, 18, 0.4); }
@@ -113,7 +112,6 @@
             const totalBoards = 300;
             const gridContainer = document.getElementById('cardsGrid');
 
-            // 300 የብንጎ ካርድ ቁልፎችን መፍጠር
             for (let i = 1; i <= totalBoards; i++) {
                 const btn = document.createElement('button');
                 btn.className = 'card-box';
@@ -171,7 +169,6 @@
                 }, 1500);
             }
 
-            // Real-time EventSource ግንኙነት (ከሰርቨር የሚመጣውን ስቴት መቀበል)
             const eventSource = new EventSource('/events');
             
             eventSource.onmessage = function(event) {
@@ -180,7 +177,7 @@
                     
                     if (gameState.taken_cards) {
                         takenCardsMap = gameState.taken_cards;
-                        mySelectedCard = null; // ሪፍሬሽ ሲደረግ ወይም ሲታደስ መጀመሪያ እናጸዳዋለን
+                        mySelectedCard = null;
                         
                         for (let cardId in takenCardsMap) {
                             if (takenCardsMap[cardId] === telegramUser) {
@@ -192,21 +189,13 @@
                         document.getElementById('boards-count').textContent = `Boards: ${mySelectedCard ? 1 : 0}/1`;
                     }
 
-                    // ⏱️ የሰዓት ቆጣሪውን (Countdown) መቀበል እና ማሳየት
-                    const timerBox = document.getElementById('timer-box');
-                    const timerVal = document.getElementById('timer-val');
+                    // ⏱️ ሰዓቱን እና ቆጠራውን በስክሪኑ ላይ በቀጥታ ማሳየት
+                    document.getElementById('timer-val').textContent = gameState.timer;
 
-                    if (gameState.status === "countdown") {
-                        timerVal.textContent = gameState.timer;
-                        timerBox.classList.add('show');
-                    } else {
-                        timerBox.classList.remove('show');
-                    }
-
-                    // 🎮 የጨዋታው ሁኔታ (Status) ሲቀየር
+                    // 🎮 ጨዋታው ሲጀመር ወይም ሲጠብቅ ስክሪኑን መቀየር
                     if (gameState.status === "playing") {
                         let hasCard = false;
-                        let activeCard = null;
+                        let activeCard = mySelectedCard;
                         
                         for (let cardId in takenCardsMap) {
                             if (takenCardsMap[cardId] === telegramUser) {
@@ -216,19 +205,33 @@
                             }
                         }
 
+                        // ተጫዋቹ ካርድ ይዞ ከሆነ ወደ ጨዋታው ስክሪን ይገባል
                         if (hasCard && activeCard) {
                             document.getElementById('active-card-num').textContent = activeCard;
                             switchScreen('gameplay-screen');
                             startCallingNumbers();
                         } else {
+                            // ካርድ ሳይይዝ የቆየ ከሆነ ወደ ሆም ይመለሳል
                             switchScreen('home-screen');
                         }
-                    } else if (gameState.status === "waiting") {
-                        if (numberCallerInterval) {
-                            clearInterval(numberCallerInterval);
-                            numberCallerInterval = null;
+                    } else {
+                        // በ waiting ወይም countdown ስቴት ጊዜ ተጫዋቹ ካርድ ከያዘ በ selection-screen ላይ መቆየት አለበት
+                        let hasCard = false;
+                        for (let cardId in takenCardsMap) {
+                            if (takenCardsMap[cardId] === telegramUser) {
+                                hasCard = true;
+                                break;
+                            }
+                        }
+                        if (hasCard) {
+                            // ካርድ ከያዘ በ selection-screen ላይ እንዲቆይ ይደረጋል (ቆጠራውን እንዲያይ)
+                            let currentActive = document.querySelector('.container.active-screen').id;
+                            if (currentActive === 'home-screen') {
+                                switchScreen('selection-screen');
+                            }
                         }
                     }
+
                 } catch(e) {
                     console.error("SSE Parse Error", e);
                 }

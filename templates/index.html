@@ -32,6 +32,7 @@
         
         .join-btn { background: linear-gradient(135deg, #f39c12, #f1c40f); border: none; width: 100%; padding: 16px; border-radius: 8px; color: #000; font-weight: bold; cursor: pointer; margin-top: 15px; }
         
+        /* የሰዓት ቆጣሪ ማሳያ ዲዛይን */
         .timer-badge { background: #e74c3c !important; color: #fff !important; font-weight: bold; display: none; padding: 3px 8px; border-radius: 6px; }
         .timer-badge.show { display: inline-block !important; }
         
@@ -112,6 +113,7 @@
             const totalBoards = 300;
             const gridContainer = document.getElementById('cardsGrid');
 
+            // 300 የብንጎ ካርድ ቁልፎችን መፍጠር
             for (let i = 1; i <= totalBoards; i++) {
                 const btn = document.createElement('button');
                 btn.className = 'card-box';
@@ -169,13 +171,17 @@
                 }, 1500);
             }
 
+            // Real-time EventSource ግንኙነት (ከሰርቨር የሚመጣውን ስቴት መቀበል)
             const eventSource = new EventSource('/events');
+            
             eventSource.onmessage = function(event) {
                 try {
                     const gameState = JSON.parse(event.data);
                     
                     if (gameState.taken_cards) {
                         takenCardsMap = gameState.taken_cards;
+                        mySelectedCard = null; // ሪፍሬሽ ሲደረግ ወይም ሲታደስ መጀመሪያ እናጸዳዋለን
+                        
                         for (let cardId in takenCardsMap) {
                             if (takenCardsMap[cardId] === telegramUser) {
                                 mySelectedCard = cardId;
@@ -183,20 +189,25 @@
                             }
                         }
                         updateCardsUI();
+                        document.getElementById('boards-count').textContent = `Boards: ${mySelectedCard ? 1 : 0}/1`;
                     }
 
+                    // ⏱️ የሰዓት ቆጣሪውን (Countdown) መቀበል እና ማሳየት
                     const timerBox = document.getElementById('timer-box');
-                    
+                    const timerVal = document.getElementById('timer-val');
+
                     if (gameState.status === "countdown") {
-                        document.getElementById('timer-val').textContent = gameState.timer;
+                        timerVal.textContent = gameState.timer;
                         timerBox.classList.add('show');
                     } else {
                         timerBox.classList.remove('show');
                     }
 
+                    // 🎮 የጨዋታው ሁኔታ (Status) ሲቀየር
                     if (gameState.status === "playing") {
                         let hasCard = false;
-                        let activeCard = mySelectedCard;
+                        let activeCard = null;
+                        
                         for (let cardId in takenCardsMap) {
                             if (takenCardsMap[cardId] === telegramUser) {
                                 hasCard = true;
@@ -218,7 +229,9 @@
                             numberCallerInterval = null;
                         }
                     }
-                } catch(e) {}
+                } catch(e) {
+                    console.error("SSE Parse Error", e);
+                }
             };
 
             function updateCardsUI() {

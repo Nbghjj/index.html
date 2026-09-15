@@ -133,7 +133,8 @@
         let currentWallet = 0;
         let lastWinnerNotified = null;
         let calledNumbersSet = new Set();
-        let currentGameStateStatus = "waiting"; // የጨዋታውን ሁኔታ ለመከታተል
+        let currentGameStateStatus = "waiting";
+        let userManuallyExited = false; // ተጠቃሚው በራሱ መውጣቱን ለመቆጣጠር የተጨመረ
         
         let telegramUser = localStorage.getItem("bingo_user_id");
         if (!telegramUser) {
@@ -209,11 +210,11 @@
                 let res = await fetch('/api/get_state');
                 let gameState = await res.json();
 
-                // የጨዋታውን ስቴት እዚህ እናስቀምጣለን
                 currentGameStateStatus = gameState.status;
 
                 if (gameState.winner && gameState.winner !== lastWinnerNotified) {
                     lastWinnerNotified = gameState.winner;
+                    userManuallyExited = false;
                     alert(`ጨዋታው አልቋል! አሸናፊው ተጫዋች በካርድ ቁጥር ${gameState.winning_card || '--'} አሸንፏል!`);
                     mySelectedCard = null;
                     calledNumbersSet.clear();
@@ -235,6 +236,7 @@
 
                 if (gameState.status === "waiting") {
                     calledNumbersSet.clear();
+                    userManuallyExited = false;
                 }
 
                 if (gameState.taken_cards) {
@@ -268,7 +270,8 @@
                     let hasCard = activeCard && (takenCardsMap[activeCard] === telegramUser || !takenCardsMap[activeCard]);
 
                     if (hasCard && activeCard) {
-                        if (currentActive !== 'gameplay-screen') {
+                        // ተጠቃሚው በራሱ Exit ካላለ ብቻ ወደ ጨዋታው በኃይል ይመልሰዋል
+                        if (currentActive !== 'gameplay-screen' && !userManuallyExited) {
                             renderUserCardBoard(activeCard);
                             switchScreen('gameplay-screen');
                         }
@@ -278,6 +281,7 @@
                         }
                     }
                 } else {
+                    userManuallyExited = false;
                     if (currentActive === 'gameplay-screen') {
                         switchScreen('selection-screen');
                     }
@@ -393,14 +397,13 @@
             if(ww) ww.textContent = currentWallet;
         }
 
-        // --- እዚህ ጋር የተስተካከለው የ Exit ሎጂክ (Game Exit Logic) ---
         async function handleGameExit() {
             if (currentGameStateStatus === 'playing') {
-                // ጨዋታው playing ከሆነ ሰርቨር ላይ unlock_card ሳይጠራ ካርዱ ተይዞ ወደ ካርድ መረጣው ይመለሳል
+                userManuallyExited = true; // በራሱ መውጣቱን ምልክት እናደርጋለን
                 alert("ጨዋታው በሂደት ላይ ስለሆነ ካርዱ ተይዞ ይቀጥላል፤ ወደ ካርድ መረጣው ተመልሰዋል።");
                 switchScreen('selection-screen');
             } else {
-                // በ countdown ወይም በሌላ ሰዓት ከሆነ ካርዱ ተለቆ ገንዘቡ ይመለሳል
+                userManuallyExited = false;
                 if (mySelectedCard) {
                     await unlockCurrentCard();
                 }

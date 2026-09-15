@@ -1,13 +1,21 @@
 import time
 import random
-from flask import Flask, render_template, request, jsonify
+import threading
+import os
+from flask import Flask, render_template, request, jsonify, send_from_directory
+from telegram import Update, KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
 app = Flask(__name__)
 
 user_balances = {}
-taken_cards = {}  # {card_id: user_id}
+taken_cards = {}   # {card_id: user_id}
 STAKE_PRICE = 10
-MAX_CARDS_PER_USER = 4  # አንዱ ተጫዋች መያዝ የሚችለው ከፍተኛ የካርድ ብዛት
+MAX_CARDS_PER_USER = 4   # አንዱ ተጫዋች መያዝ የሚችለው ከፍተኛ የካርድ ብዛት
+
+# የቴሌግራም ቦት ቶከን እና የሰርቨር ማገናኛ ሊንክ (እዚህ ጋር የራስዎን ያስገቡ)
+BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN" 
+WEB_APP_URL = "https://your-domain.com/" # የ Render ሊንክዎ ወይም የሰርቨር አድራሻዎ
 
 game_state = {
     "status": "waiting",  # waiting, countdown, playing
@@ -51,9 +59,45 @@ def generate_unique_bingo_cards(total_cards=300):
 # 300ኙን ልዩ ካርዶች አስቀድሞ ማዘጋጀት
 BINGO_CARDS = generate_unique_bingo_cards(300)
 
+# ================= ቴሌግራም ቦት ክፍሎች (Telegram Bot Handlers) =================
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    contact_button = KeyboardButton("📱 ቁጥሬን አጋራ (Share Contact)", request_contact=True)
+    reply_markup = ReplyKeyboardMarkup([[contact_button]], resize_keyboard=True, one_time_keyboard=True)
+    
+    await update.message.reply_text(
+        "እንኳን ወደ 'Ayat Bingo' በደህና መጡ! ጨዋታውን ለመጀመር እባክዎ ከታች ያለውን በመንካት ስልክ ቁጥርዎን ያጋሩ።",
+        reply_markup=reply_markup
+    )
+
+async def contact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    contact = update.message.contact
+    user_id = str(update.effective_user.id)
+    phone_number = contact.phone_number
+    
+    # ተጠቃሚው ሲመዘገብ መነሻ 100 ብር ቦነስ እንሰጠዋለን
+    if user_id not in user_balances:
+        user_balances[user_id] = 100
+    
+    keyboard = [[InlineKeyboardButton("🎮 Play Bingo", web_app=WebAppInfo(url=WEB_APP_URL))]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(
+        "ምዝገባዎ ተጠናቋል! አሁን ጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ:",
+        reply_markup=reply_markup
+    )
+
+# ================= FLASK API ROUTES =================
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/api/auth_user', methods=['POST'])
+def auth_user():
+    data = request.json or {}
+    user_id = str(data.get('user_id') or "default_user")
+    if user_id not in user_balances:
+        user_balances[user_id] = 100
+    return jsonify({"success": True, "balance": user_balances[user_id]})
 
 @app.route('/api/get_cards', methods=['GET'])
 def get_cards():
@@ -216,5 +260,17 @@ def bingo_win():
         "new_balance": user_balances[user_id]
     })
 
+def run_telegram_bot():
+    app_bot = ApplicationBuilder().token(BOT_TOKEN).build()
+    app_bot.add_handler(CommandHandler("start", start))
+    app_bot.add_handler(MessageHandler(filters.CONTACT, contact_handler))
+    app_bot.run_polling()
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, threaded=True, debug=False)
+    # ቴሌግራም ቦቱን ከ Flask ጋር በ Background Thread ማስኬድ
+    bot_thread = threading.Thread(target=run_telegram_bot)
+    bot_thread.daemon = True
+    bot_thread.start()
+    
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, threaded=True, debug=False)

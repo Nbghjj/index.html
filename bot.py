@@ -138,7 +138,8 @@ def unlock_card():
 
     if card_id in taken_cards and taken_cards[card_id] == user_id:
         del taken_cards[card_id]
-        # ገንዘቡ ተመላሽ እንዳይሆን (+= STAKE_PRICE) የሚለው ኮድ ተወግዷል!
+        # ተጫዋቹ ካርዱን ሲለቅ ገንዘቡ ተመላሽ እንዲሆን ተመልሷል!
+        user_balances[user_id] += STAKE_PRICE
         
         if len(taken_cards) == 0:
             game_state["status"] = "waiting"
@@ -164,7 +165,6 @@ def bingo_win():
         user_balances[user_id] = 100
     user_balances[user_id] += prize
     
-    # ጨዋታውን በማቆም አሸናፊውን እና የካርድ ቁጥሩን ለሁሉም እናሳውቃለን
     game_state["status"] = "waiting"
     game_state["countdown_end"] = 0
     game_state["winner"] = user_id

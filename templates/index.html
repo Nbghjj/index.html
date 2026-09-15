@@ -99,25 +99,151 @@
             document.getElementById(screenId).classList.add('active-screen');
         }
 
+        let mySelectedCard = null;
+        let takenCardsMap = {};
+        let currentWallet = 0;
+        let numberCallerInterval = null;
+        let telegramUser = "user_" + Math.floor(Math.random()*10000);
+
+        async function pollGameState() {
+            try {
+                let res = await fetch('/api/get_state');
+                let gameState = await res.json();
+                
+                if (gameState.taken_cards) {
+                    takenCardsMap = gameState.taken_cards;
+                    mySelectedCard = null;
+                    
+                    for (let cardId in takenCardsMap) {
+                        if (takenCardsMap[cardId] === telegramUser) {
+                            mySelectedCard = cardId;
+                            break;
+                        }
+                    }
+                    updateCardsUI();
+                    let boardCountEl = document.getElementById('boards-count');
+                    if(boardCountEl) boardCountEl.textContent = `Boards: ${mySelectedCard ? 1 : 0}/1`;
+                }
+
+                let timerEl = document.getElementById('timer-val');
+                if (timerEl) {
+                    timerEl.textContent = gameState.timer;
+                }
+
+                let activeScreenEl = document.querySelector('.container.active-screen');
+                let currentActive = activeScreenEl ? activeScreenEl.id : 'home-screen';
+
+                if (gameState.status === "playing") {
+                    let hasCard = false;
+                    let activeCard = mySelectedCard;
+                    
+                    for (let cardId in takenCardsMap) {
+                        if (takenCardsMap[cardId] === telegramUser) {
+                            hasCard = true;
+                            activeCard = cardId;
+                            break;
+                        }
+                    }
+
+                    if (hasCard && activeCard) {
+                        let cardNumEl = document.getElementById('active-card-num');
+                        if(cardNumEl) cardNumEl.textContent = activeCard;
+                        switchScreen('gameplay-screen');
+                        startCallingNumbers();
+                    } else {
+                        switchScreen('home-screen');
+                    }
+                } else {
+                    if (currentActive === 'gameplay-screen') {
+                        if (numberCallerInterval) {
+                            clearInterval(numberCallerInterval);
+                            numberCallerInterval = null;
+                        }
+                        switchScreen('home-screen');
+                    }
+
+                    let hasCard = false;
+                    for (let cardId in takenCardsMap) {
+                        if (takenCardsMap[cardId] === telegramUser) {
+                            hasCard = true;
+                            break;
+                        }
+                    }
+                    if (hasCard) {
+                        if (currentActive === 'home-screen') {
+                            switchScreen('selection-screen');
+                        }
+                    }
+                }
+
+            } catch(e) {
+                console.error("Polling Error", e);
+            }
+        }
+
+        window.pollGameState = pollGameState;
+
+        function updateCardsUI() {
+            document.querySelectorAll('.card-box').forEach(btn => {
+                let cardId = btn.dataset.id;
+                btn.classList.remove('taken', 'selected');
+
+                if (mySelectedCard == cardId) {
+                    btn.classList.add('selected');
+                } else if (takenCardsMap[cardId] && takenCardsMap[cardId] !== telegramUser) {
+                    btn.classList.add('taken');
+                }
+            });
+        }
+
+        function startCallingNumbers() {
+            if (numberCallerInterval) return;
+            
+            let availableNumbers = Array.from({length: 75}, (_, i) => i + 1);
+            availableNumbers.sort(() => Math.random() - 0.5);
+
+            let index = 0;
+            numberCallerInterval = setInterval(() => {
+                if (index < availableNumbers.length) {
+                    let num = availableNumbers[index];
+                    let letter = '';
+                    
+                    if (num >= 1 && num <= 15) letter = 'B';
+                    else if (num >= 16 && num <= 30) letter = 'I';
+                    else if (num >= 31 && num <= 45) letter = 'N';
+                    else if (num >= 46 && num <= 60) letter = 'G';
+                    else if (num >= 61 && num <= 75) letter = 'O';
+
+                    let numDisplay = document.getElementById('called-number-display');
+                    let letterLabel = document.getElementById('bingo-letter-label');
+                    if(numDisplay) numDisplay.textContent = `${letter}-${num}`;
+                    if(letterLabel) letterLabel.textContent = `አሁን የተጠራው ቁጥር: ${letter} ቤተሰብ (${num})`;
+                    index++;
+                } else {
+                    clearInterval(numberCallerInterval);
+                    numberCallerInterval = null;
+                }
+            }, 1500);
+        }
+
         document.addEventListener("DOMContentLoaded", function() {
             let tg = window.Telegram ? window.Telegram.WebApp : null;
-            let telegramUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id.toString() : "user_" + Math.floor(Math.random()*10000);
-            
-            let mySelectedCard = null;
-            let takenCardsMap = {};
-            let currentWallet = 0;
-            let numberCallerInterval = null;
+            if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                telegramUser = tg.initDataUnsafe.user.id.toString();
+            }
 
             const totalBoards = 300;
             const gridContainer = document.getElementById('cardsGrid');
 
-            for (let i = 1; i <= totalBoards; i++) {
-                const btn = document.createElement('button');
-                btn.className = 'card-box';
-                btn.textContent = i;
-                btn.dataset.id = i;
-                btn.onclick = () => handleCardClick(i);
-                gridContainer.appendChild(btn);
+            if (gridContainer) {
+                for (let i = 1; i <= totalBoards; i++) {
+                    const btn = document.createElement('button');
+                    btn.className = 'card-box';
+                    btn.textContent = i;
+                    btn.dataset.id = i;
+                    btn.onclick = () => handleCardClick(i);
+                    gridContainer.appendChild(btn);
+                }
             }
 
             async function fetchBalance() {
@@ -130,130 +256,16 @@
                     let data = await res.json();
                     currentWallet = data.balance;
                     updateWalletUI();
-                } catch (e) {
+                } href (e) {
                     console.error("Balance Fetch Error", e);
                 }
             }
 
             function updateWalletUI() {
-                document.getElementById('home-wallet-val').textContent = currentWallet;
-                document.getElementById('wallet-val').textContent = currentWallet;
-            }
-
-            function startCallingNumbers() {
-                if (numberCallerInterval) return;
-                
-                let availableNumbers = Array.from({length: 75}, (_, i) => i + 1);
-                availableNumbers.sort(() => Math.random() - 0.5);
-
-                let index = 0;
-                numberCallerInterval = setInterval(() => {
-                    if (index < availableNumbers.length) {
-                        let num = availableNumbers[index];
-                        let letter = '';
-                        
-                        if (num >= 1 && num <= 15) letter = 'B';
-                        else if (num >= 16 && num <= 30) letter = 'I';
-                        else if (num >= 31 && num <= 45) letter = 'N';
-                        else if (num >= 46 && num <= 60) letter = 'G';
-                        else if (num >= 61 && num <= 75) letter = 'O';
-
-                        document.getElementById('called-number-display').textContent = `${letter}-${num}`;
-                        document.getElementById('bingo-letter-label').textContent = `አሁን የተጠራው ቁጥር: ${letter} ቤተሰብ (${num})`;
-                        index++;
-                    } else {
-                        clearInterval(numberCallerInterval);
-                        numberCallerInterval = null;
-                    }
-                }, 1500);
-            }
-
-            async function pollGameState() {
-                try {
-                    let res = await fetch('/api/get_state');
-                    let gameState = await res.json();
-                    
-                    if (gameState.taken_cards) {
-                        takenCardsMap = gameState.taken_cards;
-                        mySelectedCard = null;
-                        
-                        for (let cardId in takenCardsMap) {
-                            if (takenCardsMap[cardId] === telegramUser) {
-                                mySelectedCard = cardId;
-                                break;
-                            }
-                        }
-                        updateCardsUI();
-                        document.getElementById('boards-count').textContent = `Boards: ${mySelectedCard ? 1 : 0}/1`;
-                    }
-
-                    let timerEl = document.getElementById('timer-val');
-                    if (timerEl) {
-                        timerEl.textContent = gameState.timer;
-                    }
-
-                    let currentActive = document.querySelector('.container.active-screen').id;
-
-                    if (gameState.status === "playing") {
-                        let hasCard = false;
-                        let activeCard = mySelectedCard;
-                        
-                        for (let cardId in takenCardsMap) {
-                            if (takenCardsMap[cardId] === telegramUser) {
-                                hasCard = true;
-                                activeCard = cardId;
-                                break;
-                            }
-                        }
-
-                        if (hasCard && activeCard) {
-                            document.getElementById('active-card-num').textContent = activeCard;
-                            switchScreen('gameplay-screen');
-                            startCallingNumbers();
-                        } else {
-                            switchScreen('home-screen');
-                        }
-                    } else {
-                        if (currentActive === 'gameplay-screen') {
-                            if (numberCallerInterval) {
-                                clearInterval(numberCallerInterval);
-                                numberCallerInterval = null;
-                            }
-                            switchScreen('home-screen');
-                        }
-
-                        let hasCard = false;
-                        for (let cardId in takenCardsMap) {
-                            if (takenCardsMap[cardId] === telegramUser) {
-                                hasCard = true;
-                                break;
-                            }
-                        }
-                        if (hasCard) {
-                            if (currentActive === 'home-screen') {
-                                switchScreen('selection-screen');
-                            }
-                        }
-                    }
-
-                } catch(e) {
-                    console.error("Polling Error", e);
-                }
-            }
-
-            setInterval(pollGameState, 1000);
-
-            function updateCardsUI() {
-                document.querySelectorAll('.card-box').forEach(btn => {
-                    let cardId = btn.dataset.id;
-                    btn.classList.remove('taken', 'selected');
-
-                    if (mySelectedCard == cardId) {
-                        btn.classList.add('selected');
-                    } else if (takenCardsMap[cardId] && takenCardsMap[cardId] !== telegramUser) {
-                        btn.classList.add('taken');
-                    }
-                });
+                let hw = document.getElementById('home-wallet-val');
+                let ww = document.getElementById('wallet-val');
+                if(hw) hw.textContent = currentWallet;
+                if(ww) ww.textContent = currentWallet;
             }
 
             async function handleCardClick(cardId) {
@@ -275,7 +287,8 @@
                         alert(result.message || "ይህ ካርድ መያዝ አልተቻለም!");
                     }
                 }
-                document.getElementById('boards-count').textContent = `Boards: ${mySelectedCard ? 1 : 0}/1`;
+                let bc = document.getElementById('boards-count');
+                if(bc) bc.textContent = `Boards: ${mySelectedCard ? 1 : 0}/1`;
                 updateCardsUI();
             }
 
@@ -284,7 +297,7 @@
                 let res = await fetch('/api/unlock_card', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ card_id: mySelectedCard, user_id: telegramUser })
+                    body: JSON.parse(JSON.stringify({ card_id: mySelectedCard, user_id: telegramUser }))
                 });
                 let data = await res.json();
                 if (data.success) {
@@ -292,19 +305,28 @@
                     updateWalletUI();
                 }
                 mySelectedCard = null;
-                document.getElementById('boards-count').textContent = `Boards: 0/1`;
+                let bc = document.getElementById('boards-count');
+                if(bc) bc.textContent = `Boards: 0/1`;
                 updateCardsUI();
             }
 
             fetchBalance();
+            setInterval(pollGameState, 1000);
 
-            document.getElementById('joinRoomBtn').onclick = () => switchScreen('selection-screen');
-            document.getElementById('leaveBtn').onclick = async () => {
-                if (mySelectedCard) {
-                    await unlockCurrentCard();
-                }
-                switchScreen('home-screen');
-            };
+            let joinBtn = document.getElementById('joinRoomBtn');
+            let leaveBtn = document.getElementById('leaveBtn');
+
+            if(joinBtn) {
+                joinBtn.onclick = () => switchScreen('selection-screen');
+            }
+            if(leaveBtn) {
+                leaveBtn.onclick = async () => {
+                    if (mySelectedCard) {
+                        await unlockCurrentCard();
+                    }
+                    switchScreen('home-screen');
+                };
+            }
         });
     </script>
 </body>

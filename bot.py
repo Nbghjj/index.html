@@ -20,9 +20,45 @@ game_state = {
     "called_numbers_history": []
 }
 
+def generate_unique_bingo_cards(total_cards=300):
+    """300 ልዩ እና የማይመሳሰሉ የቢንጎ ካርዶችን የሚያመነጭ ሎጂክ"""
+    all_cards = {}
+    seen_combinations = set()
+    
+    card_id = 1
+    while card_id <= total_cards:
+        b_col = tuple(sorted(random.sample(range(1, 16), 5)))
+        i_col = tuple(sorted(random.sample(range(16, 31), 5)))
+        n_col = tuple(sorted(range(31, 46), 4))  # መሀል ላይ Free ስለሚኖር 4 ቁጥር
+        g_col = tuple(sorted(random.sample(range(46, 61), 5)))
+        o_col = tuple(sorted(random.sample(range(61, 76), 5)))
+        
+        card_tuple = (b_col, i_col, n_col, g_col, o_col)
+        
+        if card_tuple not in seen_combinations:
+            seen_combinations.add(card_tuple)
+            all_cards[str(card_id)] = {
+                "B": list(b_col),
+                "I": list(i_col),
+                "N": list(n_col),
+                "G": list(g_col),
+                "O": list(o_col)
+            }
+            card_id += 1
+            
+    return all_cards
+
+# 300ኙን ልዩ ካርዶች አስቀድሞ ማዘጋጀት
+BINGO_CARDS = generate_unique_bingo_cards(300)
+
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/api/get_cards', methods=['GET'])
+def get_cards():
+    """ተጫዋቾች 300ኙን ልዩ ካርዶች እንዲያገኙ የሚያስችል API"""
+    return jsonify({"success": True, "cards": BINGO_CARDS})
 
 @app.route('/api/get_state', methods=['GET'])
 def get_state():
@@ -42,7 +78,7 @@ def get_state():
                 game_state["called_numbers_history"] = []
                 game_state["current_called_number"] = None
     else:
-        game_state["status"] == "waiting"
+        game_state["status"] = "waiting"
         game_state["countdown_end"] = 0
         game_state["winner"] = None
         game_state["winning_card"] = None
@@ -108,15 +144,12 @@ def lock_card():
     if game_state["status"] == "playing":
         return jsonify({"success": False, "message": "ጨዋታው ተጀምሯል! አሁን ካርድ መያዝ አይቻልም።"}), 400
 
-    # ካርዱ በሌላ ተጫዋች የተያዘ መሆኑን ማረጋገጥ
     if card_id in taken_cards and taken_cards[card_id] != user_id:
         return jsonify({"success": False, "message": "ይህ ካርድ በሌላ ተጫዋች ተይዟል!"}), 400
 
-    # ተጫዋቹ አስቀድሞ ይህንን ካርድ ይዞታል ወይ?
     if card_id in taken_cards and taken_cards[card_id] == user_id:
         return jsonify({"success": True, "new_balance": user_balances[user_id]})
 
-    # ተጫዋቹ የያዛቸውን አጠቃላይ ካርዶች ብዛት መቁጠር
     user_cards_count = sum(1 for uid in taken_cards.values() if uid == user_id)
     if user_cards_count >= MAX_CARDS_PER_USER:
         return jsonify({"success": False, "message": f"ከፍተኛው የካርድ ገደብ (እስከ {MAX_CARDS_PER_USER} ካርዶች) ደርሰዋል!"}), 400
@@ -124,7 +157,6 @@ def lock_card():
     if user_balances[user_id] < STAKE_PRICE:
         return jsonify({"success": False, "message": "በቂ ሂሳብ የሎትም!"}), 400
 
-    # ሂሳብ መቀነስ እና ካርዱን መያዝ
     user_balances[user_id] -= STAKE_PRICE
     taken_cards[card_id] = user_id
 

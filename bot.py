@@ -1,4 +1,3 @@
-import json
 import time
 import threading
 from flask import Flask, render_template, request, jsonify
@@ -15,36 +14,30 @@ game_state = {
     "taken_cards": taken_cards
 }
 
-timer_lock = threading.Lock()
-
+# ሰዓቱን በየሰከንዱ የሚያስኬደው የተስተካከለ ሉፕ
 def game_timer_loop():
-    global game_state
     while True:
         time.sleep(1)
-        with timer_lock:
-            # ካርድ ሲያዝ እና ስቴቱ waiting ከሆነ ወዲያውኑ ቆጠራ ይጀምራል
-            if game_state["status"] == "waiting" and len(taken_cards) > 0:
-                game_state["status"] = "countdown"
-                game_state["timer"] = 45
-
-            elif game_state["status"] == "countdown":
-                if len(taken_cards) == 0:
-                    game_state["status"] = "waiting"
-                    game_state["timer"] = 45
-                elif game_state["timer"] > 1:
-                    game_state["timer"] -= 1
-                else:
-                    game_state["timer"] = 0
-                    game_state["status"] = "playing"
-
-            elif game_state["status"] == "playing":
-                for _ in range(15):
-                    time.sleep(1)
-                
+        
+        # 1. ቆጠራ (Countdown) ስቴት ላይ ከሆንን ሰዓቱን እንቀንሳለን
+        if game_state["status"] == "countdown":
+            if len(taken_cards) == 0:
                 game_state["status"] = "waiting"
                 game_state["timer"] = 45
-                taken_cards.clear()
+            elif game_state["timer"] > 1:
+                game_state["timer"] -= 1
+            else:
+                game_state["timer"] = 0
+                game_state["status"] = "playing"
 
+        # 2. ጨዋታው (Playing) ላይ ከሆንን ለ 15 ሰከንድ ቆይተን ወደ waiting እንመልሳለን
+        elif game_state["status"] == "playing":
+            time.sleep(15)
+            game_state["status"] = "waiting"
+            game_state["timer"] = 45
+            taken_cards.clear()
+
+# ሰርቨሩ ሲጀምር ሰዓት ቆጣሪውን በጀርባ (Background) እናስነሳዋለን
 threading.Thread(target=game_timer_loop, daemon=True).start()
 
 @app.route('/')
@@ -53,8 +46,7 @@ def index():
 
 @app.route('/api/get_state', methods=['GET'])
 def get_state():
-    with timer_lock:
-        return jsonify(game_state)
+    return jsonify(game_state)
 
 @app.route('/api/get_balance', methods=['POST'])
 def get_balance():
@@ -83,14 +75,14 @@ def lock_card():
     if user_balances[user_id] < STAKE_PRICE:
         return jsonify({"success": False, "message": "በቂ የኪስ ቦርሳ ሂሳብ የሎትም!"}), 400
 
-    with timer_lock:
-        if card_id not in taken_cards:
-            taken_cards[card_id] = user_id
-            user_balances[user_id] -= STAKE_PRICE
-            
-            if game_state["status"] == "waiting":
-                game_state["status"] = "countdown"
-                game_state["timer"] = 45
+    if card_id not in taken_cards:
+        taken_cards[card_id] = user_id
+        user_balances[user_id] -= STAKE_PRICE
+        
+        # 💡 ዋናው ለውጥ: ካርዱ ሲያዝ ቆጠራው ወዲያውኑ ከ 45 ይጀምራል
+        if game_state["status"] == "waiting":
+            game_state["status"] = "countdown"
+            game_state["timer"] = 45
 
     return jsonify({"success": True, "new_balance": user_balances[user_id]})
 
@@ -101,16 +93,15 @@ def unlock_card():
     card_id = str(data.get('card_id'))
     user_id = data.get('user_id')
 
-    with timer_lock:
-        if card_id in taken_cards and taken_cards[card_id] == user_id:
-            del taken_cards[card_id]
-            user_balances[user_id] += STAKE_PRICE
-            
-            if len(taken_cards) == 0 and game_state["status"] == "countdown":
-                game_state["status"] = "waiting"
-                game_state["timer"] = 45
+    if card_id in taken_cards and taken_cards[card_id] == user_id:
+        del taken_cards[card_id]
+        user_balances[user_id] += STAKE_PRICE
+        
+        if len(taken_cards) == 0 and game_state["status"] == "countdown":
+            game_state["status"] = "waiting"
+            game_state["timer"] = 45
 
-            return jsonify({"success": True, "new_balance": user_balances[user_id]})
+        return jsonify({"success": True, "new_balance": user_balances[user_id]})
 
     return jsonify({"success": False, "message": "ካርዱ አልተያዘም"}), 400
 

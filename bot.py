@@ -1,14 +1,25 @@
-# በ bot.py ውስጥ ያለው የ stream ተግባርህ እንደዚህ መስተካከል አለበት፦
-@app.route('/events')  # ወይም /stream
+from flask import Flask, render_template, Response, request, jsonify
+import queue
+
+# 1. መጀመሪያ app መፈጠር አለበት
+app = Flask(__name__)
+
+# 2. የ Queue እና ሌሎች አስፈላጊ ነገሮች መግለጫ
+q = queue.Queue()
+
+# 3. ከእዚያ በኋላ ነው @app.route የሚጀምረው
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/events')
 def stream():
     def event_stream():
         while True:
             try:
-                # ለ 20 ሰከንድ ዳታ ካላገኘ እራሱን ያድሳል
                 data = q.get(timeout=20)
                 yield f"data: {data}\n\n"
             except:
-                # በየ 20 ሰከንዱ Ping ይልካል (ለእረፍት እንዳይዘጋ)
                 yield ": keep-alive\n\n"
 
     return Response(

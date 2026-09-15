@@ -104,7 +104,7 @@
         <div class="called-number-box">
             <div class="called-num-title">Current Called Number</div>
             <div class="called-num-value" id="called-number-display">--</div>
-            <div class="game-status-text" id="game-status-label">Auto-marking & Audio Active...</div>
+            <div class="game-status-text" id="game-status-label">Auto-marking Active...</div>
         </div>
 
         <!-- የተመረጡት እስከ 4 የሚደርሱ ካርዶች እዚህ ይታያሉ -->
@@ -127,7 +127,6 @@
         let calledNumbersSet = new Set();
         let currentGameStateStatus = "waiting";
         let userManuallyExited = false;
-        let lastSpokenNumber = null;
         
         let telegramUser = localStorage.getItem("bingo_user_id");
         if (!telegramUser) {
@@ -138,40 +137,6 @@
         let tg = window.Telegram ? window.Telegram.WebApp : null;
         if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
             telegramUser = tg.initDataUnsafe.user.id.toString();
-        }
-
-        // ቁጥር ሲጠራ በድምፅ እና በቺም ዜማ ማስታወቂያ መስጫ
-        function speakNumberAndBingo(number) {
-            if ('speechSynthesis' in window) {
-                let utterance = new SpeechSynthesisUtterance(number.toString());
-                utterance.rate = 1.0; 
-                utterance.pitch = 1.1;
-                window.speechSynthesis.speak(utterance);
-            }
-            playChimeSound();
-        }
-
-        function playChimeSound() {
-            try {
-                let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                let osc = audioCtx.createOscillator();
-                let gainNode = audioCtx.createGain();
-
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15);
-
-                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-
-                osc.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
-
-                osc.start();
-                osc.stop(audioCtx.currentTime + 0.3);
-            } catch(e) {
-                console.error("Audio error", e);
-            }
         }
 
         function generateCardNumbers(cardId) {
@@ -269,7 +234,6 @@
                     alert(`ጨዋታው አልቋል! አሸናፊው ተጫዋች በካርድ ቁጥር ${gameState.winning_card || '--'} አሸንፏል!`);
                     mySelectedCards = [];
                     calledNumbersSet.clear();
-                    lastSpokenNumber = null;
                     switchScreen('selection-screen');
                     updateCardsUI();
                     fetchBalance();
@@ -288,11 +252,6 @@
                     let parsedNum = parseInt(currentNum);
                     if (!calledNumbersSet.has(parsedNum)) {
                         calledNumbersSet.add(parsedNum);
-                        
-                        if (lastSpokenNumber !== currentNum) {
-                            lastSpokenNumber = currentNum;
-                            speakNumberAndBingo(currentNum);
-                        }
                     }
                     
                     renderAllUserCardBoards();
@@ -300,7 +259,6 @@
 
                 if (gameState.status === "waiting") {
                     calledNumbersSet.clear();
-                    lastSpokenNumber = null;
                     userManuallyExited = false;
                 }
 
@@ -421,7 +379,6 @@
                     alert(result.message);
                     mySelectedCards = [];
                     calledNumbersSet.clear();
-                    lastSpokenNumber = null;
                     switchScreen('selection-screen');
                     updateCardsUI();
                     fetchBalance();

@@ -187,11 +187,12 @@
                         document.getElementById('boards-count').textContent = `Boards: ${mySelectedCard ? 1 : 0}/1`;
                     }
 
-                    // የሰዓት ቆጣሪውን እሴት ከሰርቨር ተቀብሎ ማሳየት
                     let timerEl = document.getElementById('timer-val');
                     if (timerEl) {
                         timerEl.textContent = gameState.timer;
                     }
+
+                    let currentActive = document.querySelector('.container.active-screen').id;
 
                     if (gameState.status === "playing") {
                         let hasCard = false;
@@ -213,6 +214,14 @@
                             switchScreen('home-screen');
                         }
                     } else {
+                        if (currentActive === 'gameplay-screen') {
+                            if (numberCallerInterval) {
+                                clearInterval(numberCallerInterval);
+                                numberCallerInterval = null;
+                            }
+                            switchScreen('home-screen');
+                        }
+
                         let hasCard = false;
                         for (let cardId in takenCardsMap) {
                             if (takenCardsMap[cardId] === telegramUser) {
@@ -221,7 +230,6 @@
                             }
                         }
                         if (hasCard) {
-                            let currentActive = document.querySelector('.container.active-screen').id;
                             if (currentActive === 'home-screen') {
                                 switchScreen('selection-screen');
                             }

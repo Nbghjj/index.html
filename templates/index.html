@@ -103,9 +103,6 @@
             let mySelectedCard = null;
             let takenCardsMap = {};
             let currentWallet = 0;
-            let countdownTimer = null;
-            let timeLeft = 45;
-            let isCounting = false;
 
             const totalBoards = 300;
             const gridContainer = document.getElementById('cardsGrid');
@@ -139,41 +136,7 @@
                 document.getElementById('wallet-val').textContent = currentWallet;
             }
 
-            function startLocalCountdown() {
-                if (isCounting) return;
-                isCounting = true;
-                timeLeft = 45;
-                document.getElementById('timer-val').textContent = timeLeft;
-                document.getElementById('timer-box').style.display = 'inline-block';
-
-                countdownTimer = setInterval(() => {
-                    timeLeft--;
-                    document.getElementById('timer-val').textContent = timeLeft;
-
-                    if (timeLeft <= 0) {
-                        stopLocalCountdown();
-                        // 45 ሰከንድ ሲያልቅ ካርድ የያዘ ሁሉ ወደ ጨዋታው ገጽ ይገባል
-                        if (mySelectedCard) {
-                            document.getElementById('active-card-num').textContent = mySelectedCard;
-                            switchScreen('gameplay-screen');
-                        } else {
-                            switchScreen('home-screen');
-                            alert("ጨዋታው ተጀምሯል! ቀጣዩን ዙር ይጠብቁ።");
-                        }
-                    }
-                }, 1000);
-            }
-
-            function stopLocalCountdown() {
-                if (countdownTimer) {
-                    clearInterval(countdownTimer);
-                    countdownTimer = null;
-                }
-                isCounting = false;
-                document.getElementById('timer-box').style.display = 'none';
-            }
-
-            // Real-time SSE Connection
+            // Real-time SSE Connection from Server
             const eventSource = new EventSource('/events');
             eventSource.onmessage = function(event) {
                 try {
@@ -181,13 +144,47 @@
                     
                     if (gameState.taken_cards) {
                         takenCardsMap = gameState.taken_cards;
+                        
+                        // የተጠቃሚውን ካርድ በራስሰር ከtaken_cards ማረጋገጥ (variable እንዳይሳሳት)
+                        for (let cardId in takenCardsMap) {
+                            if (takenCardsMap[cardId] === telegramUser) {
+                                mySelectedCard = cardId;
+                                break;
+                            }
+                        }
+
                         updateCardsUI();
                     }
 
-                    if (gameState.start_countdown) {
-                        startLocalCountdown();
+                    // የሰርቨሩ ቆጣሪ ሲሰራ (countdown)
+                    if (gameState.status === "countdown") {
+                        document.getElementById('timer-val').textContent = gameState.timer;
+                        document.getElementById('timer-box').style.display = 'inline-block';
                     } else {
-                        stopLocalCountdown();
+                        document.getElementById('timer-box').style.display = 'none';
+                    }
+
+                    // ሰዓቱ 0 ሲደርስ (status 'playing' ሲሆን) ሁሉም ካርድ የያዙ ወደ ጨዋታው ገጽ ይገባሉ
+                    if (gameState.status === "playing") {
+                        // ካርድ መያዙን አንዴ ተጨማሪ ከtaken_cards እናረጋግጣለን
+                        let hasCard = false;
+                        let activeCard = mySelectedCard;
+                        for (let cardId in takenCardsMap) {
+                            if (takenCardsMap[cardId] === telegramUser) {
+                                hasCard = true;
+                                activeCard = cardId;
+                                break;
+                            }
+                        }
+
+                        if (hasCard && activeCard) {
+                            document.getElementById('active-card-num').textContent = activeCard;
+                            switchScreen('gameplay-screen');
+                        } else {
+                            switchScreen('home-screen');
+                        }
+                    } else if (gameState.status === "waiting" || gameState.status === "countdown") {
+                        // ጨዋታው ካልተጀመረ ወይም ከተጠናቀቀ ወደ ምርጫ ገጽ ይመለሳል (በ home ላይ ካልሆነ)
                     }
                 } catch(e) {}
             };
@@ -217,8 +214,8 @@
                     
                     let result = await res.json();
                     if (res.ok && result.success) {
-                        if (mySelectedCard) {
-                            await unlockCurrentCard();
+                        if (mySelectedCard && mySelectedCard !== cardId) {
+                            // የቆየውን ካርድ መልቀቅ አያስፈልግም, ሰርቨሩ ራሱ አዲሱን ይይዛል (ወይም በአግባቡ እንዲስተካከል)
                         }
                         mySelectedCard = cardId;
                         currentWallet = result.new_balance;
@@ -244,6 +241,8 @@
                     updateWalletUI();
                 }
                 mySelectedCard = null;
+                document.getElementById('boards-count').textContent = `Boards: 0/1`;
+                updateCardsUI();
             }
 
             fetchBalance();

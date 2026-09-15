@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ayat Bingo</title>
+    <title>Ayat Bingo - Live</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -15,8 +15,8 @@
         .wallet-box { background: #1f143a; padding: 15px; border-radius: 14px; margin-bottom: 15px; border: 1px solid #3c2a6d; }
         .wallet-row { display: flex; justify-content: space-between; align-items: center; }
         
-        .game-top-bar { display: flex; justify-content: space-between; align-items: center; background: #1f143a; padding: 10px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #3c2a6d; }
-        .leave-btn { background: #7928ca; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .game-top-bar { display: flex; justify-content: space-between; align-items: center; background: #1f143a; padding: 12px 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #3c2a6d; }
+        .leave-btn { background: #7928ca; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; }
         
         .stats-box { display: flex; gap: 6px; align-items: center; }
         .stats-box span { background: #2c1b4d; padding: 4px 8px; border-radius: 6px; font-size: 11px; color: #f1c40f; border: 1px solid #3c2a6d; }
@@ -30,12 +30,30 @@
         .card-box.selected { background: #f39c12 !important; color: #000 !important; border-color: #fff !important; box-shadow: 0 0 8px #f39c12; }
         .card-box.taken { background: #e74c3c !important; color: #fff !important; cursor: not-allowed !important; opacity: 0.7; }
         
-        .join-btn { background: linear-gradient(135deg, #f39c12, #f1c40f); border: none; width: 100%; padding: 16px; border-radius: 8px; color: #000; font-weight: bold; cursor: pointer; margin-top: 15px; }
-        
+        .join-btn { background: linear-gradient(135deg, #f39c12, #f1c40f); border: none; width: 100%; padding: 16px; border-radius: 10px; color: #000; font-weight: bold; font-size: 15px; cursor: pointer; margin-top: 15px; }
         .timer-badge { background: #e74c3c !important; color: #fff !important; font-weight: bold; display: inline-block !important; padding: 4px 10px; border-radius: 6px; }
         
-        .gameplay-box { background: #1f143a; padding: 20px; border-radius: 14px; text-align: center; border: 1px solid #3c2a6d; margin-top: 15px; }
-        .bingo-ball { font-size: 55px; font-weight: bold; color: #2ecc71; margin: 15px 0; background: #2c1b4d; display: inline-block; padding: 15px 30px; border-radius: 50%; border: 2px solid #f39c12; box-shadow: 0 0 15px rgba(243, 156, 18, 0.4); }
+        /* 🎮 የጨዋታ ስክሪን ዲዛይን (ልክ እንደ ሁለተኛው ፎቶ) */
+        .gameplay-header { background: #1f143a; border: 1px solid #3c2a6d; padding: 12px 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        
+        .called-number-box { background: #1f143a; border: 2px solid #f39c12; border-radius: 16px; padding: 25px; text-align: center; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+        .called-num-title { font-size: 13px; color: #a08cc4; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .called-num-value { font-size: 55px; font-weight: bold; color: #f39c12; margin: 0; line-height: 1; }
+        .game-status-text { font-size: 12px; color: #2ecc71; margin-top: 8px; }
+
+        /* የቢንጎ ካርድ ርዕስ እና ፍርግርግ */
+        .bingo-card-wrapper { background: #ffffff; border-radius: 16px; padding: 12px; max-width: 320px; margin: 0 auto; box-shadow: 0 6px 25px rgba(0,0,0,0.5); }
+        .bingo-headers { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-bottom: 5px; }
+        .bingo-h-cell { background: #ff477e; color: white; text-align: center; font-weight: bold; padding: 8px 0; border-radius: 6px; font-size: 16px; }
+        
+        .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+        .bingo-cell { background: #ffe6ee; color: #333; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; border-radius: 6px; cursor: pointer; border: 1px solid #ffccd5; transition: 0.15s; }
+        .bingo-cell.marked { background: #000000 !important; color: #f39c12 !important; text-decoration: line-through; border-color: #000; }
+        .bingo-cell.free-cell { background: #f39c12; color: #000; font-size: 14px; }
+        
+        .card-footer-label { text-align: center; color: #d63031; font-size: 12px; font-weight: bold; margin-top: 10px; }
+        
+        .bingo-action-btn { background: linear-gradient(135deg, #e74c3c, #c0392b); border: none; width: 100%; padding: 16px; border-radius: 12px; color: #fff; font-weight: bold; font-size: 18px; cursor: pointer; margin-top: 20px; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4); }
     </style>
 </head>
 <body>
@@ -54,7 +72,6 @@
             </div>
         </div>
 
-        <!-- በቀጥታ በ onclick የተስተካከለ -->
         <button id="joinRoomBtn" class="join-btn" type="button" onclick="switchScreen('selection-screen')">JOIN ROOM →</button>
     </div>
 
@@ -79,19 +96,34 @@
 
     <!-- 3. GAMEPLAY SCREEN -->
     <div id="gameplay-screen" class="container">
-        <div class="game-top-bar">
-            <h3 style="margin: 0; font-size: 14px; color: #2ecc71;">🎮 ጨዋታው ተጀምሯል!</h3>
-            <span style="color: #f39c12; font-size: 12px;">ካርድ #<b id="active-card-num">--</b></span>
+        <div class="gameplay-header">
+            <span style="color: #f39c12; font-weight: bold; font-size: 14px;">Ayat Bingo - Live</span>
+            <button class="leave-btn" style="background: #e74c3c;" onclick="location.reload()">Exit</button>
         </div>
 
-        <div class="gameplay-box">
-            <h2 style="color: #f39c12; margin-top: 0;">ቁጥሮች እየተጠሩ ነው...</h2>
-            <p style="color: #a08cc4; font-size: 13px;">ሁሉም ተጫዋቾች ገብተዋል! B-I-N-G-O ቁጥሮች እየወጡ ነው።</p>
-            <div class="bingo-ball" id="called-number-display">--</div>
-            <div id="bingo-letter-label" style="font-size: 16px; color: #f39c12; font-weight: bold; margin-bottom: 10px;">ሰሌዳ እየተጠበቀ ነው...</div>
+        <!-- የተጠራው ቁጥር ማሳያ ሳጥን -->
+        <div class="called-number-box">
+            <div class="called-num-title">Current Called Number</div>
+            <div class="called-num-value" id="called-number-display">--</div>
+            <div class="game-status-text" id="game-status-label">Game running...</div>
         </div>
 
-        <button class="join-btn" style="background: #e74c3c; color: #fff; margin-top: 15px;" onclick="location.reload()">ውጣ (Exit)</button>
+        <!-- የቢንጎ ካርድ ሰሌዳ (5x5) -->
+        <div class="bingo-card-wrapper">
+            <div class="bingo-headers">
+                <div class="bingo-h-cell">B</div>
+                <div class="bingo-h-cell">I</div>
+                <div class="bingo-h-cell">N</div>
+                <div class="bingo-h-cell">G</div>
+                <div class="bingo-h-cell">O</div>
+            </div>
+            <div class="bingo-grid" id="userBingoCardGrid">
+                <!-- ጄኔሬት የሚደረጉ የካርድ ሴሎች -->
+            </div>
+            <div class="card-footer-label" id="card-id-label">ሲ.ቲ ቢንጎ የካርድ ቁጥር --</div>
+        </div>
+
+        <button class="bingo-action-btn" onclick="checkBingoWin()">BINGO!</button>
     </div>
 
     <script>
@@ -106,6 +138,63 @@
         let currentWallet = 0;
         let numberCallerInterval = null;
         let telegramUser = "user_" + Math.floor(Math.random()*10000);
+
+        // የካርድ ቁጥሮችን በሂሳብ ማመንጫ (Pseudo-random based on card ID) ለመፍጠር
+        function generateCardNumbers(cardId) {
+            let seed = parseInt(cardId) || 1;
+            let rand = function() {
+                seed = (seed * 9301 + 49297) % 233280;
+                return seed / 233280;
+            };
+
+            let cols = [];
+            // B: 1-15
+            let bNums = Array.from({length: 15}, (_, i) => i + 1).sort(() => rand() - 0.5).slice(0, 5);
+            // I: 16-30
+            let iNums = Array.from({length: 15}, (_, i) => i + 16).sort(() => rand() - 0.5).slice(0, 5);
+            // N: 31-45 (Middle is Free 'F')
+            let nNums = Array.from({length: 15}, (_, i) => i + 31).sort(() => rand() - 0.5).slice(0, 4);
+            nNums.splice(2, 0, 'F');
+            // G: 46-60
+            let gNums = Array.from({length: 15}, (_, i) => i + 46).sort(() => rand() - 0.5).slice(0, 5);
+            // O: 61-75
+            let oNums = Array.from({length: 15}, (_, i) => i + 61).sort(() => rand() - 0.5).slice(0, 5);
+
+            let gridNumbers = [];
+            for (let r = 0; r < 5; r++) {
+                gridNumbers.push(bNums[r]);
+                gridNumbers.push(iNums[r]);
+                gridNumbers.push(nNums[r]);
+                gridNumbers.push(gNums[r]);
+                gridNumbers.push(oNums[r]);
+            }
+            return gridNumbers;
+        }
+
+        function renderUserCardBoard(cardId) {
+            let gridEl = document.getElementById('userBingoCardGrid');
+            if (!gridEl) return;
+            gridEl.innerHTML = '';
+            
+            let numbers = generateCardNumbers(cardId);
+            let labelEl = document.getElementById('card-id-label');
+            if (labelEl) labelEl.textContent = `ሲ.ቲ ቢንጎ የካርድ ቁጥር ${cardId}`;
+
+            numbers.forEach((num) => {
+                let cell = document.createElement('div');
+                cell.className = 'bingo-cell';
+                cell.textContent = num;
+                if (num === 'F') {
+                    cell.classList.add('free-cell', 'marked');
+                }
+                cell.onclick = function() {
+                    if (num !== 'F') {
+                        cell.classList.toggle('marked');
+                    }
+                };
+                gridEl.appendChild(cell);
+            });
+        }
 
         async function pollGameState() {
             try {
@@ -148,8 +237,7 @@
                     }
 
                     if (hasCard && activeCard) {
-                        let cardNumEl = document.getElementById('active-card-num');
-                        if(cardNumEl) cardNumEl.textContent = activeCard;
+                        renderUserCardBoard(activeCard);
                         switchScreen('gameplay-screen');
                         startCallingNumbers();
                     } else {
@@ -183,8 +271,6 @@
             }
         }
 
-        window.pollGameState = pollGameState;
-
         function updateCardsUI() {
             document.querySelectorAll('.card-box').forEach(btn => {
                 let cardId = btn.dataset.id;
@@ -206,26 +292,20 @@
 
             let index = 0;
             numberCallerInterval = setInterval(() => {
+                let numDisplay = document.getElementById('called-number-display');
                 if (index < availableNumbers.length) {
                     let num = availableNumbers[index];
-                    let letter = '';
-                    
-                    if (num >= 1 && num <= 15) letter = 'B';
-                    else if (num >= 16 && num <= 30) letter = 'I';
-                    else if (num >= 31 && num <= 45) letter = 'N';
-                    else if (num >= 46 && num <= 60) letter = 'G';
-                    else if (num >= 61 && num <= 75) letter = 'O';
-
-                    let numDisplay = document.getElementById('called-number-display');
-                    let letterLabel = document.getElementById('bingo-letter-label');
-                    if(numDisplay) numDisplay.textContent = `${letter}-${num}`;
-                    if(letterLabel) letterLabel.textContent = `አሁን የተጠራው ቁጥር: ${letter} ቤተሰብ (${num})`;
+                    if(numDisplay) numDisplay.textContent = num;
                     index++;
                 } else {
                     clearInterval(numberCallerInterval);
                     numberCallerInterval = null;
                 }
-            }, 1500);
+            }, 2000);
+        }
+
+        function checkBingoWin() {
+            alert("እርሶ BINGO ብለዋል! ✨ ውጤቱ እየተጣራ ነው...");
         }
 
         document.addEventListener("DOMContentLoaded", function() {

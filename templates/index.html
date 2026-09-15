@@ -32,7 +32,6 @@
         
         .join-btn { background: linear-gradient(135deg, #f39c12, #f1c40f); border: none; width: 100%; padding: 16px; border-radius: 8px; color: #000; font-weight: bold; cursor: pointer; margin-top: 15px; }
         
-        /* የሰዓት ቆጣሪ ማሳያ ዲዛይን */
         .timer-badge { background: #e74c3c !important; color: #fff !important; font-weight: bold; display: inline-block !important; padding: 4px 10px; border-radius: 6px; }
         
         .gameplay-box { background: #1f143a; padding: 20px; border-radius: 14px; text-align: center; border: 1px solid #3c2a6d; margin-top: 15px; }
@@ -169,11 +168,11 @@
                 }, 1500);
             }
 
-            const eventSource = new EventSource('/events');
-            
-            eventSource.onmessage = function(event) {
+            // Polling (በየሰከንዱ ከሰርቨር ስቴቱን መጠየቅ)
+            async function pollGameState() {
                 try {
-                    const gameState = JSON.parse(event.data);
+                    let res = await fetch('/api/get_state');
+                    let gameState = await res.json();
                     
                     if (gameState.taken_cards) {
                         takenCardsMap = gameState.taken_cards;
@@ -189,10 +188,10 @@
                         document.getElementById('boards-count').textContent = `Boards: ${mySelectedCard ? 1 : 0}/1`;
                     }
 
-                    // ⏱️ የሰዓት ቆጣሪውን ዋጋ ከሰርቨር ተቀብሎ ማሳየት
+                    // ሰዓቱን ማሳየት
                     document.getElementById('timer-val').textContent = gameState.timer;
 
-                    // 🎮 ጨዋታው ሲጀመር (playing) ወይም ሲጠብቅ (waiting/countdown)
+                    // ጨዋታው ሲጀመር
                     if (gameState.status === "playing") {
                         let hasCard = false;
                         let activeCard = mySelectedCard;
@@ -229,9 +228,12 @@
                     }
 
                 } catch(e) {
-                    console.error("SSE Parse Error", e);
+                    console.error("Polling Error", e);
                 }
-            };
+            }
+
+            // በየ 1 ሰከንዱ ሰርቨሩን መጠየቅ
+            setInterval(pollGameState, 1000);
 
             function updateCardsUI() {
                 document.querySelectorAll('.card-box').forEach(btn => {

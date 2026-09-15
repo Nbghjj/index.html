@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ayat Bingo - 24/7 Live System</title>
+    <title>Ayat Bingo - Live System</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * {
@@ -337,11 +337,6 @@
             margin-top: 20px;
         }
 
-        .result-card h2 {
-            color: #f39c12;
-            margin-top: 0;
-        }
-
         .modal {
             display: none;
             position: fixed;
@@ -363,11 +358,6 @@
             border-radius: 14px;
             width: 100%;
             max-width: 400px;
-        }
-
-        .modal-content h3 {
-            color: #f39c12;
-            margin-top: 0;
         }
 
         .modal-content input, .modal-content select {
@@ -484,20 +474,18 @@
         <div class="modal-content">
             <h3>ገንዘብ ማስገባት (Deposit)</h3>
             <p style="font-size: 13px; color: #a08cc4; margin: 0 0 10px 0;">
-                እባክዎ ከታች ከሚገኙት የባንክ አማራጮች አንዱን በመምረጥ ገንዘብ ያስተላልፉ:<br><br>
-                • <b>መቀበያ ስም:</b> ኪሩቤል (Kirubel)<br>
+                • <b>መቀበያ ስም:</b> ኪሩቤል<br>
                 • <b>የተመረጠው ባንክ:</b> <span id="depositBankNameDisplay">Telebirr</span><br>
                 • <b>የአካውንት ቁጥር:</b> <span id="depositAccountDisplay" style="color:#2ecc71; font-weight:bold;">0940483108</span>
             </p>
             
-            <label style="font-size: 12px; color: #a08cc4;">ባንክ/አገልግሎት ይምረጡ:</label>
             <select id="depositBankSelect">
                 <option value="Telebirr" selected>Telebirr (0940483108)</option>
-                <option value="CBE">Commercial Bank of Ethiopia (CBE - 0940483108)</option>
+                <option value="CBE">CBE (0940483108)</option>
             </select>
 
             <input type="number" id="depositAmountInput" placeholder="ያስተላለፉትን የብር መጠን" />
-            <input type="text" id="depositTxIdInput" placeholder="የባንክ/ቴሌብር የግብይት ቁጥር (TxID)" />
+            <input type="text" id="depositTxIdInput" placeholder="የግብይት ቁጥር (TxID)" />
             <div class="modal-actions">
                 <button id="submitDepositBtn" class="wallet-btn deposit-btn" type="button">ጥያቄ ላክ</button>
                 <button id="closeDepositModal" class="wallet-btn" style="background:#e74c3c; color:#fff;" type="button">ይቅር</button>
@@ -511,7 +499,7 @@
             <h3>ገንዘብ ማውጣት (Withdraw)</h3>
             <select id="withdrawBankSelect">
                 <option value="Telebirr">Telebirr</option>
-                <option value="CBE">Commercial Bank of Ethiopia (CBE)</option>
+                <option value="CBE">CBE</option>
             </select>
             <input type="number" id="withdrawAmountInput" placeholder="የሚወጣውን የብር መጠን" />
             <input type="text" id="withdrawAccountInput" placeholder="የባንክ/ቴሌብር አካውንት ቁጥር" />
@@ -544,12 +532,8 @@
 
         document.addEventListener("DOMContentLoaded", function() {
             let tg = window.Telegram ? window.Telegram.WebApp : null;
-
             if (tg) {
-                try {
-                    tg.expand();
-                    tg.ready();
-                } catch (e) {}
+                try { tg.expand(); tg.ready(); } catch (e) {}
             }
 
             let telegramUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id.toString() : "guest_user";
@@ -570,19 +554,6 @@
             const stakeAmount = 20;
             let timerStarted = false;
 
-            const playerCountEl = document.getElementById('player-count');
-            if (playerCountEl) {
-                let currentPlayers = Math.floor(Math.random() * (120 - 45 + 1)) + 45;
-                playerCountEl.textContent = currentPlayers;
-                setInterval(() => {
-                    let change = Math.random() > 0.5 ? 1 : -1;
-                    currentPlayers += change;
-                    if (currentPlayers < 40) currentPlayers = 42;
-                    if (currentPlayers > 280) currentPlayers = 275;
-                    playerCountEl.textContent = currentPlayers;
-                }, 6000);
-            }
-
             const joinRoomBtn = document.getElementById('joinRoomBtn');
             const leaveBtn = document.getElementById('leaveBtn');
             const exitGameBtn = document.getElementById('exitGameBtn');
@@ -591,17 +562,6 @@
             const withdrawBtn = document.getElementById('withdrawBtn');
             const errorBanner = document.getElementById('errorBanner');
             const restartBtn = document.getElementById('restartBtn');
-            
-            const depositModal = document.getElementById('depositModal');
-            const closeDepositModal = document.getElementById('closeDepositModal');
-            const submitDepositBtn = document.getElementById('submitDepositBtn');
-            const depositBankSelect = document.getElementById('depositBankSelect');
-            const depositBankNameDisplay = document.getElementById('depositBankNameDisplay');
-            const depositAccountDisplay = document.getElementById('depositAccountDisplay');
-
-            const withdrawModal = document.getElementById('withdrawModal');
-            const closeWithdrawModal = document.getElementById('closeWithdrawModal');
-            const submitWithdrawBtn = document.getElementById('submitWithdrawBtn');
 
             const gridContainer = document.getElementById('cardsGrid');
             const boardsCountText = document.getElementById('boards-count');
@@ -615,122 +575,46 @@
             const resultDesc = document.getElementById('resultDesc');
 
             function updateWallets() {
-                homeWalletVal.textContent = walletBalance;
-                walletVal.textContent = walletBalance;
+                if(homeWalletVal) homeWalletVal.textContent = walletBalance;
+                if(walletVal) walletVal.textContent = walletBalance;
                 localStorage.setItem(walletKey, walletBalance);
             }
             updateWallets();
 
-            if (depositBankSelect) {
-                depositBankSelect.addEventListener('change', function() {
-                    let selectedBank = this.value;
-                    depositBankNameDisplay.textContent = selectedBank;
-                    depositAccountDisplay.textContent = bankAccounts[selectedBank] || "0940483108";
+            // Direct Join Room Action
+            if (joinRoomBtn) {
+                joinRoomBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (walletBalance < stakeAmount) {
+                        if(errorBanner) {
+                            errorBanner.style.display = 'block';
+                            setTimeout(() => { errorBanner.style.display = 'none'; }, 4000);
+                        }
+                        return;
+                    }
+                    switchScreen('selection-screen');
                 });
             }
 
             if (depositBtn) {
                 depositBtn.onclick = function() {
-                    if (depositBankSelect) {
-                        depositBankSelect.value = "Telebirr";
-                        depositBankNameDisplay.textContent = "Telebirr";
-                        depositAccountDisplay.textContent = "0940483108";
-                    }
-                    depositModal.style.display = 'flex';
+                    document.getElementById('depositModal').style.display = 'flex';
                 };
             }
-            if (closeDepositModal) {
-                closeDepositModal.onclick = function() {
-                    depositModal.style.display = 'none';
+            if (document.getElementById('closeDepositModal')) {
+                document.getElementById('closeDepositModal').onclick = function() {
+                    document.getElementById('depositModal').style.display = 'none';
                 };
             }
 
             if (withdrawBtn) {
                 withdrawBtn.onclick = function() {
-                    withdrawModal.style.display = 'flex';
+                    document.getElementById('withdrawModal').style.display = 'flex';
                 };
             }
-            if (closeWithdrawModal) {
-                closeWithdrawModal.onclick = function() {
-                    withdrawModal.style.display = 'none';
-                };
-            }
-
-            if (submitDepositBtn) {
-                submitDepositBtn.onclick = function() {
-                    let bank = depositBankSelect.value;
-                    let recipientAcc = bankAccounts[bank] || "0940483108";
-                    let amt = parseFloat(document.getElementById('depositAmountInput').value);
-                    let txId = document.getElementById('depositTxIdInput').value.trim();
-                    
-                    if (isNaN(amt) || amt <= 0 || !txId) {
-                        alert("እባክዎ ትክክለኛ መጠን እና የግብይት ቁጥር (TxID) ያስገቡ።");
-                        return;
-                    }
-
-                    let message = `📥 *አዲስ የዲፖዚት ጥያቄ (Deposit Request)*\n\n` +
-                                  `👤 ተጠቃሚ: ${telegramUsername} (ID: \`${telegramUser}\`)\n` +
-                                  `🏦 የተመረጠው ባንክ: *${bank}*\n` +
-                                  `🔢 የተላከበት ቁጥር: \`${recipientAcc}\`\n` +
-                                  `💰 የብር መጠን: *${amt} Br*\n` +
-                                  `🧾 የግብይት ቁጥር (TxID): \`${txId}\``;
-
-                    fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            chat_id: ADMIN_CHAT_ID,
-                            text: message,
-                            parse_mode: 'Markdown'
-                        })
-                    }).then(res => {
-                        alert("የዲፖዚት ጥያቄዎ ተልኳል።");
-                        depositModal.style.display = 'none';
-                    }).catch(err => {
-                        alert("ጥያቄውን መላክ አልተቻለም።");
-                    });
-                };
-            }
-
-            if (submitWithdrawBtn) {
-                submitWithdrawBtn.onclick = function() {
-                    let bank = document.getElementById('withdrawBankSelect').value;
-                    let amt = parseFloat(document.getElementById('withdrawAmountInput').value);
-                    let accNum = document.getElementById('withdrawAccountInput').value.trim();
-                    let accName = document.getElementById('withdrawNameInput').value.trim();
-
-                    if (isNaN(amt) || amt <= 0 || !accNum || !accName) {
-                        alert("እባክዎ ሁሉንም መረጃዎች በትክክል ይሙሉ!");
-                        return;
-                    }
-
-                    if (walletBalance < amt) {
-                        alert("⚠️ በቂ ገንዘብ የለዎትም!");
-                        return;
-                    }
-
-                    walletBalance -= amt;
-                    updateWallets();
-
-                    let message = `📤 *አዲስ የዊዝድሮዋል ጥያቄ (Withdrawal Request)*\n\n` +
-                                  `👤 ተጠቃሚ: ${telegramUsername} (ID: \`${telegramUser}\`)\n` +
-                                  `🏦 ባንክ: *${bank}*\n` +
-                                  `💰 የብር መጠን: *${amt} Br*\n` +
-                                  `🔢 አካውንት ቁጥር: \`${accNum}\`\n` +
-                                  `👤 ስም: *${accName}*`;
-
-                    fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            chat_id: ADMIN_CHAT_ID,
-                            text: message,
-                            parse_mode: 'Markdown'
-                        })
-                    }).then(res => {
-                        alert("የዊዝድሮዋል ጥያቄዎ ተልኳል!");
-                        withdrawModal.style.display = 'none';
-                    });
+            if (document.getElementById('closeWithdrawModal')) {
+                document.getElementById('closeWithdrawModal').onclick = function() {
+                    document.getElementById('withdrawModal').style.display = 'none';
                 };
             }
 
@@ -753,12 +637,9 @@
                     currentSeed = (currentSeed * 9301 + 49297) % 233280;
                     return currentSeed / 233280;
                 }
-
                 while(nums.length < count) {
                     let r = Math.floor(nextRandom() * (max - min + 1)) + min;
-                    if(!nums.includes(r)) {
-                        nums.push(r);
-                    }
+                    if(!nums.includes(r)) nums.push(r);
                 }
                 return nums.sort((a, b) => a - b);
             }
@@ -784,11 +665,9 @@
                                 selectedCards.push(cardId);
                                 this.classList.add('selected');
                                 if (!timerStarted) startSyncedCountdown();
-                            } else {
-                                alert(`ከኮታው በላይ መምረጥ አይችሉም!`);
                             }
                         }
-                        boardsCountText.textContent = `Boards: ${selectedCards.length}/${maxSelection}`;
+                        if(boardsCountText) boardsCountText.textContent = `Boards: ${selectedCards.length}/${maxSelection}`;
                     };
                     gridContainer.appendChild(cardBtn);
                 }
@@ -821,22 +700,11 @@
                 }, 1000);
             }
 
-            if (joinRoomBtn) {
-                joinRoomBtn.onclick = function() {
-                    if (walletBalance < stakeAmount) {
-                        errorBanner.style.display = 'block';
-                        setTimeout(() => { errorBanner.style.display = 'none'; }, 4000);
-                        return;
-                    }
-                    switchScreen('selection-screen');
-                };
-            }
-
             if (leaveBtn) {
                 leaveBtn.onclick = function() {
                     stopCardCountdown();
                     selectedCards = [];
-                    boardsCountText.textContent = `Boards: 0/${maxSelection}`;
+                    if(boardsCountText) boardsCountText.textContent = `Boards: 0/${maxSelection}`;
                     document.querySelectorAll('.card-box').forEach(c => c.classList.remove('selected'));
                     switchScreen('home-screen');
                 };
@@ -857,7 +725,7 @@
 
                 let cardId = selectedCards[0];
                 currentCardData = generateCardData(cardId);
-                cardNumLabel.textContent = `የካርቴል ቁጥር #${cardId}`;
+                if(cardNumLabel) cardNumLabel.textContent = `የካርቴል ቁጥር #${cardId}`;
 
                 renderBingoMatrix(currentCardData);
                 switchScreen('live-game-screen');
@@ -877,14 +745,14 @@
                     calledNumbersSet.add(calledNum);
 
                     let letter = calledNum <= 15 ? 'B' : calledNum <= 30 ? 'I' : calledNum <= 45 ? 'N' : calledNum <= 60 ? 'G' : 'O';
-                    currentBall.textContent = `${letter}-${calledNum}`;
+                    if(currentBall) currentBall.textContent = `${letter}-${calledNum}`;
 
                     markMatchingCell(calledNum);
-
                 }, 3000);
             }
 
             function renderBingoMatrix(card) {
+                if(!bingoMatrixGrid) return;
                 bingoMatrixGrid.innerHTML = '';
                 let matrix = [
                     [card.B[0], card.I[0], card.N[0], card.G[0], card.O[0]],
@@ -941,6 +809,7 @@
 
             function checkBingoWin() {
                 let cells = Array.from(document.querySelectorAll('.bingo-cell'));
+                if(cells.length < 25) return false;
                 let grid = [];
                 for(let i=0; i<5; i++) {
                     grid.push(cells.slice(i*5, i*5+5));
@@ -959,16 +828,18 @@
             }
 
             function showResult(win, msg) {
-                resultTitle.textContent = win ? "🎉 BINGO WINNER!" : "❌ GAME OVER";
-                resultTitle.style.color = win ? "#2ecc71" : "#e74c3c";
-                resultDesc.textContent = msg;
+                if(resultTitle) {
+                    resultTitle.textContent = win ? "🎉 BINGO WINNER!" : "❌ GAME OVER";
+                    resultTitle.style.color = win ? "#2ecc71" : "#e74c3c";
+                }
+                if(resultDesc) resultDesc.textContent = msg;
                 switchScreen('result-screen');
             }
 
             if (restartBtn) {
                 restartBtn.onclick = function() {
                     selectedCards = [];
-                    boardsCountText.textContent = `Boards: 0/${maxSelection}`;
+                    if(boardsCountText) boardsCountText.textContent = `Boards: 0/${maxSelection}`;
                     document.querySelectorAll('.card-box').forEach(c => c.classList.remove('selected'));
                     switchScreen('home-screen');
                 };

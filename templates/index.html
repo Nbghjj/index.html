@@ -103,6 +103,11 @@
             let mySelectedCard = null;
             let takenCardsMap = {};
             let currentWallet = 0;
+            
+            // Frontend Countdown Variables
+            let countdownTimer = null;
+            let timeLeft = 45;
+            let isCounting = false;
 
             const totalBoards = 300;
             const gridContainer = document.getElementById('cardsGrid');
@@ -136,6 +141,41 @@
                 document.getElementById('wallet-val').textContent = currentWallet;
             }
 
+            // JavaScript ቆጠራ ማስጀመሪያ
+            function startFrontendCountdown() {
+                if (isCounting) return; // አስቀድሞ እየቆጠረ ከሆነ አደግግሞ አይጀምርም
+                isCounting = true;
+                timeLeft = 45;
+                document.getElementById('timer-val').textContent = timeLeft;
+                document.getElementById('timer-box').style.display = 'inline-block';
+
+                countdownTimer = setInterval(() => {
+                    timeLeft--;
+                    document.getElementById('timer-val').textContent = timeLeft;
+
+                    if (timeLeft <= 0) {
+                        stopFrontendCountdown();
+                        // 45 ሰከንድ ሲያልቅ ካርድ የያዘ ወደ ጨዋታው ገጽ ይገባል
+                        if (mySelectedCard) {
+                            document.getElementById('active-card-num').textContent = mySelectedCard;
+                            switchScreen('gameplay-screen');
+                        } else {
+                            switchScreen('home-screen');
+                            alert("ጨዋታው ተጀምሯል!");
+                        }
+                    }
+                }, 1000);
+            }
+
+            function stopFrontendCountdown() {
+                if (countdownTimer) {
+                    clearInterval(countdownTimer);
+                    countdownTimer = null;
+                }
+                isCounting = false;
+                document.getElementById('timer-box').style.display = 'none';
+            }
+
             // Real-time SSE Connection
             const eventSource = new EventSource('/events');
             eventSource.onmessage = function(event) {
@@ -152,41 +192,15 @@
                                 break;
                             }
                         }
-
                         updateCardsUI();
                     }
 
-                    // የሰርቨሩን አንድ አይነት ሰዓት በሁሉም ተጫዋቾች ስክሪን ላይ ማሳየት
-                    if (gameState.status === "countdown") {
-                        document.getElementById('timer-val').textContent = gameState.timer;
-                        document.getElementById('timer-box').style.display = 'inline-block';
+                    // ቢያንስ 1 ካርድ ከተያዘ ቆጠራው በ JavaScript በኩል ይጀምራል
+                    let takenCount = Object.keys(takenCardsMap).length;
+                    if (takenCount > 0) {
+                        startFrontendCountdown();
                     } else {
-                        document.getElementById('timer-box').style.display = 'none';
-                    }
-
-                    // ሰዓቱ 0 ሲደርስ (status 'playing' ሲሆን) ሁሉም በጋራ ወደ ጨዋታው ገጽ ይገባሉ
-                    if (gameState.status === "playing") {
-                        let hasCard = false;
-                        let activeCard = mySelectedCard;
-                        for (let cardId in takenCardsMap) {
-                            if (takenCardsMap[cardId] === telegramUser) {
-                                hasCard = true;
-                                activeCard = cardId;
-                                break;
-                            }
-                        }
-
-                        if (hasCard && activeCard) {
-                            document.getElementById('active-card-num').textContent = activeCard;
-                            switchScreen('gameplay-screen');
-                        } else {
-                            switchScreen('home-screen');
-                        }
-                    } else if (gameState.status === "waiting") {
-                        // ጨዋታው ካለቀ ወይም ካልተጀመረ ወደ ምርጫ ገጽ (ስክሪን 2) መመለስ ይቻላል (ካርድ ከተመረጠ)
-                        if (mySelectedCard) {
-                            switchScreen('selection-screen');
-                        }
+                        stopFrontendCountdown();
                     }
                 } catch(e) {}
             };

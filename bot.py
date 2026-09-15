@@ -11,36 +11,38 @@ STAKE_PRICE = 10
 game_state = {
     "status": "waiting",  # waiting, countdown, playing
     "timer": 45,
+    "target_time": 0,     # ሰዓቱ በትክክል እንዲሄድ የሚያስችል ማመሳከሪያ
     "taken_cards": taken_cards
 }
 
-# 💡 የተስተካከለ የሰዓት ቆጠራ ሉፕ (Countdown & Timer Logic)
+# ሰዓቱን እና የጨዋታ ሁኔታውን በጀርባ (Background) የሚያስተካክለው ሉፕ
 def game_timer_loop():
     while True:
-        time.sleep(1)
+        time.sleep(0.5)
         
-        # ማንኛውም ካርድ ከተያዘ (ካርዶቹ ከ 0 በላይ ከሆኑ) ሰዓቱ መቁጠር ይጀምራል
         if len(taken_cards) > 0:
             if game_state["status"] == "waiting":
                 game_state["status"] = "countdown"
+                game_state["target_time"] = time.time() + 45
                 game_state["timer"] = 45
             elif game_state["status"] == "countdown":
-                if game_state["timer"] > 1:
-                    game_state["timer"] -= 1
+                remaining = int(game_state["target_time"] - time.time())
+                if remaining > 0:
+                    game_state["timer"] = remaining
                 else:
                     game_state["timer"] = 0
                     game_state["status"] = "playing"
+                    game_state["target_time"] = time.time() + 15  # የጨዋታው ቆይታ (15 ሰከንድ)
         else:
-            # ካርድ ካልተያዘ ወይም ሁሉም ከተለቀቁ ወደ waiting ይመለሳል
             game_state["status"] = "waiting"
             game_state["timer"] = 45
 
-        # ጨዋታው playing ከሆነ ለ 15 ሰከንድ ቆይቶ እንደገና ወደ waiting ይመለሳል
         if game_state["status"] == "playing":
-            time.sleep(15)
-            game_state["status"] = "waiting"
-            game_state["timer"] = 45
-            taken_cards.clear()
+            remaining = int(game_state["target_time"] - time.time())
+            if remaining <= 0:
+                game_state["status"] = "waiting"
+                game_state["timer"] = 45
+                taken_cards.clear()
 
 threading.Thread(target=game_timer_loop, daemon=True).start()
 
@@ -83,9 +85,9 @@ def lock_card():
         taken_cards[card_id] = user_id
         user_balances[user_id] -= STAKE_PRICE
 
-    # ካርዱ ሲያዝ የሰዓት ቆጠራው ወዲያውኑ እንዲጀምር ይደረጋል
     if game_state["status"] == "waiting":
         game_state["status"] = "countdown"
+        game_state["target_time"] = time.time() + 45
         game_state["timer"] = 45
 
     return jsonify({"success": True, "new_balance": user_balances[user_id]})

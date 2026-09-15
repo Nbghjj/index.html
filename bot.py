@@ -25,7 +25,7 @@ def broadcast_state():
         except:
             clients.remove(client_queue)
 
-# ሰርቨሩ ራሱ 45 ሰከንድ የሚቆጥርበት እና ሁኔታዎችን ለሁሉም የሚያዳርስበት ሎጂክ
+# ሰርቨሩ ራሱ የአንድ ጊዜ ሰዓት እየቆጠረ ለሁሉም በጋራ እንዲልክ የሚያደርግ ሎጂክ
 def global_timer_worker():
     global game_state
     while True:
@@ -36,6 +36,7 @@ def global_timer_worker():
 
             for i in range(45, 0, -1):
                 time.sleep(1)
+                # ካርዶቹ ሁሉም ከተለቀቁ ቆጠራውን እናቆማለን
                 if len(taken_cards) == 0:
                     break
                 game_state["timer"] = i - 1
@@ -43,12 +44,14 @@ def global_timer_worker():
 
             if len(taken_cards) == 0:
                 game_state["status"] = "waiting"
+                game_state["timer"] = 45
                 broadcast_state()
             else:
                 game_state["status"] = "playing"
                 broadcast_state()
                 time.sleep(15) # ጨዋታው ላይ ቆይቶ ወደ መጀመሪያው ይመለሳል
                 game_state["status"] = "waiting"
+                game_state["timer"] = 45
                 taken_cards.clear()
                 broadcast_state()
         else:
@@ -133,6 +136,7 @@ def unlock_card():
         
         if len(taken_cards) == 0:
             game_state["status"] = "waiting"
+            game_state["timer"] = 45
 
         broadcast_state()
         return jsonify({"success": True, "new_balance": user_balances[user_id]})

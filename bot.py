@@ -21,22 +21,22 @@ game_state = {
 }
 
 def generate_unique_bingo_cards(total_cards=300):
-    """300 ልዩ እና የማይመሳሰሉ የቢንጎ ካርዶችን የሚያመነጭ ሎጂክ"""
+    """300 ፍጹም የተለያዩ እና የማይመሳሰሉ የቢንጎ ካርዶችን የሚያመነጭ ጥብቅ ሎጂክ"""
     all_cards = {}
-    seen_combinations = set()
+    seen_cards = set()
     
     card_id = 1
     while card_id <= total_cards:
         b_col = tuple(sorted(random.sample(range(1, 16), 5)))
         i_col = tuple(sorted(random.sample(range(16, 31), 5)))
-        n_col = tuple(sorted(random.sample(range(31, 46), 4)))  # እዚህ ላይ ትክክለኛው random.sample ተስተካክሏል
+        n_col = tuple(sorted(random.sample(range(31, 46), 4)))  # መሀል ላይ Free ስላለ 4 ቁጥር
         g_col = tuple(sorted(random.sample(range(46, 61), 5)))
         o_col = tuple(sorted(random.sample(range(61, 76), 5)))
         
-        card_tuple = (b_col, i_col, n_col, g_col, o_col)
+        card_matrix = (b_col, i_col, n_col, g_col, o_col)
         
-        if card_tuple not in seen_combinations:
-            seen_combinations.add(card_tuple)
+        if card_matrix not in seen_cards:
+            seen_cards.add(card_matrix)
             all_cards[str(card_id)] = {
                 "B": list(b_col),
                 "I": list(i_col),

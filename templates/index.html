@@ -54,7 +54,8 @@
             </div>
         </div>
 
-        <button id="joinRoomBtn" class="join-btn" type="button">JOIN ROOM →</button>
+        <!-- በቀጥታ በ onclick የተስተካከለ -->
+        <button id="joinRoomBtn" class="join-btn" type="button" onclick="switchScreen('selection-screen')">JOIN ROOM →</button>
     </div>
 
     <!-- 2. SELECTION SCREEN -->
@@ -96,7 +97,8 @@
     <script>
         function switchScreen(screenId) {
             document.querySelectorAll('.container').forEach(s => s.classList.remove('active-screen'));
-            document.getElementById(screenId).classList.add('active-screen');
+            let target = document.getElementById(screenId);
+            if(target) target.classList.add('active-screen');
         }
 
         let mySelectedCard = null;
@@ -256,7 +258,7 @@
                     let data = await res.json();
                     currentWallet = data.balance;
                     updateWalletUI();
-                } href (e) {
+                } catch (e) {
                     console.error("Balance Fetch Error", e);
                 }
             }
@@ -297,7 +299,7 @@
                 let res = await fetch('/api/unlock_card', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.parse(JSON.stringify({ card_id: mySelectedCard, user_id: telegramUser }))
+                    body: JSON.stringify({ card_id: mySelectedCard, user_id: telegramUser })
                 });
                 let data = await res.json();
                 if (data.success) {
@@ -313,12 +315,7 @@
             fetchBalance();
             setInterval(pollGameState, 1000);
 
-            let joinBtn = document.getElementById('joinRoomBtn');
             let leaveBtn = document.getElementById('leaveBtn');
-
-            if(joinBtn) {
-                joinBtn.onclick = () => switchScreen('selection-screen');
-            }
             if(leaveBtn) {
                 leaveBtn.onclick = async () => {
                     if (mySelectedCard) {

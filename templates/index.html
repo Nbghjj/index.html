@@ -31,7 +31,10 @@
         .card-box.taken { background: #e74c3c !important; color: #fff !important; cursor: not-allowed !important; opacity: 0.7; }
         
         .join-btn { background: linear-gradient(135deg, #f39c12, #f1c40f); border: none; width: 100%; padding: 16px; border-radius: 8px; color: #000; font-weight: bold; cursor: pointer; margin-top: 15px; }
-        .timer-badge { background: #e74c3c !important; color: #fff !important; font-weight: bold; display: none; }
+        
+        /* የሰዓት ቆጣሪ ማሳያ ዲዛይን እና የማሳያ ሁኔታ */
+        .timer-badge { background: #e74c3c !important; color: #fff !important; font-weight: bold; display: none; padding: 3px 8px; border-radius: 6px; }
+        .timer-badge.show { display: inline-block !important; }
         
         .gameplay-box { background: #1f143a; padding: 20px; border-radius: 14px; text-align: center; border: 1px solid #3c2a6d; margin-top: 15px; }
         .bingo-ball { font-size: 55px; font-weight: bold; color: #2ecc71; margin: 15px 0; background: #2c1b4d; display: inline-block; padding: 15px 30px; border-radius: 50%; border: 2px solid #f39c12; box-shadow: 0 0 15px rgba(243, 156, 18, 0.4); }
@@ -139,7 +142,6 @@
                 document.getElementById('wallet-val').textContent = currentWallet;
             }
 
-            // BINGO 1-75 ቁጥሮችን በጋራ በየሰከንድ ማውጣት
             function startCallingNumbers() {
                 if (numberCallerInterval) return;
                 
@@ -168,7 +170,6 @@
                 }, 1500);
             }
 
-            // Real-time SSE Connection (ከሰርቨር የሚመጣውን ሰዓት እና ሁኔታ በቀጥታ መቀበል)
             const eventSource = new EventSource('/events');
             eventSource.onmessage = function(event) {
                 try {
@@ -185,15 +186,16 @@
                         updateCardsUI();
                     }
 
-                    // ⏱️ ሰርቨሩ የላከውን ትክክለኛ ሰዓት (timer) በቀጥታ በሁሉም ስክሪን ላይ እኩል ማሳየት
+                    const timerBox = document.getElementById('timer-box');
+                    
+                    // ⏱️ ቆጠራው ሲጀመር ሰዓቱ በትክክል እንዲታይ ማድረግ
                     if (gameState.status === "countdown") {
                         document.getElementById('timer-val').textContent = gameState.timer;
-                        document.getElementById('timer-box').style.display = 'inline-block';
+                        timerBox.classList.add('show');
                     } else {
-                        document.getElementById('timer-box').style.display = 'none';
+                        timerBox.classList.remove('show');
                     }
 
-                    // 🎮 ጨዋታው ሲጀመር (status: playing)
                     if (gameState.status === "playing") {
                         let hasCard = false;
                         let activeCard = mySelectedCard;
@@ -259,7 +261,7 @@
 
             async function unlockCurrentCard() {
                 if (!mySelectedCard) return;
-                let res = await fetch('/api/unlock_card', {
+                let res =- await fetch('/api/unlock_card', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ card_id: mySelectedCard, user_id: telegramUser })

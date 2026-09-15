@@ -11,7 +11,6 @@ user_balances = {}
 taken_cards = {}
 STAKE_PRICE = 10
 
-# የጨዋታ ሁኔታዎች: 'waiting' (መምረጥ), 'countdown' (መቁጠር), 'playing' (መጫወት)
 game_state = {
     "status": "waiting",
     "timer": 45,
@@ -21,37 +20,37 @@ game_state = {
 def broadcast_state():
     q.put(json.dumps(game_state))
 
-# 45 ሰከንድ የሚቆጥር Background Thread
+# የተስተካከለው የሰዓት ቆጣሪ (Timer Worker)
 def global_timer_worker():
     global game_state
     while True:
-        # ቢያንስ 1 ካርድ ከተያዘ ቆጠራው ይጀምራል
         if len(taken_cards) > 0 and game_state["status"] == "waiting":
             game_state["status"] = "countdown"
-            game_state["timer"] = 45
+            game_state["timer"]  = 45
             broadcast_state()
 
             for i in range(45, 0, -1):
                 time.sleep(1)
-                # ተጫዋቾች ካርዳቸውን አጥፍተው ከወጡ ቆጠራው ይቆማል
+                # ተጫዋቾች ካርዳቸውን ለቀው ከወጡ ቆጠራው ይቋረጣል
                 if len(taken_cards) == 0:
                     break
                 game_state["timer"] = i - 1
                 broadcast_state()
 
-            # 45 ሰከንዱ ሲያልቅ ሁሉም ወደ ጨዋታ ይገባሉ
-            if len(taken_cards) > 0:
+            # ካርዶቹ ሁሉም ከጠፉ ወደ waiting ይመለሳል፣ ካልተለቁ ወደ playing ይገባል
+            if len(taken_cards) == 0:
+                game_state["status"] = "waiting"
+                broadcast_state()
+            else:
                 game_state["status"] = "playing"
                 broadcast_state()
-                time.sleep(10) # ጨዋታው ለአፍታ ቆይቶ ወደ መጀመሪያው ይመለሳል (ለማስተካከል)
-                
-            game_state["status"] = "waiting"
-            taken_cards.clear()
-            broadcast_state()
+                time.sleep(10) # ጨዋታው ላይ ቆይቶ ወደ መጀመሪያው ይመለሳል
+                game_state["status"] = "waiting"
+                taken_cards.clear()
+                broadcast_state()
         else:
             time.sleep(1)
 
-# ሰዓቱን የሚያንቀሳቅሰውን Thread ማስጀመር
 threading.Thread(target=global_timer_worker, daemon=True).start()
 
 @app.route('/')
@@ -121,6 +120,11 @@ def unlock_card():
     if card_id in taken_cards and taken_cards[card_id] == user_id:
         del taken_cards[card_id]
         user_balances[user_id] += STAKE_PRICE
+        
+        # ካርዱ ሲለቀቅ እና ምንም ካርድ ሳይቀር ሲቀር Status-ውን ወደ waiting እንመልሰዋለን
+        if len(taken_cards) == 0:
+            game_state["status"] = "waiting"
+
         broadcast_state()
         return jsonify({"success": True, "new_balance": user_balances[user_id]})
 

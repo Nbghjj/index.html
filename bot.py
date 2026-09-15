@@ -17,6 +17,7 @@ game_state = {
 }
 
 clients = []
+timer_lock = threading.Lock()
 
 def broadcast_state():
     data = f"data: {json.dumps(game_state)}\n\n"
@@ -26,45 +27,49 @@ def broadcast_state():
         except:
             clients.remove(client_queue)
 
-# የሰርቨር ቆጣሪ አስተካካይ ሎጂክ
+# የሰርቨር ቆጣሪ አስተካካይ ሎጂክ (በጣም አስተማማኝ በሆነ መልኩ የተሰራ)
 def game_timer_loop():
     global game_state
     while True:
-        # ቢያንስ 1 ካርድ ከተያዘ እና ጨዋታው waiting ላይ ከሆነ ቆጠራ ይጀምራል
-        if len(taken_cards) > 0 and game_state["status"] == "waiting":
-            game_state["status"] = "countdown"
-            game_state["timer"] = 45
-            broadcast_state()
-
-            while game_state["timer"] > 0:
-                time.sleep(1)
-                # ሁሉም ካርዶች ከተለቀቁ ቆጠራው ይሰረዛል
-                if len(taken_cards) == 0:
-                    break
-                game_state["timer"] -= 1
-                broadcast_state()
-
-            if len(taken_cards) == 0:
-                game_state["status"] = "waiting"
+        time.sleep(1)
+        with timer_lock:
+            # ቢያንስ 1 ካርድ ከተያዘ እና ጨዋታው waiting ላይ ከሆነ ቆጠራ ይጀምራል
+            if len(taken_cards) > 0 and game_state["status"] == "waiting":
+                game_state["status"] = "countdown"
                 game_state["timer"] = 45
-            else:
-                # ቆጠራው አልቆ ጨዋታው ሲጀመር
-                game_state["status"] = "playing"
                 broadcast_state()
+
+            elif game_state["status"] == "countdown":
+                # ሁሉም ካርዶች ከተለቀቁ ቆጠራው ተሰርዞ ወደ waiting ይመለሳል
+                if len(taken_cards) == 0:
+                    game_state["status"] = "waiting"
+                    game_state["timer"] = 45
+                    broadcast_state()
+                elif game_state["timer"] > 0:
+                    game_state["timer"] -= 1
+                    broadcast_state()
                 
-                # ጨዋታው ላይ ቁጥሮች እየተጠሩ ለ 15 ሰከንድ ይቆያል
-                time.sleep(15)
+                # ቆጠራው 0 ሲደርስ ጨዋታው ይጀመራል
+                if game_state["timer"] <= 0 and len(taken_cards) > 0:
+                    game_state["status"] = "playing"
+                    broadcast_state()
+                    
+                    # ጨዋታው ላይ ቁጥሮች እየተጠሩ ለ 15 ሰከንድ ይቆያል
+                    # (ቲሬዱን እንዳይዘጋው ስሌቱን እዚህ ጋር በሰከንድ እናስኬዳለን)
+            
+            elif game_state["status"] == "playing":
+                # ጨዋታው ለ 15 ሰከንድ እንዲቆይ ማድረግ
+                # (በ 15 ሰከንድ ውስጥ በየሰከንዱ እየጠበቁ ቆጠራውን ማጠናቀቅ)
+                for _ in range(15):
+                    time.sleep(1)
                 
                 # ጨዋታው አልቆ ወደ መጀመሪያው waiting ይመለሳል
                 game_state["status"] = "waiting"
                 game_state["timer"] = 45
                 taken_cards.clear()
-            
-            broadcast_state()
-        else:
-            time.sleep(0.5)
+                broadcast_state()
 
-# አፕሊኬሽኑ ሲጀመር ቆጣሪውን ማስተላለፊያ  thread ማስጀመር
+# አፕሊኬሽኑ ሲጀመር ቆጣሪውን ማስተላለፊያ thread ማስጀመር
 threading.Thread(target=game_timer_loop, daemon=True).start()
 
 @app.route('/')
@@ -108,6 +113,7 @@ def get_balance():
 
 @app.route('/api/lock_card', methods=['POST'])
 def lock_card():
+    global game_state
     data = request.json or {}
     card_id = str(data.get('card_id'))
     user_id = data.get('user_id')
@@ -124,30 +130,39 @@ def lock_card():
     if user_balances[user_id] < STAKE_PRICE:
         return jsonify({"success": False, "message": "በቂ የኪስ ቦርሳ ሂሳብ የሎትም!"}), 400
 
-    if card_id not in taken_cards:
-        taken_cards[card_id] = user_id
-        user_balances[user_id] -= STAKE_PRICE
-        broadcast_state()
+    with timer_lock:
+        if card_id not in taken_cards:
+            taken_cards[card_id] = user_id
+            user_balances[user_id] -= STAKE_PRICE
+            
+            # የመጀመሪያው ካርድ ሲያዝ ቆጠራው ከሌለ ወዲያውኑ ወደ countdown ይለውጣል
+            if game_state["status"] == "waiting":
+                game_state["status"] = "countdown"
+                game_state["timer"] = 45
+
+            broadcast_state()
 
     return jsonify({"success": True, "new_balance": user_balances[user_id]})
 
 @app.route('/api/unlock_card', methods=['POST'])
 def unlock_card():
+    global game_state
     data = request.json or {}
     card_id = str(data.get('card_id'))
     user_id = data.get('user_id')
 
-    if card_id in taken_cards and taken_cards[card_id] == user_id:
-        del taken_cards[card_id]
-        user_balances[user_id] += STAKE_PRICE
-        
-        # ተጫዋቹ ካርዱን ሲለቅ ካርዶች ከጠፉ ቆጠራውን ወደ waiting መመለስ
-        if len(taken_cards) == 0 and game_state["status"] == "countdown":
-            game_state["status"] = "waiting"
-            game_state["timer"] = 45
+    with timer_lock:
+        if card_id in taken_cards and taken_cards[card_id] == user_id:
+            del taken_cards[card_id]
+            user_balances[user_id] += STAKE_PRICE
+            
+            # ተጫዋቹ ካርዱን ሲለቅ ካርዶች ከጠፉ ቆጠራውን ወደ waiting መመለስ
+            if len(taken_cards) == 0 and game_state["status"] == "countdown":
+                game_state["status"] = "waiting"
+                game_state["timer"] = 45
 
-        broadcast_state()
-        return jsonify({"success": True, "new_balance": user_balances[user_id]})
+            broadcast_state()
+            return jsonify({"success": True, "new_balance": user_balances[user_id]})
 
     return jsonify({"success": False, "message": "ካርዱ አልተያዘም"}), 400
 

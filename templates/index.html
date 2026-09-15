@@ -131,6 +131,7 @@
         let takenCardsMap = {};
         let currentWallet = 0;
         let lastWinnerNotified = null;
+        let calledNumbersSet = new Set(); // ሰርቨሩ የጠራቸውን ቁጥሮች ለመያዝ
         
         let telegramUser = localStorage.getItem("bingo_user_id");
         if (!telegramUser) {
@@ -181,12 +182,21 @@
                 let cell = document.createElement('div');
                 cell.className = 'bingo-cell';
                 cell.textContent = num;
+                cell.dataset.value = num;
+
                 if (num === 'F') {
                     cell.classList.add('free-cell', 'marked');
                 }
+
+                // ማርክ ማድረግ የሚቻለው ሰርቨሩ የጠራውን ቁጥር ብቻ ነው (ወይም 'F' ከሆነ)
                 cell.onclick = function() {
-                    if (num !== 'F') {
+                    if (num === 'F') return; // ነፃዋን ሴል መቀየር አያስፈልግም
+                    
+                    let numInt = parseInt(num);
+                    if (calledNumbersSet.has(numInt)) {
                         cell.classList.toggle('marked');
+                    } else {
+                        alert("ይህ ቁጥር ገና አልተጠራም! የተጠሩትን ቁጥሮች ብቻ ማርክ ማድረግ ይቻላል።");
                     }
                 };
                 gridEl.appendChild(cell);
@@ -198,11 +208,11 @@
                 let res = await fetch('/api/get_state');
                 let gameState = await res.json();
 
-                // ሌላ ተጫዋች አሸንፎ ከሆነ ማሳወቂያ ማሳየት እና ወደ ካርድ መምረጫ ስክሪን መመለስ
                 if (gameState.winner && gameState.winner !== lastWinnerNotified) {
                     lastWinnerNotified = gameState.winner;
                     alert(`ጨዋታው አልቋል! አሸናፊው ተጫዋች በካርድ ቁጥር ${gameState.winning_card || '--'} አሸንፏል!`);
                     mySelectedCard = null;
+                    calledNumbersSet.clear();
                     switchScreen('selection-screen');
                     updateCardsUI();
                     fetchBalance();
@@ -213,28 +223,30 @@
                     lastWinnerNotified = null;
                 }
 
-                // ሰርቨሩ የሚጠራውን ቁጥር ማሳየት
+                // ሰርቨሩ የሚጠራቸውን ቁጥሮች ታሪክ ወይም የአሁኑን ቁጥር መቀበል
                 if (gameState.current_called_number) {
                     let numDisplay = document.getElementById('called-number-display');
                     if (numDisplay) numDisplay.textContent = gameState.current_called_number;
+                    calledNumbersSet.add(parseInt(gameState.current_called_number));
                 }
 
-                if (gameState.status === "waiting" || gameState.status === "countdown") {
-                    if (!gameState.taken_cards || Object.keys(gameState.taken_cards).length === 0) {
-                        mySelectedCard = null;
-                    }
+                if (gameState.status === "waiting") {
+                    calledNumbersSet.clear(); // ጨዋታ ሲጀመር/ሲቆም ታሪኩን ማጽዳት
                 }
 
                 if (gameState.taken_cards) {
                     takenCardsMap = gameState.taken_cards;
-                    mySelectedCard = null;
-                    
+                    let foundCard = null;
                     for (let cardId in takenCardsMap) {
-                        if (takenCardsMap[cardId] === telegramUser) {
-                            mySelectedCard = cardId;
+                        if (String(takenCardsMap[cardId]) === String(telegramUser)) {
+                            foundCard = cardId;
                             break;
                         }
                     }
+                    if (foundCard) {
+                        mySelectedCard = foundCard;
+                    }
+                    
                     updateCardsUI();
                     let boardCountEl = document.getElementById('boards-count');
                     if(boardCountEl) boardCountEl.textContent = `Boards: ${mySelectedCard ? 1 : 0}/1`;
@@ -249,16 +261,8 @@
                 let currentActive = activeScreenEl ? activeScreenEl.id : 'home-screen';
 
                 if (gameState.status === "playing") {
-                    let hasCard = false;
                     let activeCard = mySelectedCard;
-                    
-                    for (let cardId in takenCardsMap) {
-                        if (takenCardsMap[cardId] === telegramUser) {
-                            hasCard = true;
-                            activeCard = cardId;
-                            break;
-                        }
-                    }
+                    let hasCard = activeCard && (takenCardsMap[activeCard] === telegramUser || !takenCardsMap[activeCard]);
 
                     if (hasCard && activeCard) {
                         if (currentActive !== 'gameplay-screen') {
@@ -266,24 +270,13 @@
                             switchScreen('gameplay-screen');
                         }
                     } else {
-                        switchScreen('home-screen');
+                        if (currentActive === 'gameplay-screen') {
+                            switchScreen('home-screen');
+                        }
                     }
                 } else {
                     if (currentActive === 'gameplay-screen') {
-                        switchScreen('home-screen');
-                    }
-
-                    let hasCard = false;
-                    for (let cardId in takenCardsMap) {
-                        if (takenCardsMap[cardId] === telegramUser) {
-                            hasCard = true;
-                            break;
-                        }
-                    }
-                    if (hasCard) {
-                        if (currentActive === 'home-screen') {
-                            switchScreen('selection-screen');
-                        }
+                        switchScreen('selection-screen');
                     }
                 }
 
@@ -299,18 +292,66 @@
 
                 if (mySelectedCard == cardId) {
                     btn.classList.add('selected');
-                } else if (takenCardsMap[cardId] && takenCardsMap[cardId] !== telegramUser) {
+                } else if (takenCardsMap[cardId] && String(takenCardsMap[cardId]) !== String(telegramUser)) {
                     btn.classList.add('taken');
                 }
             });
         }
 
-        // BINGO ሲሉ ሰርቨሩን ማሳወቅ እና ወደ ካርድ መምረጫ ስክሪን መመለስ
+        // --- የቢንጎ ማሸነፊያ ህግ ማረጋገጫ (Bingo Winning Logic Verification) ---
+        function verifyBingoWin() {
+            let cells = document.querySelectorAll('#userBingoCardGrid .bingo-cell');
+            if (cells.length !== 25) return false;
+
+            let grid = [];
+            for (let i = 0; i < 5; i++) {
+                grid.push([]);
+                for (let j = 0; j < 5; j++) {
+                    let cell = cells[i * 5 + j];
+                    grid[i].push(cell.classList.contains('marked'));
+                }
+            }
+
+            // 1. አግድም (Rows) ማረጋገጥ
+            for (let i = 0; i < 5; i++) {
+                if (grid[i][0] && grid[i][1] && grid[i][2] && grid[i][3] && grid[i][4]) {
+                    return true;
+                }
+            }
+
+            // 2. ቁመት (Columns) ማረጋገጥ
+            for (let j = 0; j < 5; j++) {
+                if (grid[0][j] && grid[1][j] && grid[2][j] && grid[3][j] && grid[4][j]) {
+                    return true;
+                }
+            }
+
+            // 3. ሰያፍ 1 (Top-Left to Bottom-Right)
+            if (grid[0][0] && grid[1][1] && grid[2][2] && grid[3][3] && grid[4][4]) {
+                return true;
+            }
+
+            // 4. ሰያፍ 2 (Top-Right to Bottom-Left)
+            if (grid[0][4] && grid[1][3] && grid[2][2] && grid[3][1] && grid[4][0]) {
+                return true;
+            }
+
+            return false;
+        }
+
         async function checkBingoWin() {
             if (!mySelectedCard) {
                 alert("የመረጡት ካርድ የለም!");
                 return;
             }
+
+            // ህጉን ማረጋገጥ፡ ቢያንስ አንድ ሙሉ ረድፍ፣ ኮሎም ወይም ሰያፍ መሞላቱን ማረጋገጥ
+            let isValidBingo = verifyBingoWin();
+            if (!isValidBingo) {
+                alert("❌ ገና ቢንጎ አልሞሉም! አግድም፣ ቁመት ወይም ሰያፍ ሙሉ 5 ቁጥሮች መሞላት አለባቸው።");
+                return;
+            }
+
             try {
                 let res = await fetch('/api/bingo_win', {
                     method: 'POST',
@@ -321,6 +362,7 @@
                 if (result.success) {
                     alert(result.message);
                     mySelectedCard = null;
+                    calledNumbersSet.clear();
                     switchScreen('selection-screen');
                     updateCardsUI();
                     fetchBalance();

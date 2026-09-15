@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ayat Bingo - Server Card Sync</title>
+    <title>Ayat Bingo</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -11,9 +11,16 @@
         .container { max-width: 480px; margin: 0 auto; display: none; }
         .container.active-screen { display: block !important; }
         
+        .card-banner { background: linear-gradient(135deg, #2c1b4d, #1f143a); padding: 20px; border-radius: 14px; text-align: center; border: 1px solid #3c2a6d; margin-bottom: 15px; }
+        .wallet-box { background: #1f143a; padding: 15px; border-radius: 14px; margin-bottom: 15px; border: 1px solid #3c2a6d; }
+        .wallet-row { display: flex; justify-content: space-between; align-items: center; }
+        
         .game-top-bar { display: flex; justify-content: space-between; align-items: center; background: #1f143a; padding: 10px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #3c2a6d; }
         .leave-btn { background: #7928ca; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         
+        .stats-box { display: flex; gap: 6px; }
+        .stats-box span { background: #2c1b4d; padding: 4px 8px; border-radius: 6px; font-size: 11px; color: #f1c40f; border: 1px solid #3c2a6d; }
+
         .cards-grid-container { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; max-height: 320px; overflow-y: auto; background: #1f143a; padding: 10px; border-radius: 10px; border: 1px solid #3c2a6d; }
         
         .card-box {
@@ -21,7 +28,7 @@
         }
 
         /* የእርሶ የተያዘ ካርድ (ብጫ) */
-        .card-box.selected { background: #f39c12 !important; color: #000 !important; border-color: #fff !important; }
+        .card-box.selected { background: #f39c12 !important; color: #000 !important; border-color: #fff !important; box-shadow: 0 0 8px #f39c12; }
 
         /* በሌላ ተጫዋች የተያዘ ካርድ (ቀይ) */
         .card-box.taken { background: #e74c3c !important; color: #fff !important; cursor: not-allowed !important; opacity: 0.7; }
@@ -33,7 +40,18 @@
 
     <!-- 1. HOME SCREEN -->
     <div id="home-screen" class="container active-screen">
-        <h2 style="color: #f39c12; text-align: center;">AYAT BINGO</h2>
+        <div class="card-banner">
+            <h3 style="color: #f39c12; margin: 0 0 5px 0;">AYAT BINGO</h3>
+            <span style="background: #3c2a6d; padding: 4px 10px; border-radius: 20px; font-size: 11px; color: #f1c40f;">🎁 WELCOME BONUS: 100 BIRR</span>
+        </div>
+        
+        <div class="wallet-box">
+            <div class="wallet-row">
+                <span style="font-size: 14px; color: #a08cc4;">የኪስ ቦርሳ (Wallet):</span>
+                <span style="font-size: 18px; font-weight: bold; color: #2ecc71;"><b id="home-wallet-val">--</b> Birr</span>
+            </div>
+        </div>
+
         <button id="joinRoomBtn" class="join-btn" type="button">JOIN ROOM →</button>
     </div>
 
@@ -41,11 +59,16 @@
     <div id="selection-screen" class="container">
         <div class="game-top-bar">
             <button id="leaveBtn" class="leave-btn" type="button">← Leave</button>
-            <h3 style="margin: 0; color: #f39c12;">Ayat Bingo</h3>
+            <h3 style="margin: 0; font-size: 14px; color: #f39c12;">Ayat Bingo</h3>
+            <div class="stats-box">
+                <span>W: <b id="wallet-val">--</b> Br</span>
+                <span>S: <b>10</b> Br</span>
+            </div>
         </div>
-        <div style="display: flex; justify-content: space-between; color: #a08cc4; margin-bottom: 8px;">
+
+        <div style="display: flex; justify-content: space-between; color: #a08cc4; margin-bottom: 8px; font-size: 13px;">
             <span id="boards-count">Boards: 0/1</span>
-            <span id="timer-display" style="color: #f1c40f; font-weight: bold;">ጀምር በ: --s</span>
+            <span style="color: #2ecc71; font-weight: bold;">● LIVE REALTIME</span>
         </div>
 
         <div class="cards-grid-container" id="cardsGrid"></div>
@@ -62,10 +85,12 @@
             let telegramUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id.toString() : "user_" + Math.floor(Math.random()*10000);
             
             let mySelectedCard = null;
+            let takenCardsMap = {};
+            let currentWallet = 0;
             const totalBoards = 300;
             const gridContainer = document.getElementById('cardsGrid');
 
-            // ካርዶቹን መጀመሪያ መፍጠር
+            // 1. 300 ካርዶችን መፍጠር
             for (let i = 1; i <= totalBoards; i++) {
                 const btn = document.createElement('button');
                 btn.className = 'card-box';
@@ -75,48 +100,73 @@
                 gridContainer.appendChild(btn);
             }
 
-            // ከ Server የተያዙ ካርዶችን መቀበልና UI ማደስ
-            async function fetchTakenCards() {
+            // 2. የሂሳብ መጠን ከ Server ማምጣት
+            async function fetchBalance() {
                 try {
-                    let res = await fetch('/api/get_taken_cards');
-                    let data = await res.json();
-                    let takenMap = data.taken_cards;
-
-                    document.querySelectorAll('.card-box').forEach(btn => {
-                        let cardId = btn.dataset.id;
-                        btn.classList.remove('taken', 'selected');
-
-                        if (mySelectedCard == cardId) {
-                            btn.classList.add('selected');
-                        } else if (takenMap[cardId] && takenMap[cardId] !== telegramUser) {
-                            btn.classList.add('taken');
-                        }
+                    let res = await fetch('/api/get_balance', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ user_id: telegramUser })
                     });
-                } catch (err) {
-                    console.error("Sync Error:", err);
+                    let data = await res.json();
+                    currentWallet = data.balance;
+                    updateWalletUI();
+                } catch (e) {
+                    console.error("Balance Fetch Error", e);
                 }
             }
 
-            // ካርድ የመምረጥና የመቆለፍ ሂደት
+            function updateWalletUI() {
+                document.getElementById('home-wallet-val').textContent = currentWallet;
+                document.getElementById('wallet-val').textContent = currentWallet;
+            }
+
+            // 3. SSE Connection (Real-time Sync)
+            const eventSource = new EventSource('/events');
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                takenCardsMap = data.taken_cards;
+                updateCardsUI();
+            };
+
+            function updateCardsUI() {
+                document.querySelectorAll('.card-box').forEach(btn => {
+                    let cardId = btn.dataset.id;
+                    btn.classList.remove('taken', 'selected');
+
+                    if (mySelectedCard == cardId) {
+                        btn.classList.add('selected'); // የራሳችን ካርድ (ብጫ)
+                    } else if (takenCardsMap[cardId] && takenCardsMap[cardId] !== telegramUser) {
+                        btn.classList.add('taken'); // የሌላ ሰው ካርድ (ቀይ)
+                    }
+                });
+            }
+
+            // 4. ካርድ የመምረጥና የመቀነስ ሂደት
             async function handleCardClick(cardId) {
                 if (mySelectedCard == cardId) {
-                    // ካርዱን መልቀቅ
-                    await fetch('/api/unlock_card', {
+                    // ካርዱን ሲመልስ
+                    let res = await fetch('/api/unlock_card', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ card_id: cardId, user_id: telegramUser })
                     });
-                    mySelectedCard = null;
+                    let data = await res.json();
+                    if (data.success) {
+                        mySelectedCard = null;
+                        currentWallet = data.new_balance;
+                        updateWalletUI();
+                    }
                 } else {
-                    // አዲስ ካርድ መቆለፍ
+                    // አዲስ ካርድ ሲይዝ
                     let res = await fetch('/api/lock_card', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ card_id: cardId, user_id: telegramUser })
                     });
                     
-                    let data = await res.json();
-                    if (res.ok && data.success) {
+                    let result = await res.json();
+                    if (res.ok && result.success) {
                         if (mySelectedCard) {
                             await fetch('/api/unlock_card', {
                                 method: 'POST',
@@ -125,33 +175,32 @@
                             });
                         }
                         mySelectedCard = cardId;
+                        currentWallet = result.new_balance;
+                        updateWalletUI();
                     } else {
-                        alert(data.message || "ይህ ካርድ ተይዟል!");
+                        alert(result.message || "ይህ ካርድ መያዝ አልተቻለም!");
                     }
                 }
                 document.getElementById('boards-count').textContent = `Boards: ${mySelectedCard ? 1 : 0}/1`;
-                fetchTakenCards();
+                updateCardsUI();
             }
 
-            // በየ 1 ሰከንዱ ዳታውን ከ Server ጋር ማመሳሰል
-            setInterval(() => {
-                if (document.getElementById('selection-screen').classList.contains('active-screen')) {
-                    fetchTakenCards();
-                }
-            }, 1000);
+            fetchBalance();
 
-            document.getElementById('joinRoomBtn').onclick = () => {
-                switchScreen('selection-screen');
-                fetchTakenCards();
-            };
+            document.getElementById('joinRoomBtn').onclick = () => switchScreen('selection-screen');
 
             document.getElementById('leaveBtn').onclick = async () => {
                 if (mySelectedCard) {
-                    await fetch('/api/unlock_card', {
+                    let res = await fetch('/api/unlock_card', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ card_id: mySelectedCard, user_id: telegramUser })
                     });
+                    let data = await res.json();
+                    if(data.success) {
+                        currentWallet = data.new_balance;
+                        updateWalletUI();
+                    }
                     mySelectedCard = null;
                 }
                 switchScreen('home-screen');

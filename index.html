@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ayat Bingo - Synced Live System</title>
+    <title>Ayat Bingo - Realtime Multi-Player Sync</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * {
@@ -231,9 +231,18 @@
         }
 
         .card-box.selected {
-            background: #f39c12;
-            color: #000;
-            border-color: #fff;
+            background: #f39c12 !important;
+            color: #000 !important;
+            border-color: #fff !important;
+        }
+
+        /* በሌላ ተጫዋች የተያዘ ካርድ ስታይል */
+        .card-box.taken {
+            background: #e74c3c !important;
+            color: #fff !important;
+            cursor: not-allowed !important;
+            opacity: 0.7;
+            border-color: #c0392b !important;
         }
 
         .live-game-layout {
@@ -403,7 +412,7 @@
             <div class="room-info">
                 <span class="stake-badge">10 BIRR</span>
                 <h4>Ayat Bingo Room</h4>
-                <p style="color: #a08cc4; font-size: 12px; margin: 2px 0;">• LIVE SYNCHRONIZED GAME</p>
+                <p style="color: #a08cc4; font-size: 12px; margin: 2px 0;">• SHARED CARD LOCKING SYSTEM</p>
             </div>
             <div id="errorBanner" class="error-banner">⚠️ በቂ ገንዘብ የለም! እባክዎ መጀመሪያ ሂሳብዎን ይሙሉ</div>
             <p style="font-size: 13px; color: #a08cc4;">Active Players: <span id="player-count">64</span> / 300</p>
@@ -515,7 +524,7 @@
             let tg = window.Telegram ? window.Telegram.WebApp : null;
             if (tg) { try { tg.expand(); tg.ready(); } catch (e) {} }
 
-            let telegramUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id.toString() : "guest_user";
+            let telegramUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id.toString() : "user_" + Math.floor(Math.random()*10000);
             let walletKey = `ayat_wallet_${telegramUser}`;
             
             let storedBalance = localStorage.getItem(walletKey);
@@ -524,16 +533,16 @@
 
             const totalBoards = 300;
             const maxSelection = 1;
-            let selectedCards = [];
+            let mySelectedCard = null;
             
             let globalSyncTimer = null;
             let liveGameLoop = null;
             let currentCardData = null;
-            let currentRoundId = 0;
+            let isGameOverForRound = false;
             
             const stakeAmount = 10;
-            const GAME_CYCLE_SEC = 30; // በየ 30 ሰከንዱ አዲስ ጨዋታ በአንድ ላይ ይጀመራል
-            const BALL_INTERVAL_SEC = 4; // የኳስ ጥሪ በየ 4 ሰከንዱ ለሁሉም እኩል ይሆናል
+            const GAME_CYCLE_SEC = 30;
+            const BALL_INTERVAL_SEC = 4;
 
             const joinRoomBtn = document.getElementById('joinRoomBtn');
             const leaveBtn = document.getElementById('leaveBtn');
@@ -565,22 +574,69 @@
             }
             updateWallets();
 
-            // 1. Global Time Synced Countdown (ሁሉም ሰው እኩል ሰከንድ እንዲቆጥር የሚያደርግ)
+            // REAL-TIME SHARED CARD LOCKING (የተያዙ ካርዶችን በጋራ ማመሳሰያ)
+            function getGlobalRoundId() {
+                return Math.floor(Date.now() / 1000 / GAME_CYCLE_SEC);
+            }
+
+            function getTakenCardsMap() {
+                let roundId = getGlobalRoundId();
+                let data = localStorage.getItem(`ayat_taken_cards_r${roundId}`);
+                return data ? JSON.parse(data) : {};
+            }
+
+            function lockCardGlobally(cardId) {
+                let roundId = getGlobalRoundId();
+                let taken = getTakenCardsMap();
+                taken[cardId] = telegramUser;
+                localStorage.setItem(`ayat_taken_cards_r${roundId}`, JSON.stringify(taken));
+            }
+
+            function unlockCardGlobally(cardId) {
+                let roundId = getGlobalRoundId();
+                let taken = getTakenCardsMap();
+                if (taken[cardId] === telegramUser) {
+                    delete taken[cardId];
+                    localStorage.setItem(`ayat_taken_cards_r${roundId}`, JSON.stringify(taken));
+                }
+            }
+
+            function refreshGridCardsUI() {
+                let takenMap = getTakenCardsMap();
+                document.querySelectorAll('.card-box').forEach(btn => {
+                    let cardId = parseInt(btn.dataset.id);
+                    btn.classList.remove('taken', 'selected');
+
+                    if (mySelectedCard === cardId) {
+                        btn.classList.add('selected');
+                    } else if (takenMap[cardId] && takenMap[cardId] !== telegramUser) {
+                        btn.classList.add('taken');
+                    }
+                });
+            }
+
+            // GLOBAL SYNC TIMER
             function startGlobalSyncTimer() {
                 if (globalSyncTimer) clearInterval(globalSyncTimer);
                 
                 globalSyncTimer = setInterval(() => {
                     let now = Math.floor(Date.now() / 1000);
                     let secondsLeft = GAME_CYCLE_SEC - (now % GAME_CYCLE_SEC);
-                    let roundId = Math.floor(now / GAME_CYCLE_SEC);
+                    let roundId = getGlobalRoundId();
 
                     if (timerDisplay) {
                         timerDisplay.textContent = `ጀምር በ: ${secondsLeft}s`;
                     }
 
-                    // 0 ሰከንድ ላይ ሲደርስ ሁሉም የተመዘገቡ ተጫዋቾች በአንድ ላይ ወደ ጨዋታው ይገባሉ
+                    // የካርዶች ሁኔታን በየሰከንዱ ማመሳሰል
+                    if (document.getElementById('selection-screen').classList.contains('active-screen')) {
+                        refreshGridCardsUI();
+                    }
+
+                    // 0 ሰከንድ ላይ ሲደርስ በጋራ ጨዋታው ይጀመራል
                     if (secondsLeft === GAME_CYCLE_SEC || secondsLeft === 0) {
-                        if (selectedCards.length > 0 && document.getElementById('selection-screen').classList.contains('active-screen')) {
+                        isGameOverForRound = false;
+                        if (mySelectedCard !== null && document.getElementById('selection-screen').classList.contains('active-screen')) {
                             startLiveGame(roundId);
                         }
                     }
@@ -598,6 +654,7 @@
                         return;
                     }
                     switchScreen('selection-screen');
+                    refreshGridCardsUI();
                 });
             }
 
@@ -644,15 +701,24 @@
 
                     cardBtn.onclick = function() {
                         const cardId = parseInt(this.dataset.id);
-                        if (selectedCards.includes(cardId)) {
-                            selectedCards = [];
-                            this.classList.remove('selected');
-                        } else {
-                            document.querySelectorAll('.card-box').forEach(c => c.classList.remove('selected'));
-                            selectedCards = [cardId];
-                            this.classList.add('selected');
+                        let takenMap = getTakenCardsMap();
+
+                        if (takenMap[cardId] && takenMap[cardId] !== telegramUser) {
+                            alert("⚠️ ይሄ ካርድ በሌላ ተጫዋች ተይዟል! እባክዎ ነፃ ካርድ ይምረጡ።");
+                            return;
                         }
-                        if(boardsCountText) boardsCountText.textContent = `Boards: ${selectedCards.length}/${maxSelection}`;
+
+                        if (mySelectedCard === cardId) {
+                            unlockCardGlobally(cardId);
+                            mySelectedCard = null;
+                        } else {
+                            if (mySelectedCard !== null) unlockCardGlobally(mySelectedCard);
+                            mySelectedCard = cardId;
+                            lockCardGlobally(cardId);
+                        }
+                        
+                        refreshGridCardsUI();
+                        if(boardsCountText) boardsCountText.textContent = `Boards: ${mySelectedCard ? 1 : 0}/${maxSelection}`;
                     };
                     gridContainer.appendChild(cardBtn);
                 }
@@ -661,9 +727,10 @@
 
             if (leaveBtn) {
                 leaveBtn.onclick = function() {
-                    selectedCards = [];
+                    if (mySelectedCard !== null) unlockCardGlobally(mySelectedCard);
+                    mySelectedCard = null;
                     if(boardsCountText) boardsCountText.textContent = `Boards: 0/${maxSelection}`;
-                    document.querySelectorAll('.card-box').forEach(c => c.classList.remove('selected'));
+                    refreshGridCardsUI();
                     switchScreen('home-screen');
                 };
             }
@@ -677,7 +744,6 @@
                 };
             }
 
-            // Deterministic Pseudo-Random Ball Generator for All Synchronized Players
             function getSyncedBallSequence(roundSeed) {
                 let numbers = Array.from({length: 75}, (_, i) => i + 1);
                 let sequence = [];
@@ -691,14 +757,12 @@
                 return sequence;
             }
 
-            // 2. Synchronized Live Game (ሁሉም እኩል ሰከንድ ላይ እኩል ቁጥር የሚያዩበት)
             function startLiveGame(roundId) {
                 walletBalance -= stakeAmount;
                 updateWallets();
 
-                let cardId = selectedCards[0];
-                currentCardData = generateCardData(cardId);
-                if(cardNumLabel) cardNumLabel.textContent = `የካርቴል ቁጥር #${cardId}`;
+                currentCardData = generateCardData(mySelectedCard);
+                if(cardNumLabel) cardNumLabel.textContent = `የካርቴል ቁጥር #${mySelectedCard}`;
 
                 renderBingoMatrix(currentCardData);
                 switchScreen('live-game-screen');
@@ -709,6 +773,20 @@
                 if (liveGameLoop) clearInterval(liveGameLoop);
 
                 liveGameLoop = setInterval(() => {
+                    let roundWonGlobally = localStorage.getItem(`ayat_winner_r${roundId}`);
+                    
+                    if (roundWonGlobally && !isGameOverForRound) {
+                        isGameOverForRound = true;
+                        clearInterval(liveGameLoop);
+                        let winData = JSON.parse(roundWonGlobally);
+                        if (winData.user === telegramUser) {
+                            showResult(true, `🎉 BINGO! እርሶ የመጀመሪያው አሸናፊ ሆነዋል! ${winData.amount} Birr ተጨምሮልዎታል።`);
+                        } else {
+                            showResult(false, `❌ ጨዋታው ተጠናቋል! በካርቴል #${winData.card} ሌላ ተጫዋች BINGO ብሏል።`);
+                        }
+                        return;
+                    }
+
                     let now = Math.floor(Date.now() / 1000);
                     let elapsed = now - gameStartTime;
                     let ballIndex = Math.floor(elapsed / BALL_INTERVAL_SEC);
@@ -725,19 +803,19 @@
                             markMatchingCell(calledNum);
                         }
 
-                        // በራሱ BINGO መሙላቱን ያረጋግጣል
-                        if (checkBingoWin()) {
-                            clearInterval(liveGameLoop);
+                        if (checkBingoWin() && !roundWonGlobally) {
                             let winAmt = 3000;
+                            localStorage.setItem(`ayat_winner_r${roundId}`, JSON.stringify({
+                                user: telegramUser,
+                                card: mySelectedCard,
+                                amount: winAmt
+                            }));
                             walletBalance += winAmt;
                             updateWallets();
-                            setTimeout(() => {
-                                showResult(true, `🎉 BINGO! በራሱ ተረጋግጧል! ${winAmt} Birr አሸንፈዋል።`);
-                            }, 500);
                         }
                     } else {
                         clearInterval(liveGameLoop);
-                        showResult(false, "ጨዋታው ተጠናቋል!");
+                        showResult(false, "ጨዋታው ተጠናቋል! ማንም አላሸነፈም።");
                     }
                 }, 1000);
             }
@@ -785,12 +863,16 @@
 
             if (bingoClaimBtn) {
                 bingoClaimBtn.onclick = function() {
+                    let roundId = getGlobalRoundId();
                     if (checkBingoWin()) {
-                        if(liveGameLoop) clearInterval(liveGameLoop);
                         let winAmt = 3000;
+                        localStorage.setItem(`ayat_winner_r${roundId}`, JSON.stringify({
+                            user: telegramUser,
+                            card: mySelectedCard,
+                            amount: winAmt
+                        }));
                         walletBalance += winAmt;
                         updateWallets();
-                        showResult(true, `🎉 BINGO! ${winAmt} Birr አሸንፈዋል።`);
                     } else {
                         alert("ገና BINGO አልሞላም! ቁጥሮችን ይከታተሉ።");
                     }
@@ -828,9 +910,10 @@
 
             if (restartBtn) {
                 restartBtn.onclick = function() {
-                    selectedCards = [];
+                    if (mySelectedCard !== null) unlockCardGlobally(mySelectedCard);
+                    mySelectedCard = null;
                     if(boardsCountText) boardsCountText.textContent = `Boards: 0/${maxSelection}`;
-                    document.querySelectorAll('.card-box').forEach(c => c.classList.remove('selected'));
+                    refreshGridCardsUI();
                     switchScreen('home-screen');
                 };
             }

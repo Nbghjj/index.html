@@ -1,3 +1,19 @@
+import time
+import threading
+from flask import Flask, render_template, request, jsonify
+
+app = Flask(__name__)
+
+user_balances = {}
+taken_cards = {}
+STAKE_PRICE = 10
+
+game_state = {
+    "status": "waiting",  # waiting, countdown, playing
+    "timer": 45,
+    "taken_cards": taken_cards
+}
+
 # ሰዓቱን በየሰከንዱ የሚያስኬደው እና ቆጠራውን የሚያስተካክለው ሉፕ
 def game_timer_loop():
     while True:
@@ -18,6 +34,24 @@ def game_timer_loop():
             game_state["status"] = "waiting"
             game_state["timer"] = 45
             taken_cards.clear()
+
+threading.Thread(target=game_timer_loop, daemon=True).start()
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/api/get_state', methods=['GET'])
+def get_state():
+    return jsonify(game_state)
+
+@app.route('/api/get_balance', methods=['POST'])
+def get_balance():
+    data = request.json or {}
+    user_id = data.get('user_id')
+    if user_id not in user_balances:
+        user_balances[user_id] = 100
+    return jsonify({"success": True, "balance": user_balances[user_id]})
 
 @app.route('/api/lock_card', methods=['POST'])
 def lock_card():
@@ -42,12 +76,31 @@ def lock_card():
         taken_cards[card_id] = user_id
         user_balances[user_id] -= STAKE_PRICE
 
-    # 💡 ዋናው ማስተካከያ: ማንኛውም ካርድ ሲያዝ (ቁጥሩ ከ 0 በላይ ሲሆን) 
-    # ጨዋታው waiting ላይ ከሆነ ወዲያውኑ ወደ countdown እንዲቀየር ይደረጋል
     if len(taken_cards) > 0 and game_state["status"] != "playing":
         game_state["status"] = "countdown"
-        # የመጀመሪያው ካርድ ሲያዝ ሰዓቱ ከ 45 እንዲጀምር (አልፎ አልፎ ካልተቀየረ)
         if game_state["timer"] <= 0 or game_state["timer"] > 45:
             game_state["timer"] = 45
 
     return jsonify({"success": True, "new_balance": user_balances[user_id]})
+
+@app.route('/api/unlock_card', methods=['POST'])
+def unlock_card():
+    global game_state
+    data = request.json or {}
+    card_id = str(data.get('card_id'))
+    user_id = data.get('user_id')
+
+    if card_id in taken_cards and taken_cards[card_id] == user_id:
+        del taken_cards[card_id]
+        user_balances[user_id] += STAKE_PRICE
+        
+        if len(taken_cards) == 0 and game_state["status"] == "countdown":
+            game_state["status"] = "waiting"
+            game_state["timer"] = 45
+
+        return jsonify({"success": True, "new_balance": user_balances[user_id]})
+
+    return jsonify({"success": False, "message": "አልተያዘም"}), 400
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, threaded=True, debug=False)

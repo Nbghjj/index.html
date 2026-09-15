@@ -31,6 +31,8 @@
         .card-box.taken { background: #e74c3c !important; color: #fff !important; cursor: not-allowed !important; opacity: 0.7; }
         
         .join-btn { background: linear-gradient(135deg, #f39c12, #f1c40f); border: none; width: 100%; padding: 16px; border-radius: 8px; color: #000; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        
+        /* ቆጣሪው በነባሪ ተደብቆ እንዲቆይ እና ሲጀመር እንዲታይ */
         .timer-badge { background: #e74c3c !important; color: #fff !important; font-weight: bold; display: none; }
         
         .gameplay-box { background: #1f143a; padding: 20px; border-radius: 14px; text-align: center; border: 1px solid #3c2a6d; margin-top: 15px; }
@@ -136,7 +138,7 @@
                 document.getElementById('wallet-val').textContent = currentWallet;
             }
 
-            // SSE Connection (Global Server Sync)
+            // SSE Connection (Realtime synchronization from server)
             const eventSource = new EventSource('/events');
             eventSource.onmessage = function(event) {
                 try {
@@ -147,7 +149,7 @@
                         updateCardsUI();
                     }
 
-                    // ሰዓቱ ሲጀምር ከሰርቨር የሚመጣውን ቆጠራ ማሳየት
+                    // ሰርቨሩ status-ውን 'countdown' ሲለው ሰዓቱ በስክሪኑ ላይ እንዲታይ እና እንዲቀንስ ማድረግ
                     if (gameState.status === "countdown") {
                         document.getElementById('timer-val').textContent = gameState.timer;
                         document.getElementById('timer-box').style.display = 'inline-block';
@@ -155,13 +157,12 @@
                         document.getElementById('timer-box').style.display = 'none';
                     }
 
-                    // 45 ሰከንድ ሲያልቅ ሁሉም በአንድ ላይ ወደ ጨዋታው ገጽ ይገባሉ
+                    // ሰዓቱ 0 ሲደርስ (status 'playing' ሲሆን) ሁሉም ተጫዋቾች ወደ ጨዋታው ገጽ ይገባሉ
                     if (gameState.status === "playing") {
                         if (mySelectedCard) {
                             document.getElementById('active-card-num').textContent = mySelectedCard;
                             switchScreen('gameplay-screen');
                         } else {
-                            // ካርድ ያልመረጠ ተጫዋች ካለ ወደ Home ይመለሳል
                             switchScreen('home-screen');
                             alert("ጨዋታው ተጀምሯል! ቀጣዩን ዙር ይጠብቁ።");
                         }

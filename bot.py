@@ -11,13 +11,13 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 app = Flask(__name__)
 
 STAKE_PRICE = 10
-MAX_CARDS_PER_USER = 4   # አንዱ ተጫዋች መያዝ የሚችለው ከፍተኛ የካርድ ብዛት
+MAX_CARDS_PER_USER = 4   # Di max number of cards wey one player fit hold
 
-# ያስገቡት ትክክለኛ የቦት ቶከን
+# Yu bot token wey de correct
 BOT_TOKEN = "8909328591:AAEay418mvQF9dRBqjtSKgPDM_T-WpWWJ84" 
-WEB_APP_URL = "https://ayat-bingo-bot.onrender.com/" # የ Render ሊንክዎ
+WEB_APP_URL = "https://ayat-bingo-bot.onrender.com/" # Yu Render Link
 
-# ዳታቤዝ ማዋቀሪያ (ቦቱ እና ሚኒ አፑ አንድ አይነት ዳታቤዝ እንዲጠቀሙ)
+# Database setup so dat bot ane mini app go dey use di sem database
 def init_db():
     conn = sqlite3.connect('bot_users.db', check_same_thread=False)
     cursor = conn.cursor()
@@ -47,7 +47,7 @@ game_state = {
 }
 
 def generate_unique_bingo_cards(total_cards=300):
-    """300 ፍጹም የተለያዩ እና የማይመሳሰሉ የቢንጎ ካርዶችን የሚያመነጭ ሎጂክ"""
+    """Logic to generate 300 unique bingo cards"""
     all_cards = {}
     seen_cards = set()
     
@@ -55,7 +55,7 @@ def generate_unique_bingo_cards(total_cards=300):
     while card_id <= total_cards:
         b_col = tuple(sorted(random.sample(range(1, 16), 5)))
         i_col = tuple(sorted(random.sample(range(16, 31), 5)))
-        n_col = tuple(sorted(random.sample(range(31, 46), 4)))  # መሀል ላይ Free
+        n_col = tuple(sorted(random.sample(range(31, 46), 4)))  # Free space for middle
         g_col = tuple(sorted(random.sample(range(46, 61), 5)))
         o_col = tuple(sorted(random.sample(range(61, 76), 5)))
         
@@ -76,13 +76,13 @@ def generate_unique_bingo_cards(total_cards=300):
 
 BINGO_CARDS = generate_unique_bingo_cards(300)
 
-# ================= ቴሌግራም ቦት ክፍሎች (Telegram Bot Handlers) =================
+# ================= TELEGRAM BOT HANDLERS =================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
     username = user.username or user.first_name
     
-    # 1. /start ሲሉ ዩዘሩን በዳታቤዝ መመዝገብ
+    # Register user inside database when dem type /start
     conn = sqlite3.connect('bot_users.db')
     cursor = conn.cursor()
     cursor.execute('SELECT telegram_id FROM users WHERE telegram_id = ?', (user_id,))
@@ -92,13 +92,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         conn.commit()
     conn.close()
     
-    # 2. ስልክ ቁጥር ማጋሪያ ቁልፍ ማምጣት
-    contact_button = KeyboardButton("📱 ቁጥሬን አጋራ (Share Contact)", request_contact=True)
+    # Request contact button
+    contact_button = KeyboardButton("📱 Share Contact (ቁጥሬን አጋራ)", request_contact=True)
     reply_markup = ReplyKeyboardMarkup([[contact_button]], resize_keyboard=True, one_time_keyboard=True)
     
     await update.message.reply_text(
-        f"ሰላም <b>{user.first_name}</b>! እንኳን ወደ 'Ayat Bingo' በደህና መጡ።\n\n"
-        "ጨዋታውን ለመጀመር እና ለመመዝገብ እባክዎ ከታች ያለውን በመንካት ስልክ ቁጥርዎን ያጋሩ።",
+        f"Hello <b>{user.first_name}</b>! Welcome to 'Ayat Bingo'.\n\n"
+        "To start and register, please share your phone number by clicking the button below.",
         reply_markup=reply_markup,
         parse_mode="HTML"
     )
@@ -108,20 +108,20 @@ async def contact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = user.id
     phone = update.message.contact.phone_number
     
-    # 3. ስልክ ቁጥር ሲያጋራ ዳታቤዝ ማዘመን
+    # Update phone number inside database
     conn = sqlite3.connect('bot_users.db')
     cursor = conn.cursor()
     cursor.execute('UPDATE users SET phone = ? WHERE telegram_id = ?', (phone, user_id))
     conn.commit()
     conn.close()
     
-    # 4. ሚኒ አፕ መክፈቻ ቁልፍ ማሳየት
+    # Show Mini App button
     keyboard = [[InlineKeyboardButton("🎮 Play Ayat Bingo Mini App", web_app=WebAppInfo(url=WEB_APP_URL))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await update.message.reply_text(
-        "✅ ምዝገባዎ እና ስልክ ቁጥርዎ በተሳካ ሁኔታ ተመዝግቧል!\n\n"
-        "አሁን ጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ:",
+        "✅ Registration successful!\n\n"
+        "Click the button below to open the game:",
         reply_markup=reply_markup
     )
 
@@ -246,11 +246,11 @@ def lock_card():
 
     if game_state["status"] == "playing":
         conn.close()
-        return jsonify({"success": False, "message": "ጨዋታው ተጀምሯል! አሁን ካርድ መያዝ አይቻልም።"}), 400
+        return jsonify({"success": False, "message": "Game don start! You no fit lock card again."}), 400
 
     if card_id in taken_cards and taken_cards[card_id] != user_id:
         conn.close()
-        return jsonify({"success": False, "message": "ይህ ካርድ በሌላ ተጫዋች ተይዟል!"}), 400
+        return jsonify({"success": False, "message": "Another player don take dis card!"}), 400
 
     if card_id in taken_cards and taken_cards[card_id] == user_id:
         conn.close()
@@ -259,11 +259,11 @@ def lock_card():
     user_cards_count = sum(1 for uid in taken_cards.values() if uid == user_id)
     if user_cards_count >= MAX_CARDS_PER_USER:
         conn.close()
-        return jsonify({"success": False, "message": f"ከፍተኛው የካርድ ገደብ ደርሰዋል!"}), 400
+        return jsonify({"success": False, "message": "You don reach maximum card limit!"}), 400
 
     if balance < STAKE_PRICE:
         conn.close()
-        return jsonify({"success": False, "message": "በቂ ሂሳብ የሎትም!"}), 400
+        return jsonify({"success": False, "message": "You no get enough balance!"}), 400
 
     balance -= STAKE_PRICE
     cursor.execute('UPDATE users SET balance = ? WHERE telegram_id = ?', (balance, user_id))
@@ -286,7 +286,7 @@ def unlock_card():
     user_id = str(data.get('user_id') or "123456")
 
     if game_state["status"] == "playing":
-        return jsonify({"success": False, "message": "ጨዋታው በሂደት ላይ ስለሆነ ካርዱ ሊለቀቅ አይችልም።"}), 400
+        return jsonify({"success": False, "message": "Game don start, you no fit release card now."}), 400
 
     if card_id in taken_cards and taken_cards[card_id] == user_id:
         del taken_cards[card_id]
@@ -306,7 +306,7 @@ def unlock_card():
 
         return jsonify({"success": True, "new_balance": balance})
 
-    return jsonify({"success": False, "message": "አልተያዘም"}), 400
+    return jsonify({"success": False, "message": "Card not taken by you"}), 400
 
 @app.route('/api/bingo_win', methods=['POST'])
 def bingo_win():
@@ -337,7 +337,7 @@ def bingo_win():
     
     return jsonify({
         "success": True, 
-        "message": f"እንኳን ደስ አለዎት! አሸንፈዋል!",
+        "message": "Congratulations! You win!",
         "new_balance": balance
     })
 

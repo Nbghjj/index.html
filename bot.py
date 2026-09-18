@@ -3,21 +3,38 @@ import random
 import threading
 import os
 import asyncio
+import sqlite3
 from flask import Flask, render_template, request, jsonify
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
 app = Flask(__name__)
 
-user_balances = {}
-taken_cards = {}   # {card_id: user_id}
 STAKE_PRICE = 10
 MAX_CARDS_PER_USER = 4   # አንዱ ተጫዋች መያዝ የሚችለው ከፍተኛ የካርድ ብዛት
 
 # ያስገቡት ትክክለኛ የቦት ቶከን
 BOT_TOKEN = "8909328591:AAEay418mvQF9dRBqjtSKgPDM_T-WpWWJ84" 
-WEB_APP_URL = "https://your-domain.com/" # የ Render ሊንክዎ (ለምሳሌ: https://ayat-bingo.onrender.com/)
+WEB_APP_URL = "https://ayat-bingo-bot.onrender.com/" # የ Render ሊንክዎ
 
+# ዳታቤዝ ማዋቀሪያ (ቦቱ እና ሚኒ አፑ አንድ አይነት ዳታቤዝ እንዲጠቀሙ)
+def init_db():
+    conn = sqlite3.connect('bot_users.db', check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            telegram_id INTEGER PRIMARY KEY,
+            username TEXT,
+            phone TEXT,
+            balance REAL DEFAULT 100.0
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+init_db()
+
+taken_cards = {}   # {card_id: user_id}
 game_state = {
     "status": "waiting",  # waiting, countdown, playing
     "countdown_end": 0,
@@ -30,7 +47,7 @@ game_state = {
 }
 
 def generate_unique_bingo_cards(total_cards=300):
-    """300 ፍጹም የተለያዩ እና የማይመሳሰሉ የቢንጎ ካርዶችን የሚያመነጭ ጥብቅ ሎጂክ"""
+    """300 ፍጹም የተለያዩ እና የማይመሳሰሉ የቢንጎ ካርዶችን የሚያመነጭ ሎጂክ"""
     all_cards = {}
     seen_cards = set()
     
@@ -38,7 +55,7 @@ def generate_unique_bingo_cards(total_cards=300):
     while card_id <= total_cards:
         b_col = tuple(sorted(random.sample(range(1, 16), 5)))
         i_col = tuple(sorted(random.sample(range(16, 31), 5)))
-        n_col = tuple(sorted(random.sample(range(31, 46), 4)))  # መሀል ላይ Free ስላለ 4 ቁጥር
+        n_col = tuple(sorted(random.sample(range(31, 46), 4)))  # መሀል ላይ Free
         g_col = tuple(sorted(random.sample(range(46, 61), 5)))
         o_col = tuple(sorted(random.sample(range(61, 76), 5)))
         
@@ -57,31 +74,54 @@ def generate_unique_bingo_cards(total_cards=300):
             
     return all_cards
 
-# 300ኙን ልዩ ካርዶች አስቀድሞ ማዘጋጀት
 BINGO_CARDS = generate_unique_bingo_cards(300)
 
 # ================= ቴሌግራም ቦት ክፍሎች (Telegram Bot Handlers) =================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    user_id = user.id
+    username = user.username or user.first_name
+    
+    # 1. /start ሲሉ ዩዘሩን በዳታቤዝ መመዝገብ
+    conn = sqlite3.connect('bot_users.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT telegram_id FROM users WHERE telegram_id = ?', (user_id,))
+    if not cursor.fetchone():
+        cursor.execute('INSERT INTO users (telegram_id, username, balance) VALUES (?, ?, ?)',
+                       (user_id, username, 100.0))
+        conn.commit()
+    conn.close()
+    
+    # 2. ስልክ ቁጥር ማጋሪያ ቁልፍ ማምጣት
     contact_button = KeyboardButton("📱 ቁጥሬን አጋራ (Share Contact)", request_contact=True)
     reply_markup = ReplyKeyboardMarkup([[contact_button]], resize_keyboard=True, one_time_keyboard=True)
     
     await update.message.reply_text(
-        "እንኳን ወደ 'Ayat Bingo' በደህና መጡ! ጨዋታውን ለመጀመር እባክዎ ከታች ያለውን በመንካት ስልክ ቁጥርዎን ያጋሩ።",
-        reply_markup=reply_markup
+        f"ሰላም <b>{user.first_name}</b>! እንኳን ወደ 'Ayat Bingo' በደህና መጡ።\n\n"
+        "ጨዋታውን ለመጀመር እና ለመመዝገብ እባክዎ ከታች ያለውን በመንካት ስልክ ቁጥርዎን ያጋሩ።",
+        reply_markup=reply_markup,
+        parse_mode="HTML"
     )
 
 async def contact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    contact = update.message.contact
-    user_id = str(update.effective_user.id)
+    user = update.effective_user
+    user_id = user.id
+    phone = update.message.contact.phone_number
     
-    if user_id not in user_balances:
-        user_balances[user_id] = 100
+    # 3. ስልክ ቁጥር ሲያጋራ ዳታቤዝ ማዘመን
+    conn = sqlite3.connect('bot_users.db')
+    cursor = conn.cursor()
+    cursor.execute('UPDATE users SET phone = ? WHERE telegram_id = ?', (phone, user_id))
+    conn.commit()
+    conn.close()
     
-    keyboard = [[InlineKeyboardButton("🎮 Play Bingo", web_app=WebAppInfo(url=WEB_APP_URL))]]
+    # 4. ሚኒ አፕ መክፈቻ ቁልፍ ማሳየት
+    keyboard = [[InlineKeyboardButton("🎮 Play Ayat Bingo Mini App", web_app=WebAppInfo(url=WEB_APP_URL))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await update.message.reply_text(
-        "ምዝገባዎ ተጠናቋል! አሁን ጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ:",
+        "✅ ምዝገባዎ እና ስልክ ቁጥርዎ በተሳካ ሁኔታ ተመዝግቧል!\n\n"
+        "አሁን ጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ:",
         reply_markup=reply_markup
     )
 
@@ -93,10 +133,22 @@ def index():
 @app.route('/api/auth_user', methods=['POST'])
 def auth_user():
     data = request.json or {}
-    user_id = str(data.get('user_id') or "default_user")
-    if user_id not in user_balances:
-        user_balances[user_id] = 100
-    return jsonify({"success": True, "balance": user_balances[user_id]})
+    user_id = str(data.get('user_id') or "123456")
+    
+    conn = sqlite3.connect('bot_users.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT balance FROM users WHERE telegram_id = ?', (user_id,))
+    row = cursor.fetchone()
+    
+    if row:
+        balance = row[0]
+    else:
+        balance = 100.0
+        cursor.execute('INSERT OR IGNORE INTO users (telegram_id, balance) VALUES (?, ?)', (user_id, balance))
+        conn.commit()
+    conn.close()
+    
+    return jsonify({"success": True, "balance": balance})
 
 @app.route('/api/get_cards', methods=['GET'])
 def get_cards():
@@ -167,10 +219,16 @@ def get_state():
 @app.route('/api/get_balance', methods=['POST'])
 def get_balance():
     data = request.json or {}
-    user_id = str(data.get('user_id') or "default_user")
-    if user_id not in user_balances:
-        user_balances[user_id] = 100
-    return jsonify({"success": True, "balance": user_balances[user_id]})
+    user_id = str(data.get('user_id') or "123456")
+    
+    conn = sqlite3.connect('bot_users.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT balance FROM users WHERE telegram_id = ?', (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    balance = row[0] if row else 100.0
+    return jsonify({"success": True, "balance": balance})
 
 @app.route('/api/lock_card', methods=['POST'])
 def lock_card():
@@ -178,55 +236,75 @@ def lock_card():
     now = time.time()
     data = request.json or {}
     card_id = str(data.get('card_id'))
-    user_id = str(data.get('user_id') or "default_user")
+    user_id = str(data.get('user_id') or "123456")
 
-    if user_id not in user_balances:
-        user_balances[user_id] = 100
+    conn = sqlite3.connect('bot_users.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT balance FROM users WHERE telegram_id = ?', (user_id,))
+    row = cursor.fetchone()
+    balance = row[0] if row else 100.0
 
     if game_state["status"] == "playing":
+        conn.close()
         return jsonify({"success": False, "message": "ጨዋታው ተጀምሯል! አሁን ካርድ መያዝ አይቻልም።"}), 400
 
     if card_id in taken_cards and taken_cards[card_id] != user_id:
+        conn.close()
         return jsonify({"success": False, "message": "ይህ ካርድ በሌላ ተጫዋች ተይዟል!"}), 400
 
     if card_id in taken_cards and taken_cards[card_id] == user_id:
-        return jsonify({"success": True, "new_balance": user_balances[user_id]})
+        conn.close()
+        return jsonify({"success": True, "new_balance": balance})
 
     user_cards_count = sum(1 for uid in taken_cards.values() if uid == user_id)
     if user_cards_count >= MAX_CARDS_PER_USER:
+        conn.close()
         return jsonify({"success": False, "message": f"ከፍተኛው የካርድ ገደብ ደርሰዋል!"}), 400
 
-    if user_balances[user_id] < STAKE_PRICE:
+    if balance < STAKE_PRICE:
+        conn.close()
         return jsonify({"success": False, "message": "በቂ ሂሳብ የሎትም!"}), 400
 
-    user_balances[user_id] -= STAKE_PRICE
+    balance -= STAKE_PRICE
+    cursor.execute('UPDATE users SET balance = ? WHERE telegram_id = ?', (balance, user_id))
+    conn.commit()
+    conn.close()
+
     taken_cards[card_id] = user_id
 
     if game_state["status"] == "waiting":
         game_state["status"] = "countdown"
         game_state["countdown_end"] = now + 45
 
-    return jsonify({"success": True, "new_balance": user_balances[user_id]})
+    return jsonify({"success": True, "new_balance": balance})
 
 @app.route('/api/unlock_card', methods=['POST'])
 def unlock_card():
     global game_state
     data = request.json or {}
     card_id = str(data.get('card_id'))
-    user_id = str(data.get('user_id') or "default_user")
+    user_id = str(data.get('user_id') or "123456")
 
     if game_state["status"] == "playing":
         return jsonify({"success": False, "message": "ጨዋታው በሂደት ላይ ስለሆነ ካርዱ ሊለቀቅ አይችልም።"}), 400
 
     if card_id in taken_cards and taken_cards[card_id] == user_id:
         del taken_cards[card_id]
-        user_balances[user_id] += STAKE_PRICE
+        
+        conn = sqlite3.connect('bot_users.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT balance FROM users WHERE telegram_id = ?', (user_id,))
+        row = cursor.fetchone()
+        balance = (row[0] if row else 100.0) + STAKE_PRICE
+        cursor.execute('UPDATE users SET balance = ? WHERE telegram_id = ?', (balance, user_id))
+        conn.commit()
+        conn.close()
         
         if len(taken_cards) == 0:
             game_state["status"] = "waiting"
             game_state["countdown_end"] = 0
 
-        return jsonify({"success": True, "new_balance": user_balances[user_id]})
+        return jsonify({"success": True, "new_balance": balance})
 
     return jsonify({"success": False, "message": "አልተያዘም"}), 400
 
@@ -234,7 +312,7 @@ def unlock_card():
 def bingo_win():
     global game_state
     data = request.json or {}
-    user_id = str(data.get('user_id') or "default_user")
+    user_id = str(data.get('user_id') or "123456")
     winning_card = str(data.get('card_id') or "1")
     
     total_pool = len(taken_cards) * STAKE_PRICE
@@ -242,9 +320,14 @@ def bingo_win():
     if prize < STAKE_PRICE:
         prize = STAKE_PRICE * 2
         
-    if user_id not in user_balances:
-        user_balances[user_id] = 100
-    user_balances[user_id] += prize
+    conn = sqlite3.connect('bot_users.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT balance FROM users WHERE telegram_id = ?', (user_id,))
+    row = cursor.fetchone()
+    balance = (row[0] if row else 100.0) + prize
+    cursor.execute('UPDATE users SET balance = ? WHERE telegram_id = ?', (balance, user_id))
+    conn.commit()
+    conn.close()
     
     game_state["status"] = "waiting"
     game_state["countdown_end"] = 0
@@ -255,7 +338,7 @@ def bingo_win():
     return jsonify({
         "success": True, 
         "message": f"እንኳን ደስ አለዎት! አሸንፈዋል!",
-        "new_balance": user_balances[user_id]
+        "new_balance": balance
     })
 
 def run_telegram_bot():
@@ -276,3 +359,4 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, threaded=True, debug=False)
+            threaded=True, debug=False)
